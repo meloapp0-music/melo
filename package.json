@@ -17,7 +17,7 @@
     "@capacitor/core": "^8.3.1",
     "@capacitor/ios": "^8.3.1",
     "@capacitor/push-notifications": "^8.0.0",
-    "@ebarooni/capacitor-calendar": "^7.4.0",
+    "@ebarooni/capacitor-calendar": "^8.0.1",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/unbounded": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
