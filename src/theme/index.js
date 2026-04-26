@@ -1,0 +1,270 @@
+const charcoal = '#1E1E1E';
+
+const theme = {
+  background: '#FAF8F5',
+  surface: '#F4F1ED',
+  card: '#FFFFFF',
+  border: '#EDE8E2',
+  borderLight: '#F0EBE5',
+  /** Primary coral */
+  primary: '#E8573A',
+  /** Amber (gradient top) */
+  amber: '#F4A261',
+  /** Tangerine accent */
+  tangerine: '#EF7A3C',
+  green: '#16A34A',
+  gradient: 'linear-gradient(180deg, #F4A261 0%, #E8573A 100%)',
+  text: charcoal,
+  subtext: '#78716C',
+  muted: '#A8A29E',
+  shadow: '0 2px 12px rgba(30,30,30,0.07)',
+  shadowMd: '0 4px 24px rgba(30,30,30,0.10)',
+  shadowLg: '0 8px 40px rgba(30,30,30,0.14)',
+
+  spacing: {
+    xxs: 4,
+    xs: 8,
+    sm: 12,
+    md: 16,
+    lg: 20,
+    xl: 24,
+    xxl: 32,
+    xxxl: 40,
+    xxxxl: 48,
+  },
+
+  radius: {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+    xxxl: 28,
+    full: 100,
+    scoreSquare: 10,
+    logSheetTop: 24,
+    saveButton: 16,
+    searchBar: 14,
+    songCard: 14,
+    myShowsListRow: 20,
+    myShowsGridCard: 16,
+    buddyCard: 20,
+    buddySpotlight: 20,
+  },
+
+  layout: {
+    /** Horizontal lockup in app header */
+    headerLogoHeight: 32,
+    homeHeaderLogo: 44,
+    /** Square mark for splash-style overlays / loading */
+    splashLogo: 80,
+    homeAvatar: 40,
+    showCardWidth: 140,
+    showCardHeight: 180,
+    featuredCardHeight: 220,
+    scoreSquare: 36,
+    logSheetHandle: 36,
+    myShowsListRowHeight: 160,
+    myShowsListImage: 100,
+    buddySpotlightAvatar: 60,
+    buddyRowAvatar: 52,
+    buddyThumb: 32,
+    rankBattleCard: 210,
+    podium1: 268,
+    podium2: 228,
+    podium3: 196,
+  },
+
+  overlay: {
+    imageCardBottom65Colors: ['transparent', 'rgba(0,0,0,0.85)'],
+    imageCardBottom65Locations: [0.35, 1],
+    cardImageGradientColors: ['transparent', 'rgba(0,0,0,0.88)'],
+    cardImageGradientLocations: [0.35, 1],
+    gridCardGradientColors: ['transparent', 'rgba(0,0,0,0.78)'],
+    gridCardGradientLocations: [0.66, 1],
+    battleCardGradientColors: ['transparent', 'rgba(0,0,0,0.82)'],
+    battleCardGradientLocations: [0.45, 1],
+    dateOnBattle: 'rgba(255,255,255,0.55)',
+    detailHeroGradientColors: ['transparent', 'rgba(0,0,0,0.85)'],
+    detailHeroGradientLocations: [0.3, 1],
+    venueOnImage: 'rgba(255,255,255,0.7)',
+    liveSpotlightArtist: 'rgba(255,255,255,0.8)',
+    lockScrim: 'rgba(250,248,245,0.55)',
+  },
+
+  interaction: {
+    pressOpacity: 0.85,
+    pressScale: 0.96,
+    pressSpringFriction: 6,
+    pressSpringTension: 380,
+  },
+
+  tabBar: {
+    active: '#E8573A',
+    background: '#FFFFFF',
+    fabShadow: '#E8573A',
+    inactive: '#A8A29E',
+    shadow: charcoal,
+    topBorder: 'rgba(30,30,30,0.06)',
+  },
+
+  fab: {
+    shadow: '#E8573A',
+  },
+
+  shimmer: {
+    base: '#EDE8E2',
+    highlight: '#F5F2EE',
+  },
+
+  musicDna: {
+    segmentColors: ['#E8573A', '#EF7A3C', '#F4A261', '#D94E28', '#F0B07F'],
+  },
+
+  error: '#DC2626',
+  backdrop: 'rgba(30,30,30,0.35)',
+
+  podiumGold: '#F4A261',
+  podiumSilver: '#9CA3AF',
+  podiumBronze: '#CD7F32',
+
+  /** Song Tracking screen (spec ink + purple accents). */
+  songTracking: {
+    badgePurpleBg: '#EDE9FE',
+    ink: '#1C1917',
+    statPurple: '#A855F7',
+    venuePillBg: '#1C1917',
+  },
+
+  typography: {
+    fontFamily: {
+      body: 'Inter_400Regular',
+      bodyMedium: 'Inter_500Medium',
+      bodySemiBold: 'Inter_600SemiBold',
+      bodyBold: 'Inter_700Bold',
+      display: 'Unbounded_800ExtraBold',
+      displayBold: 'Unbounded_700Bold',
+      displaySemi: 'Unbounded_600SemiBold',
+    },
+    fontSize: {
+      xs: 12,
+      sm: 13,
+      body: 15,
+      md: 16,
+      lg: 18,
+      xl: 20,
+      title: 28,
+      titleLg: 34,
+      display: 48,
+      displayLg: 64,
+      subtitle: 14,
+      caption: 11,
+      statNumber: 22,
+      sectionTitle: 20,
+      seeAll: 13,
+      showCardArtist: 13,
+      showCardVenue: 11,
+      showCardScore: 11,
+      featuredArtist: 22,
+      featuredMeta: 13,
+      logShowTitle: 22,
+      disambiguation: 12,
+      error: 12,
+      saveCta: 16,
+      setlistInput: 14,
+      myShowsTitle: 26,
+      searchInput: 14,
+      tabLabel: 14,
+      filterChip: 12,
+      sortAction: 13,
+      myShowsListArtist: 16,
+      myShowsListVenue: 13,
+      myShowsListSub: 12,
+      myShowsListScore: 18,
+      rankScreenTitle: 26,
+      rankSubtitle: 14,
+      rankModeChip: 13,
+      rankBattleArtist: 20,
+      rankVs: 18,
+      rankPodiumNum: 32,
+      rankPodiumArtist: 18,
+      rankListNum: 20,
+      rankListArtist: 15,
+      rankListVenue: 12,
+      rankListElo: 16,
+      rankBattlesToday: 13,
+      liveSongsSpotlightTitle: 18,
+      liveSongsSpotlightArtist: 14,
+      liveSongsSpotlightMeta: 13,
+      liveSongsSection: 15,
+      liveSongsRowTitle: 15,
+      liveSongsRowArtist: 12,
+      liveSongsListMeta: 13,
+      liveSongsSeenPill: 11,
+      liveSongsBadge: 12,
+      liveSongsSortChip: 12,
+      buddiesScreenTitle: 26,
+      buddiesSpotlightName: 18,
+      buddiesRowName: 16,
+      buddiesMeta: 13,
+      buddiesDetailSubtitle: 14,
+      buddiesEmptyBody: 15,
+      buddiesSpotlightInitial: 24,
+      buddiesRowInitial: 20,
+      emptyStateTitle: 18,
+      splashWordmark: 28,
+      songTrackingTitle: 28,
+      songTrackingStat: 28,
+      songTrackingSection: 18,
+      songRowTitle: 16,
+      songRowArtist: 13,
+      songVenueChip: 11,
+      songCountBadge: 14,
+      songTotalMeta: 13,
+      songStatLabel: 12,
+      songSortChip: 12,
+    },
+    letterSpacing: {
+      fieldUppercase: 0.65,
+      myShowsTitle: -0.52,
+      rankScreenTitle: -0.78,
+      sectionTight: -0.4,
+      /** Inter UI — slightly open, closer to brand wordmark feel */
+      interUi: 0.35,
+    },
+    lineHeight: {
+      tight: 1.15,
+      normal: 1.4,
+      relaxed: 1.5,
+    },
+  },
+};
+
+/** Logo icon gradient: amber at top → coral at bottom (vertical). */
+theme.linearGradientColors = [theme.amber, theme.primary];
+theme.linearGradientStart = { x: 0.5, y: 0 };
+theme.linearGradientEnd = { x: 0.5, y: 1 };
+
+theme.rnShadowSm = {
+  shadowColor: charcoal,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.07,
+  shadowRadius: 12,
+  elevation: 2,
+};
+theme.rnShadowMd = {
+  shadowColor: charcoal,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.1,
+  shadowRadius: 24,
+  elevation: 4,
+};
+theme.rnShadowLg = {
+  shadowColor: charcoal,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.14,
+  shadowRadius: 40,
+  elevation: 8,
+};
+
+export default theme;

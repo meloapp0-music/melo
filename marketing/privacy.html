@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — Melo</title>
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+      .legal-page {
+        max-width: 720px;
+        margin: 56px auto;
+        padding: 0 24px 80px;
+        line-height: 1.65;
+        color: var(--ink);
+      }
+      .legal-page h1 { font-size: 36px; margin: 0 0 8px; }
+      .legal-page h2 { font-size: 20px; margin: 32px 0 8px; }
+      .legal-page p, .legal-page li { color: var(--ink-soft); font-size: 15px; }
+      .legal-page .updated { color: var(--ink-soft); font-size: 14px; margin-bottom: 32px; }
+      .legal-page a.back { color: var(--orange-2); font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main class="legal-page">
+      <a class="back" href="./">← Back to Melo</a>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: 2026-04-20 · Contact: <a href="mailto:support@melo.app">support@melo.app</a></p>
+
+      <p>
+        Melo is a concert-tracking app. This page explains what data we collect,
+        why we collect it, and what you can do about it. Plain English first,
+        the lawyers can have their version when we have lawyers.
+      </p>
+
+      <h2>What we store</h2>
+      <ul>
+        <li><strong>Account info</strong>: your email and a username you choose.</li>
+        <li><strong>Your shows</strong>: artists, dates, venues, scores, vibes,
+          notes, setlists, photo URLs — the stuff you log.</li>
+        <li><strong>Settings</strong>: app preferences and (if you provide one)
+          your Setlist.fm API key, encrypted at rest.</li>
+        <li><strong>Push tokens</strong>: an opaque identifier for your iPhone so
+          we can send tour-alert notifications. You can disable these in iOS
+          Settings → Notifications → Melo.</li>
+      </ul>
+
+      <h2>What we don't store</h2>
+      <ul>
+        <li>We don't sell your data. Ever.</li>
+        <li>We don't track you across other apps or websites.</li>
+        <li>We don't store your decrypted Setlist.fm key in our database — it
+          lives encrypted, decrypted only briefly inside our serverless
+          functions when you make a request.</li>
+      </ul>
+
+      <h2>Third-party services</h2>
+      <p>Melo talks to these external services on your behalf:</p>
+      <ul>
+        <li><strong>Supabase</strong> — our backend / database / auth.</li>
+        <li><strong>Ticketmaster</strong> — upcoming shows and festivals.</li>
+        <li><strong>Setlist.fm</strong> — past setlists (only if you provide a
+          key).</li>
+        <li><strong>Apple Music / iTunes</strong> — 30-second song previews.</li>
+        <li><strong>Deezer</strong> — artist images.</li>
+        <li><strong>MusicBrainz</strong> — artist bios.</li>
+        <li><strong>Apple Push Notification service</strong> — delivering tour
+          alerts.</li>
+      </ul>
+
+      <h2>Your rights</h2>
+      <p>
+        You can delete your entire account from Settings → Account → Delete
+        Account. That wipes every show, ranking, photo, and setting you've
+        ever stored, plus all your push tokens. It can't be undone.
+      </p>
+
+      <h2>Children</h2>
+      <p>
+        Melo is rated 4+. We don't knowingly collect data from children under
+        13. If you believe a child's data has been collected, email
+        <a href="mailto:support@melo.app">support@melo.app</a> and we'll
+        delete it.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        If we materially change this policy, we'll bump the date at the top
+        and let you know in-app the next time you sign in.
+      </p>
+    </main>
+  </body>
+</html>
