@@ -259,10 +259,9 @@ export default function Settings() {
       <div className="settings-section">
         <div className="settings-section-title">About</div>
         <div className="settings-card">
-          <button className="settings-link-row" onClick={() => navigate('import-calendar')}>
-            <span>Import past shows from Calendar</span>
-            <span className="settings-link-row-chevron">›</span>
-          </button>
+          {/* Calendar import hidden in v1.0 — see Onboarding.jsx and
+              Home.jsx for the rationale. The page itself is still in
+              the repo (pages/ImportFromCalendar.jsx). */}
           <button className="settings-link-row" onClick={() => navigate('legal')}>
             <span>Legal & Attributions</span>
             <span className="settings-link-row-chevron">›</span>

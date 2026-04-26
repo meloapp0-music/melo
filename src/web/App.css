@@ -2464,14 +2464,18 @@ h4 { font-size: 17px; }
 }
 
 /* Profile nav buttons */
+/* 2x2 grid (was a single-row flex). Switched after Songs was added
+   as a 4th nav button — 4 buttons in a single row truncated their
+   labels on narrow screens (iPhone) to "Set" / "Rank" etc. The grid
+   gives every label full width to render without clipping. */
 .profile-nav-btns {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-bottom: 24px;
 }
 
 .profile-nav-btn {
-  flex: 1;
   padding: 14px;
   background: #fff;
   border-radius: 16px;
@@ -2590,7 +2594,8 @@ h4 { font-size: 17px; }
 
 .detail-close {
   position: absolute;
-  top: 16px;
+  /* Stay clear of the dynamic island on edge-to-edge devices. */
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   right: 16px;
   width: 36px;
   height: 36px;
@@ -3574,7 +3579,9 @@ h4 { font-size: 17px; }
 
 .wrapped-close {
   position: fixed;
-  top: 16px;
+  /* Push down past the iOS dynamic island / status bar so the X stays
+     tappable on edge-to-edge devices. */
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   right: 16px;
   z-index: 210;
   width: 40px;
@@ -4345,8 +4352,15 @@ h4 { font-size: 17px; }
    ============================================================= */
 
 .auth-page {
-  min-height: 100vh;
-  padding: 48px 24px 40px;
+  min-height: 100dvh;
+  /* Top padding = status bar safe area + breathing room. The cream
+     gradient still bleeds under the dynamic island; the MeloIcon and
+     headline sit safely below it. Bottom padding accounts for the
+     home indicator on iOS. */
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 32px)
+    24px
+    calc(env(safe-area-inset-bottom, 0px) + 32px);
   display: flex;
   flex-direction: column;
   align-items: center;

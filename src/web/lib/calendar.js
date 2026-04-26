@@ -15,6 +15,13 @@
 // your iPhone").
 
 import { Capacitor } from '@capacitor/core';
+// Static import — the plugin's JS shim must be bundled at build time so
+// the iOS native runtime can find it. (Earlier dynamic-import attempt
+// worked on the web build but failed at runtime on iOS, where the
+// webview can't resolve npm package specifiers.) The plugin ships a
+// no-op web implementation, so this import is safe in the web build
+// even though we never call its methods there.
+import { CapacitorCalendar } from '@ebarooni/capacitor-calendar';
 
 // Calendar entries that almost never represent concerts. Used as a
 // soft denylist when filtering events. Lowercased substring match.
@@ -35,15 +42,6 @@ const NON_CONCERT_HINTS = [
 export async function scanCalendar({ since, until } = {}) {
   if (!Capacitor.isNativePlatform || !Capacitor.isNativePlatform()) {
     return { ok: false, reason: 'not-native', events: [] };
-  }
-
-  let CapacitorCalendar;
-  try {
-    ({ CapacitorCalendar } = await import(/* @vite-ignore */ '@ebarooni/capacitor-calendar'));
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[Melo] @ebarooni/capacitor-calendar not installed; skipping calendar import');
-    return { ok: false, reason: 'plugin-missing', events: [] };
   }
 
   // Default window: last 5 years → next month. Anything older than 5

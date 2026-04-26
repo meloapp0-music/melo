@@ -166,19 +166,13 @@ export default function Home() {
               </div>
             </button>
 
-            {Capacitor.isNativePlatform && Capacitor.isNativePlatform() && (
-              <button
-                type="button"
-                className="home-firstrun-card"
-                onClick={() => navigate('import-calendar')}
-              >
-                <div className="home-firstrun-icon" aria-hidden="true">📅</div>
-                <div className="home-firstrun-card-title">Import from Calendar</div>
-                <div className="home-firstrun-card-desc">
-                  Bulk-add every past concert in your iPhone Calendar.
-                </div>
-              </button>
-            )}
+            {/* Calendar-import card hidden in v1.0 — the underlying
+                Capacitor plugin (@ebarooni/capacitor-calendar 8.0.1)
+                fails on iOS with "requestReadOnlyCalendarAccess is not
+                implemented" even with all Info.plist permission strings
+                in place. Re-enable for v1.1 after swapping plugins or
+                upgrading to a fixed version. The page + JS lib are
+                still in the repo, just unreachable from the UI. */}
 
             <button
               type="button"

@@ -181,7 +181,7 @@ are skippable.
 
 ## Submission checklist
 
-- [ ] Bundle ID `com.melo.app` registered in App Store Connect
+- [ ] Bundle ID `com.aidanwise.melo` registered in App Store Connect
 - [ ] APNs Auth Key (.p8) uploaded to App Store Connect → Keys
 - [ ] All 5 screenshots × 2 sizes uploaded (see `screenshots/README.md`)
 - [ ] App Privacy details filled in (Data Used to Track You: None.

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
 import { updateMyProfile, checkUsernameAvailable } from '../../lib/db/profiles';
 import { MeloIcon } from '../../components/MeloLogo';
-import ImportFromCalendar from '../ImportFromCalendar';
+// Note: ImportFromCalendar import removed in v1.0 — the calendar
+// onboarding step is hidden until the underlying Capacitor plugin
+// (@ebarooni/capacitor-calendar) iOS bridge issue is resolved. The
+// page itself still exists in the repo and can be re-enabled by
+// restoring this import + the `step === 'calendar'` branch below.
 
 const AVATAR_COLORS = [
   '#E8573A', '#FF6B6B', '#FF9671', '#FFC75F', '#C4E538',
@@ -10,11 +13,8 @@ const AVATAR_COLORS = [
 ];
 
 export default function Onboarding({ onComplete }) {
-  // Two-step flow on iOS: profile, then calendar import. Web users
-  // skip straight from profile → done since the calendar plugin is
-  // a no-op outside Capacitor.
-  const isNative = !!(Capacitor.isNativePlatform && Capacitor.isNativePlatform());
-  const [step, setStep] = useState('profile'); // 'profile' | 'calendar'
+  // Single-step flow in v1.0: profile only. Calendar import is
+  // deferred to v1.1 (see note above).
 
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -61,25 +61,14 @@ export default function Onboarding({ onComplete }) {
         displayName: displayName.trim(),
         avatarColor,
       });
-      // On native we route to the calendar-import step before handing
-      // control back to App.jsx. On web we're done — App.jsx will
-      // re-fetch the profile (no longer a temp username) and unmount
-      // this page.
-      if (isNative) {
-        setStep('calendar');
-        setBusy(false);
-      } else {
-        onComplete?.();
-      }
+      // App.jsx will re-fetch the profile (no longer a temp username)
+      // and unmount this page.
+      onComplete?.();
     } catch (err) {
       setError(err.message || 'Could not save profile');
       setBusy(false);
     }
   };
-
-  if (step === 'calendar') {
-    return <ImportFromCalendar onDone={() => onComplete?.()} />;
-  }
 
   return (
     <div className="page auth-page">

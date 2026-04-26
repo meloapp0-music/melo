@@ -19,6 +19,13 @@
 // Settings, it can re-call registerForPush() to nudge the prompt.
 
 import { Capacitor } from '@capacitor/core';
+// Static import — the plugin's JS shim must be bundled at build time so
+// the iOS native runtime can find it. (Earlier dynamic-import attempt
+// worked on the web build but failed at runtime on iOS, where the
+// webview can't resolve npm package specifiers.) The plugin ships a
+// no-op web implementation, so the static import is safe in the web
+// build even though we never actually call its methods on web.
+import { PushNotifications } from '@capacitor/push-notifications';
 import { upsertDeviceToken } from './db/devices';
 
 let wired = false;
@@ -27,19 +34,6 @@ export async function registerForPush() {
   if (!Capacitor.isNativePlatform || !Capacitor.isNativePlatform()) {
     // Web build — quietly no-op.
     return { ok: false, reason: 'not-native' };
-  }
-
-  let PushNotifications;
-  try {
-    // Dynamic import keeps the web bundle clean — Capacitor's plugin
-    // package is iOS/Android-only and would otherwise break the dev
-    // server's module resolution.
-    ({ PushNotifications } = await import(/* @vite-ignore */ '@capacitor/push-notifications'));
-  } catch (err) {
-    // Plugin not installed yet (we haven't run `npm i` after pulling).
-    // eslint-disable-next-line no-console
-    console.warn('[Melo] @capacitor/push-notifications not installed; skipping push registration');
-    return { ok: false, reason: 'plugin-missing' };
   }
 
   try {
