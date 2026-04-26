@@ -1,6 +1,9 @@
 // Melo Brand Logo Components
 
-// The M icon mark — geometric crown/M shape with orange gradient
+// The M icon mark — bolder, fuller crown design (refresh 2026-04-26).
+// Three filled shapes on a dark tile: two outer pillars that taper
+// inward toward the top + a tall center inverted-V/diamond. The M now
+// fills nearly the full square and reads as a crown more than a letter.
 export function MeloIcon({ size = 40, rounded = true, className = '' }) {
   const r = rounded ? size * 0.22 : 0;
   return (
@@ -12,12 +15,17 @@ export function MeloIcon({ size = 40, rounded = true, className = '' }) {
         </linearGradient>
       </defs>
       <rect width="120" height="120" rx={r} fill="#1E1E1E" />
-      {/* Left bar */}
-      <polygon points="22,30 22,95 36,95 36,50 22,30" fill={`url(#meloGrad-${size})`} />
-      {/* Right bar */}
-      <polygon points="84,50 84,95 98,95 98,30 84,50" fill={`url(#meloGrad-${size})`} />
-      {/* Center diamond */}
-      <polygon points="60,25 36,55 60,85 84,55" fill={`url(#meloGrad-${size})`} />
+      {/* Left pillar — wide at the bottom, slopes up to a sharp point at the top.
+          (14,18) is the upper outer point; bottom edge spans (14→40, 102);
+          the diagonal cut from inner-bottom (40,102) up to outer-top (14,18)
+          gives the leg its taper. */}
+      <polygon points="14,18 14,102 40,102 40,55" fill={`url(#meloGrad-${size})`} />
+      {/* Right pillar — mirror of the left. */}
+      <polygon points="106,18 106,102 80,102 80,55" fill={`url(#meloGrad-${size})`} />
+      {/* Center inverted-V — the crown's middle peak. Top point at (60,18),
+          opens out to inner pillar tops at (40,55) and (80,55), then comes
+          down to a sharp center point at (60,102). */}
+      <polygon points="60,18 40,55 60,102 80,55" fill={`url(#meloGrad-${size})`} />
     </svg>
   );
 }

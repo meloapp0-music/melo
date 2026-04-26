@@ -69,7 +69,9 @@ h4 { font-size: 17px; }
   min-height: 100dvh;
 }
 
-.page-top { padding-top: 60px; }
+/* Use safe-area-inset-top so content clears the iOS status bar and
+   the page background still bleeds through underneath it. */
+.page-top { padding-top: calc(env(safe-area-inset-top, 0px) + 20px); }
 
 .section-label {
   font-family: var(--font-heading);
@@ -234,7 +236,10 @@ h4 { font-size: 17px; }
    ============================================ */
 .home-hero {
   margin: -0px -20px 0;
-  padding: 70px 24px 36px;
+  /* Top padding = status bar height + breathing room, so the cream
+     gradient extends edge-to-edge but the MeloIcon + greeting clear
+     the time/dynamic island. */
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 36px;
   background: linear-gradient(165deg, rgba(244, 162, 97, 0.15) 0%, rgba(232, 87, 58, 0.08) 50%, transparent 100%);
   position: relative;
   overflow: hidden;
@@ -679,6 +684,17 @@ h4 { font-size: 17px; }
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(61, 44, 30, 0.06);
+}
+
+/* Inline "optional" hint inside a section title — small caps, lighter
+   weight, dot-leader spacing. Used by Festival input today; reusable. */
+.log-section-hint {
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: rgba(61, 44, 30, 0.5);
+  margin-left: 8px;
 }
 
 .log-input {
@@ -1743,9 +1759,84 @@ h4 { font-size: 17px; }
 /* ============================================
    SONGS PAGE
    ============================================ */
+/* Old .songs-header is no longer used — Songs page now has a full
+   .songs-hero with a photo collage backdrop (see below). Kept selector
+   here in case any external override targets it. */
 .songs-header {
   padding-top: 60px;
   margin-bottom: 20px;
+}
+
+/* Songs page hero — full-bleed photo collage (top artist images) with
+   a darkening gradient overlay and the page title overlaid. Matches
+   the visual vocabulary of Profile hero + Wrapped photo backdrops. */
+.songs-hero {
+  position: relative;
+  height: 220px;
+  margin: 0 0 24px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1E1E1E 0%, #C34A36 100%);
+  border-radius: 0 0 24px 24px;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.songs-hero-empty {
+  /* Stronger branded gradient when there's no photo collage to show. */
+  background: linear-gradient(135deg, #F4A261 0%, #E8573A 50%, #C34A36 100%);
+}
+
+/* The collage itself — up to 6 artist photos in a 3x2 grid. Slightly
+   blurred + saturated so it reads as a backdrop rather than a recognizable
+   gallery; the title sits cleanly on top. */
+.songs-hero-bg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0;
+  filter: blur(1.5px) saturate(1.1);
+  transform: scale(1.04); /* hides the blur edges */
+}
+.songs-hero-tile {
+  background-size: cover;
+  background-position: center;
+  background-color: #1E1E1E;
+}
+
+.songs-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.65) 100%),
+    linear-gradient(135deg, rgba(232,87,58,0.18), rgba(0,0,0,0.18));
+}
+
+.songs-hero-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 20px 22px;
+  color: #FBF6EE;
+}
+.songs-hero-title {
+  font-family: var(--font-heading, inherit);
+  font-weight: 800;
+  font-size: 40px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 0 0 6px;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.35);
+}
+.songs-hero-sub {
+  font-size: 14px;
+  margin: 0;
+  color: rgba(255,255,255,0.92);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.4);
 }
 
 .songs-stats {
@@ -1980,7 +2071,9 @@ h4 { font-size: 17px; }
    ============================================ */
 .profile-hero {
   margin: 0 -20px;
-  padding: 80px 24px 40px;
+  /* Same edge-to-edge approach as .home-hero — gradient bleeds up
+     behind the status bar; safe-area-inset pushes the avatar down. */
+  padding: calc(env(safe-area-inset-top, 0px) + 30px) 24px 40px;
   background: linear-gradient(165deg, rgba(244, 162, 97, 0.2) 0%, rgba(232, 87, 58, 0.12) 40%, rgba(61, 44, 30, 0.06) 100%);
   text-align: center;
   position: relative;
@@ -2075,8 +2168,8 @@ h4 { font-size: 17px; }
 
 .profile-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin: -20px 4px 24px;
   position: relative;
   z-index: 2;
@@ -2085,9 +2178,24 @@ h4 { font-size: 17px; }
 .profile-stat {
   background: #fff;
   border-radius: 16px;
-  padding: 16px 10px;
+  padding: 16px 8px;
   text-align: center;
   box-shadow: var(--shadow-md);
+}
+
+/* Tappable variant — used when a stat doubles as a nav link
+   (Shows / Artists / Songs route to their respective subpages). */
+.profile-stat-btn {
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.profile-stat-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(232, 87, 58, 0.12);
 }
 
 .profile-stat-num {
@@ -2440,6 +2548,27 @@ h4 { font-size: 17px; }
   left: 0;
   right: 0;
   padding: 20px 24px;
+}
+
+/* Festival pill on the ShowDetail hero — sits below date/venue when
+   show.festival is set. Frosted glass over the hero photo so it reads
+   on any background. */
+.detail-festival-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .detail-artist {
@@ -4567,6 +4696,45 @@ h4 { font-size: 17px; }
 @keyframes songsTracksReveal {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Per-show grouping inside an expanded artist card. Each show gets a
+   small header (date + venue or festival) followed by its own setlist.
+   Visual hierarchy: show headers are smaller-caps, setlist items
+   slightly indented to read as "songs from this show". */
+.songs-show-group {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.06);
+}
+.songs-show-group:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.songs-show-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px 4px;
+}
+.songs-show-date {
+  font-family: var(--font-heading, inherit);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brown, #3D2C1E);
+}
+.songs-show-venue {
+  font-size: 12px;
+  color: var(--brown-muted, rgba(61, 44, 30, 0.6));
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
 }
 
 .songs-track-row {

@@ -3,6 +3,6 @@
   "appName": "Melo",
   "webDir": "dist",
   "ios": {
-    "contentInset": "always"
+    "contentInset": "never"
   }
 }

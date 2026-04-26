@@ -35,6 +35,7 @@ export default function LogShow({ onClose, editingShow = null }) {
   const [date, setDate] = useState(editingShow?.date || '');
   const [city, setCity] = useState(editingShow?.city || '');
   const [venue, setVenue] = useState(editingShow?.venue || '');
+  const [festival, setFestival] = useState(editingShow?.festival || '');
   const [genre, setGenre] = useState(editingShow?.genre || '');
   const [score, setScore] = useState(editingShow?.score || 0);
   const [vibes, setVibes] = useState(editingShow?.vibes || []);
@@ -198,6 +199,9 @@ export default function LogShow({ onClose, editingShow = null }) {
     if (show.venue) setVenue(show.venue);
     if (show.city) setCity(show.city);
     if (show.date) setDate(show.date);
+    // Auto-fill festival from setlist.fm if it's there and the user
+    // hasn't already typed something. They can still edit after.
+    if (show.festival && !festival.trim()) setFestival(show.festival);
     if (Array.isArray(show.songs) && show.songs.length > 0) setSetlist(show.songs);
     setArtistOpen(false);
     setShowResults([]);
@@ -220,6 +224,7 @@ export default function LogShow({ onClose, editingShow = null }) {
       date: date || new Date().toISOString().split('T')[0],
       city: city.trim(),
       venue: venue.trim(),
+      festival: festival.trim(),
       genre,
       score,
       vibes,
@@ -497,6 +502,21 @@ export default function LogShow({ onClose, editingShow = null }) {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Festival — optional context for shows that were part of a
+              festival lineup. Auto-fills from Setlist.fm when the user
+              picks a setlist whose `info`/`tour`/`venue` mention one. */}
+          <div className="log-section">
+            <div className="log-section-title">
+              Festival <span className="log-section-hint">optional</span>
+            </div>
+            <input
+              className="log-input"
+              placeholder="e.g. Jazz Fest, Coachella, Lollapalooza"
+              value={festival}
+              onChange={(e) => setFestival(e.target.value)}
+            />
           </div>
 
           {/* Genre */}

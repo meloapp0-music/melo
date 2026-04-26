@@ -25,7 +25,7 @@
       <nav class="nav">
         <a class="brand" href="/">
           <!-- Real Melo brand mark — mirrors src/web/components/MeloLogo.jsx
-               (geometric M: gradient bars + center diamond on dark tile). -->
+               (refreshed 2026-04-26: bolder fuller crown). -->
           <svg width="32" height="32" viewBox="0 0 120 120" aria-hidden="true">
             <defs>
               <linearGradient id="meloBrand" x1="0" y1="0" x2="0" y2="1">
@@ -34,15 +34,17 @@
               </linearGradient>
             </defs>
             <rect width="120" height="120" rx="26" fill="#1E1E1E" />
-            <polygon points="22,30 22,95 36,95 36,50 22,30" fill="url(#meloBrand)" />
-            <polygon points="84,50 84,95 98,95 98,30 84,50" fill="url(#meloBrand)" />
-            <polygon points="60,25 36,55 60,85 84,55" fill="url(#meloBrand)" />
+            <polygon points="14,18 14,102 40,102 40,55" fill="url(#meloBrand)" />
+            <polygon points="106,18 106,102 80,102 80,55" fill="url(#meloBrand)" />
+            <polygon points="60,18 40,55 60,102 80,55" fill="url(#meloBrand)" />
           </svg>
           <span>Melo</span>
         </a>
         <ul class="nav-links">
           <li><a href="#features">Features</a></li>
-          <li><a href="mailto:hello@melo.app">Support</a></li>
+          <li><a href="#how">How</a></li>
+          <li><a href="#screenshots">Screens</a></li>
+          <li><a href="#waitlist">Notify me</a></li>
         </ul>
       </nav>
 
@@ -98,10 +100,30 @@
       </div>
     </section>
 
-    <!-- Screenshot section temporarily hidden until real PNGs are
-         captured from the iOS Simulator (see marketing/screenshots/README.md).
-         Re-enable by removing the surrounding HTML comment. -->
-    <!--
+    <!-- How It Works — three numbered steps explaining the actual user
+         flow. Action-verb titled, mirrors the app's onboarding rhythm. -->
+    <section id="how" class="howitworks">
+      <h2 class="howitworks-title">How it works</h2>
+      <p class="howitworks-sub">Three steps to the year you'll want to share.</p>
+      <ol class="howitworks-steps">
+        <li class="howitworks-step">
+          <div class="howitworks-num">1</div>
+          <h3>Log a show</h3>
+          <p>Type the artist, pick the date — Melo auto-fills the venue and the actual setlist from Setlist.fm. Drop in your phone shots, score it out of 10.</p>
+        </li>
+        <li class="howitworks-step">
+          <div class="howitworks-num">2</div>
+          <h3>Wishlist artists</h3>
+          <p>Save the bands you'd kill to see live. Melo watches Ticketmaster every day and pings you the moment a show near you announces.</p>
+        </li>
+        <li class="howitworks-step">
+          <div class="howitworks-num">3</div>
+          <h3>Open your Wrapped</h3>
+          <p>Every December, swipe through a story of your year — top artist, top venue, the highest-rated night, the songs you can't stop hearing.</p>
+        </li>
+      </ol>
+    </section>
+
     <section id="screenshots" class="screenshots">
       <h2 class="screenshots-title">A peek inside</h2>
       <p class="screenshots-sub">
@@ -129,18 +151,52 @@
           <img src="./screenshots/05-songs.png" alt="Songs view" loading="lazy" />
           <figcaption>Every song you've heard live, in one place</figcaption>
         </figure>
+        <figure class="shot">
+          <img src="./screenshots/06-profile.png" alt="Profile view with stats and milestones" loading="lazy" />
+          <figcaption>Your live-music identity at a glance</figcaption>
+        </figure>
       </div>
     </section>
-    -->
 
-    <!-- "Coming soon" stand-in while screenshots are pending. -->
-    <section id="screenshots" class="screenshots">
-      <h2 class="screenshots-title">Screenshots coming soon</h2>
-      <p class="screenshots-sub">
-        Final App Store screens are being captured this week. Want a heads-up
-        when Melo lands in the App Store?
-        <a href="mailto:hello@melo.app?subject=Notify%20me%20when%20Melo%20launches">Drop us a line</a>.
-      </p>
+    <!-- Waitlist — Mailchimp-backed signup form. Submissions land in
+         the Melo Waitlist audience. Three Mailchimp quirks are required
+         and handled below:
+           1. Email input MUST be named `EMAIL` (uppercase).
+           2. Hidden honeypot input named `b_<u>_<id>` blocks bots —
+              real humans never type into it because it's positioned
+              off-screen; bots blindly fill every input.
+           3. target="_blank" opens Mailchimp's confirmation page in a
+              new tab so the visitor stays on the marketing site. -->
+    <section id="waitlist" class="waitlist">
+      <div class="waitlist-card">
+        <h2 class="waitlist-title">Be the first when Melo launches</h2>
+        <p class="waitlist-sub">
+          We'll email you the moment the App Store listing goes live. No spam,
+          no marketing drip — one message, then we're quiet.
+        </p>
+        <form
+          class="waitlist-form validate"
+          action="https://gmail.us22.list-manage.com/subscribe/post?u=feec2aab123e46f54570151d2&amp;id=e121b0ab50&amp;f_id=0098c2e1f0"
+          method="post"
+          id="mc-embedded-subscribe-form"
+          name="mc-embedded-subscribe-form"
+          target="_blank"
+          novalidate
+        >
+          <input
+            type="email"
+            name="EMAIL"
+            placeholder="you@yourdomain.com"
+            aria-label="Email address"
+            required
+          />
+          <button type="submit" name="subscribe">Notify me</button>
+          <!-- Honeypot — leave this empty; real users never see it. -->
+          <div style="position: absolute; left: -5000px;" aria-hidden="true">
+            <input type="text" name="b_feec2aab123e46f54570151d2_e121b0ab50" tabindex="-1" value="" />
+          </div>
+        </form>
+      </div>
     </section>
 
     <footer class="footer">

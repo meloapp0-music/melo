@@ -40,13 +40,22 @@ export default function Profile() {
     const artists = new Set(attended.map((s) => s.artist));
     const cities = new Set(attended.map((s) => s.city).filter(Boolean));
     const venues = new Set(attended.map((s) => s.venue).filter(Boolean));
-    const totalSongs = attended.reduce((sum, s) => sum + (s.setlist?.length || 0), 0);
+    // Unique songs heard live, deduped across all attended shows. Matches
+    // the `Heard Live` count on the Songs page so the Profile stat ties
+    // visually to its destination when tapped.
+    const uniqueSongKeys = new Set();
+    attended.forEach((s) => {
+      (s.setlist || []).forEach((song) => {
+        const k = song?.toLowerCase().trim();
+        if (k) uniqueSongKeys.add(`${s.artist}|${k}`);
+      });
+    });
     return {
       shows: attended.length,
       artists: artists.size,
       cities: cities.size,
       venues: venues.size,
-      songs: totalSongs,
+      songs: uniqueSongKeys.size,
     };
   }, [attended]);
 
@@ -133,14 +142,18 @@ export default function Profile() {
 
       <div style={{ padding: '0 20px' }}>
         <div className="profile-stats">
-          <div className="profile-stat">
+          <button type="button" className="profile-stat profile-stat-btn" onClick={() => navigate('shows')}>
             <div className="profile-stat-num">{stats.shows}</div>
             <div className="profile-stat-label">Shows</div>
-          </div>
-          <div className="profile-stat">
+          </button>
+          <button type="button" className="profile-stat profile-stat-btn" onClick={() => navigate('artists')}>
             <div className="profile-stat-num">{stats.artists}</div>
             <div className="profile-stat-label">Artists</div>
-          </div>
+          </button>
+          <button type="button" className="profile-stat profile-stat-btn" onClick={() => navigate('songs')}>
+            <div className="profile-stat-num">{stats.songs}</div>
+            <div className="profile-stat-label">Songs</div>
+          </button>
           <div className="profile-stat">
             <div className="profile-stat-num">{stats.venues}</div>
             <div className="profile-stat-label">Venues</div>
@@ -168,6 +181,14 @@ export default function Profile() {
               <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
             </svg>
             Rankings
+          </button>
+          <button className="profile-nav-btn" onClick={() => navigate('songs')}>
+            <svg viewBox="0 0 24 24">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+            Songs
           </button>
           <button className="profile-nav-btn" onClick={() => navigate('buddies')}>
             <svg viewBox="0 0 24 24">

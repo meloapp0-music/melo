@@ -107,6 +107,41 @@ export async function prefetchArtistImages(artistNames, onUpdate) {
   return results;
 }
 
+// Extract a festival name from a Setlist.fm setlist object.
+//
+// Setlist.fm doesn't have a structured `festival` field on the public
+// API, so we sniff the unstructured ones in priority order:
+//   1. `s.info` containing "Festival: NAME" — common pattern moderators
+//      use ("Festival: Coachella 2026", "Festival: New Orleans Jazz...").
+//   2. `s.tour.name` containing "Festival" or "Fest " (with trailing
+//      space to avoid matching unrelated word-stems like "Fester").
+//   3. `s.venue.name` ending in "Festival" or matching well-known
+//      festival venues — last-resort fallback.
+//
+// Returns '' when nothing matches; the LogShow form treats empty as
+// "no festival" and the user can type one in manually.
+function extractFestivalFromSetlist(s) {
+  if (!s) return '';
+  // 1. Info field — most reliable
+  const info = String(s.info || '');
+  const m = info.match(/festival:\s*([^.\n]+)/i);
+  if (m && m[1]) return m[1].trim().slice(0, 80);
+
+  // 2. Tour name containing festival keyword
+  const tourName = String(s.tour?.name || '').trim();
+  if (/festival|\bfest(\s|$)/i.test(tourName)) {
+    return tourName.slice(0, 80);
+  }
+
+  // 3. Venue name ending in Festival
+  const venueName = String(s.venue?.name || '').trim();
+  if (/festival$/i.test(venueName)) {
+    return venueName.slice(0, 80);
+  }
+
+  return '';
+}
+
 // ===== SETLIST.FM — Real Setlists =====
 // Goes through our `setlistfm-proxy` Edge Function so the user's API
 // key never touches the client. The function decrypts the per-user
@@ -166,6 +201,7 @@ export async function fetchSetlists(artistName, apiKey, opts = {}) {
           songs,
           songCount: songs.length,
           tour: s.tour?.name || '',
+          festival: extractFestivalFromSetlist(s),
         };
       });
   } catch (err) {

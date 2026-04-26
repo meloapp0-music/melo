@@ -52,6 +52,12 @@ export default function ShowDetail({ show, onClose }) {
             <div className="detail-meta">
               {formatDate(show.date)} &middot; {show.venue}, {show.city}
             </div>
+            {show.festival && (
+              <div className="detail-festival-badge">
+                <span aria-hidden="true">🎪</span>
+                <span>{show.festival}</span>
+              </div>
+            )}
           </div>
           {show.score > 0 && (
             <div className="detail-hero-score">
