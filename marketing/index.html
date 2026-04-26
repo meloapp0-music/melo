@@ -24,21 +24,24 @@
     <header class="hero">
       <nav class="nav">
         <a class="brand" href="/">
-          <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+          <!-- Real Melo brand mark — mirrors src/web/components/MeloLogo.jsx
+               (geometric M: gradient bars + center diamond on dark tile). -->
+          <svg width="32" height="32" viewBox="0 0 120 120" aria-hidden="true">
             <defs>
-              <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#E8573A" />
-                <stop offset="100%" stop-color="#C34A36" />
+              <linearGradient id="meloBrand" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#F4A261" />
+                <stop offset="100%" stop-color="#E8573A" />
               </linearGradient>
             </defs>
-            <rect width="32" height="32" rx="9" fill="url(#lg)" />
-            <text x="16" y="22" text-anchor="middle" font-family="system-ui, -apple-system" font-weight="700" font-size="18" fill="#FBF6EE">M</text>
+            <rect width="120" height="120" rx="26" fill="#1E1E1E" />
+            <polygon points="22,30 22,95 36,95 36,50 22,30" fill="url(#meloBrand)" />
+            <polygon points="84,50 84,95 98,95 98,30 84,50" fill="url(#meloBrand)" />
+            <polygon points="60,25 36,55 60,85 84,55" fill="url(#meloBrand)" />
           </svg>
           <span>Melo</span>
         </a>
         <ul class="nav-links">
           <li><a href="#features">Features</a></li>
-          <li><a href="#screenshots">Screens</a></li>
           <li><a href="mailto:hello@melo.app">Support</a></li>
         </ul>
       </nav>
@@ -95,6 +98,10 @@
       </div>
     </section>
 
+    <!-- Screenshot section temporarily hidden until real PNGs are
+         captured from the iOS Simulator (see marketing/screenshots/README.md).
+         Re-enable by removing the surrounding HTML comment. -->
+    <!--
     <section id="screenshots" class="screenshots">
       <h2 class="screenshots-title">A peek inside</h2>
       <p class="screenshots-sub">
@@ -102,9 +109,6 @@
         and a scoring system inspired by the films you can't shut up about.
       </p>
       <div class="shots">
-        <!-- Screenshot placeholders. See marketing/screenshots/README.md for
-             how to capture and replace each file. Sized 6.9" / 1320x2868
-             for App Store Connect; CSS scales them down responsively. -->
         <figure class="shot">
           <img src="./screenshots/01-home.png" alt="Home screen showing concert stats" loading="lazy" />
           <figcaption>Your home for the live-music year</figcaption>
@@ -126,6 +130,17 @@
           <figcaption>Every song you've heard live, in one place</figcaption>
         </figure>
       </div>
+    </section>
+    -->
+
+    <!-- "Coming soon" stand-in while screenshots are pending. -->
+    <section id="screenshots" class="screenshots">
+      <h2 class="screenshots-title">Screenshots coming soon</h2>
+      <p class="screenshots-sub">
+        Final App Store screens are being captured this week. Want a heads-up
+        when Melo lands in the App Store?
+        <a href="mailto:hello@melo.app?subject=Notify%20me%20when%20Melo%20launches">Drop us a line</a>.
+      </p>
     </section>
 
     <footer class="footer">

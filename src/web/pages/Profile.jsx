@@ -1,10 +1,38 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, getYear, calculateStreak, isAttended } from '../store';
 import { MeloIcon } from '../components/MeloLogo';
+import { uploadAvatar } from '../lib/storage';
 
 export default function Profile() {
-  const { shows, navigate, setSelectedShow, getArtistImage } = useApp();
+  const { shows, navigate, setSelectedShow, getArtistImage, profile, session, updateProfile } = useApp();
+  const fileInputRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const userId = session?.user?.id || null;
+
+  const onAvatarPick = () => {
+    if (avatarUploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const onAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset so the same file can be re-picked later
+    if (!file || !userId) return;
+    setAvatarUploading(true);
+    setAvatarError('');
+    try {
+      const url = await uploadAvatar(file, userId);
+      await updateProfile({ avatarUrl: url });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Melo] avatar upload failed', err);
+      setAvatarError('Couldn’t upload that image. Try a different one?');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
   const attended = shows.filter(isAttended);
   const streak = useMemo(() => calculateStreak(shows), [shows]);
 
@@ -69,13 +97,38 @@ export default function Profile() {
   return (
     <div className="page" style={{ padding: 0 }}>
       <div className="profile-hero">
-        <div className="profile-avatar-logo">
-          <MeloIcon size={80} rounded={true} />
-        </div>
-        <h1 className="profile-name">Music Lover</h1>
+        <button
+          type="button"
+          className="profile-avatar-logo profile-avatar-tap"
+          onClick={onAvatarPick}
+          aria-label={profile?.avatarUrl ? 'Change profile picture' : 'Upload profile picture'}
+          disabled={avatarUploading}
+        >
+          {profile?.avatarUrl ? (
+            <img className="profile-avatar-img" src={profile.avatarUrl} alt="" />
+          ) : (
+            <MeloIcon size={80} rounded={true} />
+          )}
+          <span className="profile-avatar-edit" aria-hidden="true">
+            {avatarUploading ? '…' : '✎'}
+          </span>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={onAvatarFile}
+        />
+        <h1 className="profile-name">
+          {profile?.displayName || profile?.username || 'Music Lover'}
+        </h1>
         <p className="profile-joined">
           {firstShow ? `Since ${formatDate(firstShow.date)}` : 'Your concert journey starts here'}
         </p>
+        {avatarError && (
+          <p className="profile-avatar-error">{avatarError}</p>
+        )}
       </div>
 
       <div style={{ padding: '0 20px' }}>

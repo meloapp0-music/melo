@@ -3,7 +3,7 @@ import { useApp } from '../App';
 import { generateId } from '../store';
 
 export default function QuickLog({ onClose, onOpenFull }) {
-  const { addShow } = useApp();
+  const { addShow, showToast, setSelectedShow } = useApp();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
   const [artist, setArtist] = useState('');
@@ -11,11 +11,13 @@ export default function QuickLog({ onClose, onOpenFull }) {
   const [date, setDate] = useState(yesterday);
   const [score, setScore] = useState(0);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!artist.trim()) return;
-    addShow({
+    const trimmedArtist = artist.trim();
+    onClose();
+    const saved = await addShow({
       id: generateId(),
-      artist: artist.trim(),
+      artist: trimmedArtist,
       date,
       venue: venue.trim(),
       city: '',
@@ -29,7 +31,12 @@ export default function QuickLog({ onClose, onOpenFull }) {
       wishlist: false,
       createdAt: new Date().toISOString(),
     });
-    onClose();
+    if (showToast) {
+      showToast({
+        message: `✓ Logged ${trimmedArtist}`,
+        onClick: saved?.id ? () => setSelectedShow(saved) : undefined,
+      });
+    }
   };
 
   const handleOpenFull = () => {

@@ -93,6 +93,20 @@ export function getArtistGradient(name) {
   return `linear-gradient(135deg, hsl(${h1}, ${s1}%, ${l1}%), hsl(${h2}, ${s1 + 10}%, ${l1 - 5}%))`;
 }
 
+// Build a Ticketmaster search URL for a logged show (Wishlist or Going)
+// so the user can either buy tickets they don't have yet, or find their
+// confirmed event details. We can't deep-link to a specific event without
+// storing its TM event id, so we just compose the strongest search query
+// the show data supports: artist + venue + city + year. Ticketmaster's
+// search is fuzzy enough that this lands the right page in 90%+ of cases.
+export function ticketmasterSearchUrl(show) {
+  if (!show || !show.artist) return 'https://www.ticketmaster.com/';
+  const yr = show.date ? String(getYear(show.date)) : '';
+  const parts = [show.artist, show.venue, show.city, yr].filter(Boolean);
+  const q = parts.join(' ');
+  return `https://www.ticketmaster.com/search?q=${encodeURIComponent(q)}`;
+}
+
 export function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';

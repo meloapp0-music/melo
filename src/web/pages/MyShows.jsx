@@ -3,6 +3,7 @@ import { useApp } from '../App';
 import {
   getArtistGradient, formatDate,
   SHOW_STATUS, getShowStatus, isAttended, isGoing, isWishlist,
+  ticketmasterSearchUrl,
 } from '../store';
 
 export default function MyShows() {
@@ -176,6 +177,21 @@ export default function MyShows() {
                 <div className="show-list-score">
                   {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
                 </div>
+              )}
+              {/* Tickets shortcut for Wishlist + Going — opens TM search
+                  in a new tab. stopPropagation so the row tap (open detail)
+                  doesn't fire when the user means to hit the link. */}
+              {!isAttended(show) && (
+                <a
+                  className="show-list-tickets"
+                  href={ticketmasterSearchUrl(show)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Find tickets for ${show.artist} on Ticketmaster`}
+                >
+                  Tickets
+                </a>
               )}
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, VIBES } from '../store';
+import { getArtistGradient, formatDate, VIBES, isAttended, ticketmasterSearchUrl } from '../store';
 import { fetchArtistBio } from '../api';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
@@ -67,6 +67,21 @@ export default function ShowDetail({ show, onClose }) {
         </div>
 
         <div className="detail-body">
+          {/* Tickets / find-tickets — only for shows the user hasn't been to
+              yet. For attended shows, the ticketing flow is over. */}
+          {!isAttended(show) && (
+            <a
+              className="detail-tickets-btn"
+              href={ticketmasterSearchUrl(show)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="detail-tickets-icon" aria-hidden="true">🎟️</span>
+              <span>Find tickets on Ticketmaster</span>
+              <span className="detail-tickets-arrow" aria-hidden="true">↗</span>
+            </a>
+          )}
+
           {show.vibes && show.vibes.length > 0 && (
             <div className="detail-vibes-row">
               {show.vibes.map((v) => (

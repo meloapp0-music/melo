@@ -20,7 +20,7 @@ const titleCase = (s) =>
 // opened from the Home "How was X?" CTA — we hydrate all fields from
 // the existing record and call updateShow on save instead of addShow.
 export default function LogShow({ onClose, editingShow = null }) {
-  const { addShow, updateShow, buddies, settings, navigate, session } = useApp();
+  const { addShow, updateShow, buddies, settings, navigate, session, showToast, setSelectedShow } = useApp();
   const userId = session?.user?.id || null;
 
   // When editing a past Going show, default-pivot it to Attended so the
@@ -213,7 +213,7 @@ export default function LogShow({ onClose, editingShow = null }) {
     // Don't close the dropdown — let the spinner show while we re-fetch.
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!artist.trim()) return;
     const payload = {
       artist: artist.trim(),
@@ -234,16 +234,27 @@ export default function LogShow({ onClose, editingShow = null }) {
       // "false" bucket (visible bug if any helper miss; intentional).
       wishlist: status === SHOW_STATUS.WISHLIST,
     };
+    // We close the sheet first so the toast doesn't appear behind the
+    // dimmed backdrop. Then fire-and-forget the save + show toast.
+    onClose();
+    let savedShow = null;
     if (editingShow) {
-      updateShow(editingShow.id, payload);
+      await updateShow(editingShow.id, payload);
+      savedShow = { ...editingShow, ...payload };
     } else {
-      addShow({
+      savedShow = await addShow({
         id: generateId(),
         ...payload,
         createdAt: new Date().toISOString(),
       });
     }
-    onClose();
+    if (showToast) {
+      const verb = editingShow ? 'Updated' : 'Logged';
+      showToast({
+        message: `✓ ${verb} ${payload.artist}`,
+        onClick: savedShow?.id ? () => setSelectedShow(savedShow) : undefined,
+      });
+    }
   };
 
   const showResultLocation = (s) =>

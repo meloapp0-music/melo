@@ -13,7 +13,9 @@
 import { supabase } from './supabase';
 
 const BUCKET = 'show-photos';
+const AVATAR_BUCKET = 'avatars';
 const MAX_EDGE_PX = 2048;
+const AVATAR_MAX_EDGE_PX = 512; // displayed at 80px; 512 is plenty for retina
 const JPEG_QUALITY = 0.85;
 
 /** Resize-and-upload one image. Returns the public URL. */
@@ -35,6 +37,32 @@ export async function uploadShowPhoto(file, userId, showId) {
   if (error) throw error;
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/** Resize-and-upload a profile picture. Returns the public URL.
+ *  Uploaded to `avatars/{user_id}/{ts}-{rand}.jpg`. The bucket is
+ *  public-read so other users (and the marketing site, eventually)
+ *  can render it without an authenticated request. RLS still gates
+ *  writes to the caller's own folder — see migration 0004. */
+export async function uploadAvatar(file, userId) {
+  if (!file || !userId) throw new Error('uploadAvatar: missing arg');
+
+  const blob = await resizeImage(file, AVATAR_MAX_EDGE_PX, JPEG_QUALITY);
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  const path = `${userId}/${ts}-${rand}.jpg`;
+
+  const { error } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: false,
+      cacheControl: '31536000',
+    });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 

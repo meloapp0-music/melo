@@ -270,6 +270,70 @@ h4 { font-size: 17px; }
   font-weight: 500;
 }
 
+/* First-run guidance — only renders on Home for users with zero shows.
+   Three side-by-side cards (Log / Import / Festivals) on a soft cream
+   surface. Disappears the moment they have any show. */
+.home-firstrun {
+  margin: 4px 0 24px;
+  padding: 18px 18px 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(244,162,97,0.08));
+  border: 1px solid rgba(232, 87, 58, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(232, 87, 58, 0.08);
+}
+.home-firstrun-title {
+  font-family: var(--font-heading, inherit);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+  color: var(--ink, #1f1813);
+}
+.home-firstrun-sub {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--brown-muted);
+  line-height: 1.4;
+}
+.home-firstrun-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.home-firstrun-card {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(232, 87, 58, 0.10);
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.home-firstrun-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(232, 87, 58, 0.12);
+}
+.home-firstrun-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.home-firstrun-card-title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink, #1f1813);
+}
+.home-firstrun-card-desc {
+  font-size: 13px;
+  color: var(--brown-muted);
+  line-height: 1.35;
+}
+
 .home-stats {
   display: flex;
   align-items: center;
@@ -1310,6 +1374,45 @@ h4 { font-size: 17px; }
   flex-shrink: 0;
 }
 
+/* Tickets shortcut on Wishlist / Going list rows. */
+.show-list-tickets {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #FBF6EE;
+  background: linear-gradient(135deg, var(--orange, #E8573A), #C34A36);
+  padding: 7px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(232, 87, 58, 0.25);
+  transition: transform 0.12s ease;
+}
+.show-list-tickets:active { transform: scale(0.96); }
+
+/* Big "Find tickets on Ticketmaster" CTA at the top of ShowDetail
+   for Wishlist + Going shows. Sits above Vibes / Notes / Setlist. */
+.detail-tickets-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--orange, #E8573A), #C34A36);
+  color: #FBF6EE;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  padding: 14px 18px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(232, 87, 58, 0.22);
+  transition: transform 0.12s ease;
+}
+.detail-tickets-btn:active { transform: scale(0.98); }
+.detail-tickets-icon { font-size: 18px; }
+.detail-tickets-arrow { margin-left: auto; opacity: 0.85; font-size: 16px; }
+
 /* Wishlist empty */
 .shows-empty {
   text-align: center;
@@ -1905,6 +2008,56 @@ h4 { font-size: 17px; }
   justify-content: center;
   filter: drop-shadow(0 4px 16px rgba(232, 87, 58, 0.25));
   box-shadow: 0 8px 32px rgba(232, 87, 58, 0.25);
+}
+
+/* Tappable variant of the avatar — wraps either the uploaded image
+   or the MeloIcon fallback. The little edit pill in the bottom-right
+   corner signals "you can change this." */
+.profile-avatar-tap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 22px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.profile-avatar-tap:active { transform: scale(0.97); }
+.profile-avatar-tap:disabled { cursor: progress; opacity: 0.7; }
+
+.profile-avatar-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 22px;
+  object-fit: cover;
+  display: block;
+  background: #1e1e1e;
+}
+
+.profile-avatar-edit {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #1e1e1e;
+  color: #FBF6EE;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--cream, #FBF6EE);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+
+.profile-avatar-error {
+  margin-top: 8px;
+  color: #b1442a;
+  font-size: 13px;
 }
 
 .profile-name {
@@ -4257,6 +4410,44 @@ h4 { font-size: 17px; }
   -webkit-backdrop-filter: blur(12px);
   z-index: 50;
   animation: meloFadeIn 0.2s ease-out;
+}
+
+/* Singleton "✓ Logged X" / "✓ Updated X" toast — slides in from the
+   top, dismisses on tap or after 3 s. Tappable variant routes to the
+   show detail page so the user can keep editing in one tap. */
+.app-toast {
+  position: fixed;
+  top: env(safe-area-inset-top, 0px);
+  left: 50%;
+  transform: translate(-50%, 12px);
+  margin-top: 12px;
+  background: rgba(30, 30, 30, 0.92);
+  color: #FBF6EE;
+  font-family: var(--font-body, inherit);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 200;
+  cursor: default;
+  animation: meloToastIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+  max-width: calc(100vw - 32px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-toast-tappable { cursor: pointer; }
+.app-toast-tappable:active { transform: translate(-50%, 12px) scale(0.97); }
+
+@keyframes meloToastIn {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to   { opacity: 1; transform: translate(-50%, 12px); }
 }
 
 @keyframes meloFadeIn {

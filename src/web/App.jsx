@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { prefetchArtistImages, getCachedImage } from './api';
 import { useSession, signOut } from './lib/auth';
-import { getMyProfile } from './lib/db/profiles';
+import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
 import { registerForPush } from './lib/push';
@@ -137,6 +137,20 @@ export default function App() {
     [artistImages]
   );
 
+  // Lazy image fetcher — pages that surface artists outside the user's
+  // own show list (Home's "Upcoming Shows" and "You Might Like" come
+  // from Ticketmaster, so the artists aren't in the boot-time prefetch)
+  // call this with the artist names they're rendering so the gradient
+  // placeholder gets replaced by a real Deezer photo as soon as it
+  // arrives. `prefetchArtistImages` is already cache-aware, so calling
+  // this with names we already have is a no-op.
+  const prefetchImages = useCallback((artistNames) => {
+    if (!artistNames || artistNames.length === 0) return;
+    prefetchArtistImages(artistNames, (updated) => {
+      setArtistImages((prev) => ({ ...prev, ...updated }));
+    });
+  }, []);
+
   // ---- Mutation helpers (optimistic; reconcile with server result) ----
   const addShow = async (show) => {
     if (!userId) return null;
@@ -192,6 +206,42 @@ export default function App() {
     }
   };
 
+  // Profile mutator — used by Profile.jsx for avatar upload + future
+  // display-name / bio / privacy edits. Optimistic patch + DB roundtrip.
+  // Toast — small slide-down banner used for "✓ Logged X" confirmations
+  // and the like. Singleton (only one toast at a time). Auto-dismisses
+  // after `durationMs` (default 3s); calling showToast() while one is
+  // already up replaces it and resets the timer.
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+  const showToast = useCallback((opts) => {
+    if (!opts || !opts.message) return;
+    const id = Date.now() + Math.random();
+    setToast({ id, message: opts.message, onClick: opts.onClick || null });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setToast((cur) => (cur && cur.id === id ? null : cur));
+    }, opts.durationMs || 3000);
+  }, []);
+  const dismissToast = useCallback(() => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
+  }, []);
+
+  const updateProfile = async (patch) => {
+    if (!profile) return;
+    setProfile((cur) => (cur ? { ...cur, ...patch } : cur));
+    try {
+      const saved = await updateMyProfile(patch);
+      if (saved) setProfile(saved);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Melo] updateProfile failed', err);
+      // Re-fetch to recover authoritative state.
+      try { setProfile(await getMyProfile()); } catch {}
+    }
+  };
+
   const navigate = (page) => {
     if (page === 'log') {
       setShowLog(true);
@@ -230,7 +280,10 @@ export default function App() {
     subPage,
     navigate,
     updateSettings,
+    updateProfile,
+    showToast,
     getArtistImage,
+    prefetchImages,
     setWrappedYear,
     setCompareShow,
     setShowQuickLog,
@@ -321,6 +374,18 @@ export default function App() {
         <NavBar />
         {dataLoading && shows.length === 0 && (
           <div className="app-data-loading">Loading your shows…</div>
+        )}
+        {toast && (
+          <button
+            type="button"
+            className={`app-toast ${toast.onClick ? 'app-toast-tappable' : ''}`}
+            onClick={() => {
+              if (toast.onClick) toast.onClick();
+              dismissToast();
+            }}
+          >
+            <span>{toast.message}</span>
+          </button>
         )}
       </div>
     </AppContext.Provider>

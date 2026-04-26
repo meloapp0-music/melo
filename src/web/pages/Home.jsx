@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useApp } from '../App';
 import {
   getArtistGradient, getGreeting, formatDate,
   calculateStreak, getWrappedYears, DISCOVERY_ARTISTS,
-  isAttended, isGoing, SHOW_STATUS,
+  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl,
 } from '../store';
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
 import { MeloIcon } from '../components/MeloLogo';
@@ -23,7 +24,7 @@ const daysUntil = (dateStr) => {
 };
 
 export default function Home() {
-  const { shows, setSelectedShow, navigate, getArtistImage, addShow, setWrappedYear, setLogEditTarget } = useApp();
+  const { shows, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
   const artists = new Set(attended.map((s) => s.artist));
@@ -73,7 +74,13 @@ export default function Home() {
     const artistNames = [...new Set(attended.map((s) => s.artist))];
     setUpcomingLoading(true);
     fetchAllUpcomingEvents(artistNames)
-      .then((events) => setUpcoming(events.slice(0, 12)))
+      .then((events) => {
+        const sliced = events.slice(0, 12);
+        setUpcoming(sliced);
+        // Kick off Deezer photo lookups for any artists we don't already
+        // have cached — replaces the gradient placeholder once images arrive.
+        prefetchImages(sliced.map((e) => e.artist).filter(Boolean));
+      })
       .catch(() => {})
       .finally(() => setUpcomingLoading(false));
   }, [attended.length]);
@@ -95,7 +102,10 @@ export default function Home() {
     if (Object.keys(genreMap).length === 0) return;
     setDiscoveryLoading(true);
     fetchDiscoveryEvents(genreMap, seenArtists, topCities)
-      .then((events) => setDiscovery(events))
+      .then((events) => {
+        setDiscovery(events);
+        prefetchImages(events.map((e) => e.artist).filter(Boolean));
+      })
       .catch(() => {})
       .finally(() => setDiscoveryLoading(false));
   }, [attended.length]);
@@ -125,8 +135,65 @@ export default function Home() {
           <MeloIcon size={32} />
         </div>
         <h1 className="home-greeting">{getGreeting()}</h1>
-        <p className="home-greeting-sub">Your concert journey awaits</p>
+        <p className="home-greeting-sub">
+          {shows.length === 0
+            ? 'Let’s get your first show in the books.'
+            : 'Your concert journey awaits'}
+        </p>
       </div>
+
+      {/* First-run guidance — only renders for users with zero shows of
+          any status. Disappears the moment they log anything. Three
+          parallel paths so different mental models all find a way in:
+          log one manually, bulk-import past shows from Calendar (iOS
+          only), or browse upcoming festivals to wishlist. */}
+      {shows.length === 0 && (
+        <div className="home-firstrun fade-in">
+          <h2 className="home-firstrun-title">Pick your way in</h2>
+          <p className="home-firstrun-sub">
+            Melo gets better with every show you log. Start anywhere.
+          </p>
+          <div className="home-firstrun-cards">
+            <button
+              type="button"
+              className="home-firstrun-card"
+              onClick={() => navigate('log')}
+            >
+              <div className="home-firstrun-icon" aria-hidden="true">🎤</div>
+              <div className="home-firstrun-card-title">Log a show</div>
+              <div className="home-firstrun-card-desc">
+                Past or future. Score it, add a photo, save the story.
+              </div>
+            </button>
+
+            {Capacitor.isNativePlatform && Capacitor.isNativePlatform() && (
+              <button
+                type="button"
+                className="home-firstrun-card"
+                onClick={() => navigate('import-calendar')}
+              >
+                <div className="home-firstrun-icon" aria-hidden="true">📅</div>
+                <div className="home-firstrun-card-title">Import from Calendar</div>
+                <div className="home-firstrun-card-desc">
+                  Bulk-add every past concert in your iPhone Calendar.
+                </div>
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="home-firstrun-card"
+              onClick={() => navigate('festivals')}
+            >
+              <div className="home-firstrun-icon" aria-hidden="true">🎪</div>
+              <div className="home-firstrun-card-title">Browse festivals</div>
+              <div className="home-firstrun-card-desc">
+                See what’s coming up near you and stake out your wishlist.
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* "How was [show]?" — past Going shows that need a score */}
       {goingPast.length > 0 && (
@@ -253,6 +320,15 @@ export default function Home() {
                       <div className="upcoming-btn upcoming-btn-going">
                         🎟️ {formatDate(show.date)}
                       </div>
+                      <a
+                        className="upcoming-btn upcoming-btn-tickets"
+                        href={ticketmasterSearchUrl(show)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Tickets
+                      </a>
                     </div>
                   </div>
                 </div>
