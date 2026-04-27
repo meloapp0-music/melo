@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#FBF6EE" />
 
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
     <title>Melo — Concerts you've been to. Concerts you're going to.</title>
     <meta
       name="description"
@@ -24,19 +28,23 @@
     <header class="hero">
       <nav class="nav">
         <a class="brand" href="/">
-          <!-- Real Melo brand mark — mirrors src/web/components/MeloLogo.jsx
-               (refreshed 2026-04-26: bolder fuller crown). -->
-          <svg width="32" height="32" viewBox="0 0 120 120" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 120 120" aria-hidden="true">
             <defs>
-              <linearGradient id="meloBrand" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#F4A261" />
-                <stop offset="100%" stop-color="#E8573A" />
+              <linearGradient id="meloBrand" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ef4136" />
+                <stop offset="100%" stop-color="#fbb040" />
               </linearGradient>
             </defs>
-            <rect width="120" height="120" rx="26" fill="#1E1E1E" />
-            <polygon points="14,18 14,102 40,102 40,55" fill="url(#meloBrand)" />
-            <polygon points="106,18 106,102 80,102 80,55" fill="url(#meloBrand)" />
-            <polygon points="60,18 40,55 60,102 80,55" fill="url(#meloBrand)" />
+            <rect width="120" height="120" rx="26" fill="#f8f7f3" />
+            <g transform="translate(26 33) scale(1.043)" fill="url(#meloBrand)">
+              <rect x="0"     y="0"     width="5.27" height="54.195" rx="2.635"/>
+              <rect x="10"    y="11.63" width="5.27" height="42.565" rx="2.635"/>
+              <rect x="20"    y="26.44" width="5.27" height="27.755" rx="2.635"/>
+              <rect x="30"    y="36.53" width="5.27" height="17.665" rx="2.635"/>
+              <rect x="39.94" y="26.44" width="5.27" height="27.755" rx="2.635"/>
+              <rect x="49.92" y="11.63" width="5.27" height="42.565" rx="2.635"/>
+              <rect x="59.91" y="0"     width="5.27" height="54.195" rx="2.635"/>
+            </g>
           </svg>
           <span>Melo</span>
         </a>

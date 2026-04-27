@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4136"/>
+      <stop offset="100%" stop-color="#fbb040"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="#f8f7f3"/>
+  <g transform="translate(222 271) scale(8.9)" fill="url(#barGrad)">
+    <rect x="0"     y="0"     width="5.27" height="54.195" rx="2.635"/>
+    <rect x="10"    y="11.63" width="5.27" height="42.565" rx="2.635"/>
+    <rect x="20"    y="26.44" width="5.27" height="27.755" rx="2.635"/>
+    <rect x="30"    y="36.53" width="5.27" height="17.665" rx="2.635"/>
+    <rect x="39.94" y="26.44" width="5.27" height="27.755" rx="2.635"/>
+    <rect x="49.92" y="11.63" width="5.27" height="42.565" rx="2.635"/>
+    <rect x="59.91" y="0"     width="5.27" height="54.195" rx="2.635"/>
+  </g>
+</svg>
