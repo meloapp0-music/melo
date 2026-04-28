@@ -3,6 +3,10 @@
 Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
+- `2026-04-28-v1-0-1-fixes.md` — in-progress · Post-launch hotfixes queued
+  for v1.0.1 (Build 5). Setlist.fm picker now keeps empty-setlist rows
+  for DJ/electronic acts (Zeds Dead, Subtronics, etc.); follow-ups to
+  retire dead `corsproxy.io` fallback and add an empty-state nudge
 - `2026-04-20-pre-launch-sprint.md` — shipped · Pre-launch combo —
   push notifications + daily `tour-alerts` cron (APNs via .p8),
   photos on shows (Storage bucket + PhotoPicker/Gallery, Wrapped

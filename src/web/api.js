@@ -176,9 +176,13 @@ export async function fetchSetlists(artistName, apiKey, opts = {}) {
     if (error) throw error;
     if (!data) return [];
 
+    // Map ALL setlists (including ones with no song list — common for DJ /
+    // electronic acts where the show data exists but Setlist.fm doesn't
+    // record a track-by-track set). Then sort by songCount desc so shows
+    // with rich setlists land at the top of the picker, but venue/date-only
+    // entries are still pickable when that's all Setlist.fm has.
     return (data.setlist || [])
-      .filter((s) => s.sets?.set?.length > 0)
-      .slice(0, 10)
+      .slice(0, 30)
       .map((s) => {
         const songs = [];
         (s.sets?.set || []).forEach((set) => {
@@ -203,7 +207,9 @@ export async function fetchSetlists(artistName, apiKey, opts = {}) {
           tour: s.tour?.name || '',
           festival: extractFestivalFromSetlist(s),
         };
-      });
+      })
+      .sort((a, b) => b.songCount - a.songCount)
+      .slice(0, 10);
   } catch (err) {
     console.warn('[Melo] Setlist.fm fetch failed for', artistName, err.message);
     return [];
