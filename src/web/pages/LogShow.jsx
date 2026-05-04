@@ -44,6 +44,7 @@ export default function LogShow({ onClose, editingShow = null }) {
     editingShow?.setlist?.length ? editingShow.setlist : ['']
   );
   const [selBuddies, setSelBuddies] = useState(editingShow?.buddies || []);
+  const [newBuddyName, setNewBuddyName] = useState('');
   const [photos, setPhotos] = useState(editingShow?.photos || []);
   const [cityOpen, setCityOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
@@ -98,12 +99,9 @@ export default function LogShow({ onClose, editingShow = null }) {
       setShowResults([]);
       return;
     }
-    if (isAttendedTab && !apiKey) {
-      // Attended mode without an API key — nothing to fetch, the no-key
-      // hint will handle the UX.
-      setShowResults([]);
-      return;
-    }
+    // (No early bail when the user has no personal apiKey — the
+    // setlistfm-proxy Edge Function falls back to a shared key so
+    // searches work out-of-the-box for everyone.)
 
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -181,6 +179,15 @@ export default function LogShow({ onClose, editingShow = null }) {
     setSelBuddies((prev) =>
       prev.includes(name) ? prev.filter((b) => b !== name) : [...prev, name]
     );
+
+  const addBuddyByName = (raw) => {
+    const name = raw.trim();
+    if (!name) return;
+    if (!selBuddies.includes(name)) {
+      setSelBuddies((prev) => [...prev, name]);
+    }
+    setNewBuddyName('');
+  };
 
   const updateSetlist = (i, val) => {
     const next = [...setlist];
@@ -339,7 +346,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                 <span className="log-input-spinner" aria-hidden />
               )}
 
-              {artistOpen && artist.trim().length >= 2 && (isFutureTab || apiKey) && (
+              {artistOpen && artist.trim().length >= 2 && (
                 <div className="log-autocomplete log-show-picker">
                   {showsLoading && showResults.length === 0 && artistMatches.length === 0 ? (
                     <div className="log-show-empty">Searching {isFutureTab ? 'upcoming' : 'past'} shows…</div>
@@ -405,7 +412,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                       <span style={{ opacity: 0.7, fontSize: 12 }}>
                         {isFutureTab
                           ? 'Try the artist\'s full name — or just fill in the show details below manually.'
-                          : 'Try the artist\'s exact name as it appears on Setlist.fm.'}
+                          : 'Try the artist\'s exact name on Setlist.fm — or fill in the venue and date below yourself.'}
                       </span>
                     </div>
                   ) : null}
@@ -415,21 +422,6 @@ export default function LogShow({ onClose, editingShow = null }) {
                 </div>
               )}
             </div>
-
-            {/* No-API-key hint (Attended mode only) — sleek, inline */}
-            {isAttendedTab && !apiKey && artist.trim().length >= 3 && !showsLoading && (
-              <div
-                className="log-apikey-hint"
-                onClick={() => { onClose(); navigate('settings'); }}
-              >
-                <div className="log-apikey-hint-icon">🎵</div>
-                <div className="log-apikey-hint-text">
-                  <strong>Auto-fill setlists</strong>
-                  <span>Connect Setlist.fm — free, takes 30 sec</span>
-                </div>
-                <span className="log-apikey-hint-arrow">→</span>
-              </div>
-            )}
 
             <div className="log-row">
               <input
@@ -603,29 +595,62 @@ export default function LogShow({ onClose, editingShow = null }) {
             </div>
           )}
 
-          {/* Buddies — Attended only */}
-          {isAttendedTab && buddies.length > 0 && (
-            <div className="log-section">
-              <div className="log-section-title">Went With</div>
-              <div className="log-buddies">
-                {buddies.map((b) => (
+          {/* Went With — Attended only. Section always renders so first-time
+              users (no past buddies derived from prior shows) can still tag
+              names. Chip list is the union of derived buddies + any new
+              names typed into selBuddies for this show. */}
+          {isAttendedTab && (() => {
+            const buddyChips = [
+              ...buddies,
+              ...selBuddies
+                .filter((n) => !buddies.some((b) => b.name === n))
+                .map((n) => ({ id: `new:${n}`, name: n, color: '#E8573A' })),
+            ];
+            return (
+              <div className="log-section">
+                <div className="log-section-title">Went With</div>
+                <div className="log-buddy-add">
+                  <input
+                    className="log-input"
+                    placeholder="Add a name…"
+                    value={newBuddyName}
+                    onChange={(e) => setNewBuddyName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addBuddyByName(newBuddyName);
+                      }
+                    }}
+                  />
                   <button
-                    key={b.id}
-                    className={`buddy-chip ${selBuddies.includes(b.name) ? 'active' : ''}`}
-                    onClick={() => toggleBuddy(b.name)}
+                    className="log-add-btn"
+                    onClick={() => addBuddyByName(newBuddyName)}
                   >
-                    <div
-                      className="buddy-chip-avatar"
-                      style={{ background: b.color }}
-                    >
-                      {b.name[0]}
-                    </div>
-                    {b.name}
+                    + Add
                   </button>
-                ))}
+                </div>
+                {buddyChips.length > 0 && (
+                  <div className="log-buddies">
+                    {buddyChips.map((b) => (
+                      <button
+                        key={b.id}
+                        className={`buddy-chip ${selBuddies.includes(b.name) ? 'active' : ''}`}
+                        onClick={() => toggleBuddy(b.name)}
+                      >
+                        <div
+                          className="buddy-chip-avatar"
+                          style={{ background: b.color }}
+                        >
+                          {b.name[0]}
+                        </div>
+                        {b.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Notes — Attended only */}
           {isAttendedTab && (

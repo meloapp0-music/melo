@@ -3,6 +3,15 @@
 Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
+- `2026-05-01-llc-formation.md` — planned · Form Melo LLC, get EIN +
+  DUNS, switch Apple Developer account from Individual to Organization
+  so the App Store seller name reads "Melo, LLC", move recurring expenses
+  into the business. Kick off after v1.0 approval, before any paid feature
+  ships.
+- `2026-04-30-commemorative-tickets.md` — planned · Auto-generated digital
+  ticket per attended show — vintage-stub aesthetic, rarity tiers (festivals,
+  iconic venues, milestones), Collection view, share-to-IG, with a future
+  Melo+ paid tier for animated/exclusive designs. Targeting v1.2+.
 - `2026-04-28-v1-0-1-fixes.md` — in-progress · Post-launch hotfixes queued
   for v1.0.1 (Build 5). Setlist.fm picker now keeps empty-setlist rows
   for DJ/electronic acts (Zeds Dead, Subtronics, etc.); follow-ups to

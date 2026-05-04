@@ -1058,6 +1058,21 @@ h4 { font-size: 17px; }
 
 .log-add-btn:active { background: rgba(61, 44, 30, 0.03); }
 
+/* Add-buddy row above the chips: small input + compact add button */
+.log-buddy-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.log-buddy-add .log-input { flex: 1; }
+
+.log-buddy-add .log-add-btn {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+}
+
 /* Buddy chips in log */
 .log-buddies {
   display: flex;

@@ -25,6 +25,10 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ENC_KEY = Deno.env.get('MELO_SETTINGS_ENC_KEY');
+// Optional shared fallback key — used when a user has not configured their
+// own Setlist.fm key. Lets the app work out-of-the-box for everyone. If
+// unset, the proxy reverts to the original "no key configured" 400.
+const FALLBACK_KEY = Deno.env.get('MELO_SETLISTFM_FALLBACK_KEY');
 
 const SETLISTFM_BASE = 'https://api.setlist.fm/rest/1.0';
 
@@ -90,16 +94,24 @@ serve(async (req) => {
       console.error('[setlistfm-proxy] settings read failed', rowErr);
       return json({ error: rowErr.message }, 500);
     }
-    if (!row?.setlist_fm_key_encrypted) {
-      return json({ error: 'no setlist.fm key configured' }, 400);
-    }
 
-    let apiKey: string;
-    try {
-      apiKey = await decryptAesGcm(row.setlist_fm_key_encrypted as string, ENC_KEY);
-    } catch (err) {
-      console.error('[setlistfm-proxy] decrypt failed', err);
-      return json({ error: 'decrypt failed (key rotated?)' }, 500);
+    // Resolve the API key. Order:
+    //  1. User's own encrypted key, if they've configured one
+    //  2. Server-side shared FALLBACK_KEY, if set
+    //  3. 400 with "no key configured" — same as before
+    let apiKey: string | undefined;
+    if (row?.setlist_fm_key_encrypted) {
+      try {
+        apiKey = await decryptAesGcm(row.setlist_fm_key_encrypted as string, ENC_KEY);
+      } catch (err) {
+        console.error('[setlistfm-proxy] decrypt failed', err);
+        return json({ error: 'decrypt failed (key rotated?)' }, 500);
+      }
+    } else if (FALLBACK_KEY) {
+      apiKey = FALLBACK_KEY;
+    }
+    if (!apiKey) {
+      return json({ error: 'no setlist.fm key configured' }, 400);
     }
 
     const target = `${SETLISTFM_BASE}/${path}${query ? `?${query}` : ''}`;

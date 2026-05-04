@@ -91,12 +91,14 @@ export default function Settings() {
       <h1>Settings</h1>
 
       <div className="settings-section">
-        <div className="settings-section-title">Setlist.fm API Key</div>
+        <div className="settings-section-title">Setlist.fm API Key (optional)</div>
         <div className="settings-card">
-          <div className="settings-label">Auto-fill real setlists</div>
+          <div className="settings-label">Bring your own key (advanced)</div>
           <p className="settings-desc">
-            Connect your free Setlist.fm API key so Melo can pull actual setlists when you log a show.
-            Your key is encrypted before it ever leaves the device.
+            Auto-fill works out of the box — no setup required. If you'd
+            rather use your own free Setlist.fm key (for personal
+            accountability or higher rate limits), paste it here. Your
+            key is encrypted before it ever leaves the device.
           </p>
 
           {isConnected && !editing && (
@@ -224,11 +226,11 @@ export default function Settings() {
             <div className="settings-integration-info">
               <div className="settings-label">Setlist.fm</div>
               <p className="settings-desc" style={{ marginBottom: 0 }}>
-                Real setlists &middot; {isConnected ? 'Connected' : 'API key required'}
+                Real setlists &middot; {isConnected ? 'Using your key' : 'Active (shared key)'}
               </p>
             </div>
-            <div className={`settings-integration-badge ${isConnected ? 'active' : ''}`}>
-              {isConnected ? 'Active' : 'Setup'}
+            <div className="settings-integration-badge active">
+              {isConnected ? 'Active' : 'Active'}
             </div>
           </div>
           <div className="settings-integration-row">

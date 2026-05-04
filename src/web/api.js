@@ -150,16 +150,15 @@ function extractFestivalFromSetlist(s) {
 // 2026-04-20-pre-launch-sprint initiative.)
 //
 // `apiKey` parameter is kept for backwards compatibility with callers
-// — we now treat it as a "has key?" hint only. The actual auth
-// happens server-side via the user's session JWT.
+// — it's now ignored. The proxy resolves the key server-side: it tries
+// the user's encrypted personal key first, then falls back to a
+// shared MELO_SETLISTFM_FALLBACK_KEY env var so the app works
+// out-of-the-box for users who haven't configured one of their own.
 //
 // `opts` can include `city`, `year`, `venue` to filter results — same
 // contract as before.
-export async function fetchSetlists(artistName, apiKey, opts = {}) {
+export async function fetchSetlists(artistName, _apiKey, opts = {}) {
   if (!artistName) return [];
-  // Fast bail for callers that still pass an empty hint — the
-  // server would 400 anyway with "no setlist.fm key configured".
-  if (apiKey === '' || apiKey === null || apiKey === undefined) return [];
 
   try {
     const params = new URLSearchParams({
