@@ -60,8 +60,20 @@ Sequential. Each step depends on the previous.
 
 ### Step 2 — File Articles of Organization
 
-- Reserve name "Melo, LLC" with home-state Secretary of State (check
-  availability first)
+- **Working business name: "Melo Worldwide LLC"** (decided 2026-05-04).
+  Picked over plain "Melo, LLC" (almost certainly taken in NJ — "Melo"
+  is a common word) and "Melo Show LLC" (too utility-coded). The
+  "Worldwide" suffix matches the lifestyle-brand register of the
+  product and tagline ("Where concerts live forever"), and it
+  future-proofs the entity for non-app revenue: merch, events,
+  artist-side product, content, festival presence, etc. Pending
+  availability check in NJ Division of Revenue & Enterprise Services
+  Business Records Search before filing.
+- Fallback names if "Melo Worldwide LLC" is taken or rejected by NJ:
+  1. House of Melo LLC
+  2. Melo Show LLC
+  3. Melo Studios LLC
+  4. Melo Universal LLC
 - File Articles of Organization
 - Wait for confirmation (typically 1–5 business days, faster with
   expedited filing)
@@ -128,6 +140,9 @@ Sequential. Each step depends on the previous.
 
 - 2026-05-01: Initiative created, planning only. No state filings yet.
   Awaiting v1.0 App Store approval before kicking off Step 1.
+- 2026-05-04: Working name chosen — **Melo Worldwide LLC**. Locked in
+  Step 2 above with rationale and 4 fallback names. No filings yet;
+  v1.0.1 still in App Review.
 
 ## Open questions / follow-ups
 

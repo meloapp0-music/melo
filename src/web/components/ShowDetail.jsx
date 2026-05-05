@@ -6,7 +6,7 @@ import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget } = useApp();
   const artistImage = getArtistImage(show.artist);
   const gradient = getArtistGradient(show.artist);
 
@@ -201,6 +201,13 @@ export default function ShowDetail({ show, onClose }) {
               </div>
             )}
           </div>
+
+          <button
+            className="detail-compare-btn"
+            onClick={() => { onClose(); setLogEditTarget(show); }}
+          >
+            Edit show
+          </button>
 
           <button
             className="detail-compare-btn"

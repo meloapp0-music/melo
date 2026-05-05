@@ -17,7 +17,7 @@
 
     <!-- Open Graph (preview shown when link is shared on iMessage, FB, LinkedIn, Slack, etc.) -->
     <meta property="og:title" content="Melo — Where concerts live forever." />
-    <meta property="og:description" content="Track every concert you've been to. Save what's next. Get a year-end Wrapped of the artists who scored your year. Coming soon to the App Store." />
+    <meta property="og:description" content="Track every concert you've been to. Save what's next. Get a year-end Wrapped of the artists who scored your year. Free on the App Store." />
     <meta property="og:image" content="https://melo.show/og-share.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -28,7 +28,7 @@
     <!-- Twitter Card (separate spec, but identical content works) -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Melo — Where concerts live forever." />
-    <meta name="twitter:description" content="Track every concert. Save what's next. Get a year-end Wrapped. Coming soon to the App Store." />
+    <meta name="twitter:description" content="Track every concert. Save what's next. Get a year-end Wrapped. Free on the App Store." />
     <meta name="twitter:image" content="https://melo.show/og-share.png" />
 
     <link rel="stylesheet" href="./style.css" />
@@ -61,7 +61,7 @@
           <li><a href="#features">Features</a></li>
           <li><a href="#how">How</a></li>
           <li><a href="#screenshots">Screens</a></li>
-          <li><a href="#waitlist">Notify me</a></li>
+          <li><a href="#download">Get the app</a></li>
         </ul>
       </nav>
 
@@ -77,13 +77,13 @@
         </p>
 
         <div class="hero-cta">
-          <!-- App Store badge: replace href with the live App Store URL once approved.
+          <!-- App Store badge — live as of v1.0 launch (2026-05-03).
                SVG badge is Apple's official artwork (linked, not embedded, to stay
                in compliance with their marketing guidelines). -->
-          <a class="appstore-badge" href="#" aria-label="Download on the App Store">
+          <a class="appstore-badge" href="https://apps.apple.com/app/id6763952800" aria-label="Download Melo on the App Store">
             <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" />
           </a>
-          <span class="appstore-note">Coming soon to iPhone</span>
+          <span class="appstore-note">Available now — free on iPhone</span>
         </div>
       </div>
     </header>
@@ -175,21 +175,29 @@
       </div>
     </section>
 
-    <!-- Waitlist — Mailchimp-backed signup form. Submissions land in
-         the Melo Waitlist audience. Three Mailchimp quirks are required
-         and handled below:
-           1. Email input MUST be named `EMAIL` (uppercase).
-           2. Hidden honeypot input named `b_<u>_<id>` blocks bots —
-              real humans never type into it because it's positioned
-              off-screen; bots blindly fill every input.
-           3. target="_blank" opens Mailchimp's confirmation page in a
-              new tab so the visitor stays on the marketing site. -->
-    <section id="waitlist" class="waitlist">
+    <!-- Download CTA — replaces the pre-launch waitlist (2026-05-03).
+         Mailchimp form retained below as a secondary "get product updates"
+         capture — same audience, different framing. The three Mailchimp
+         quirks (EMAIL uppercase name, honeypot, target="_blank") still
+         apply. -->
+    <section id="download" class="waitlist">
       <div class="waitlist-card">
-        <h2 class="waitlist-title">Be the first when Melo launches</h2>
+        <h2 class="waitlist-title">Melo is available now</h2>
         <p class="waitlist-sub">
-          We'll email you the moment the App Store listing goes live. No spam,
-          no marketing drip — one message, then we're quiet.
+          Free on the App Store. Track every concert you've been to, save
+          what's next, and get a year-end Wrapped of the artists who scored
+          your year.
+        </p>
+
+        <div class="hero-cta" style="margin-top: 8px;">
+          <a class="appstore-badge" href="https://apps.apple.com/app/id6763952800" aria-label="Download Melo on the App Store">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" />
+          </a>
+        </div>
+
+        <p class="waitlist-sub" style="margin-top: 32px; margin-bottom: 12px;">
+          Want updates on new features and the Android version? Drop your
+          email — one message at a time, no spam.
         </p>
         <form
           class="waitlist-form validate"
@@ -207,7 +215,7 @@
             aria-label="Email address"
             required
           />
-          <button type="submit" name="subscribe">Notify me</button>
+          <button type="submit" name="subscribe">Keep me posted</button>
           <!-- Honeypot — leave this empty; real users never see it. -->
           <div style="position: absolute; left: -5000px;" aria-hidden="true">
             <input type="text" name="b_feec2aab123e46f54570151d2_e121b0ab50" tabindex="-1" value="" />

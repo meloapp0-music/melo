@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { deleteMyAccount } from '../lib/db/account';
+import { checkUsernameAvailable } from '../lib/db/profiles';
 
 export default function Settings() {
-  const { navigate, settings, updateSettings, signOut, profile } = useApp();
+  const { navigate, settings, updateSettings, signOut, profile, updateProfile } = useApp();
   // The Setlist.fm key is encrypted at rest as of migration 0003. The
   // client never sees plaintext after the initial save round-trip.
   // Only show the input when the user explicitly wants to set/replace
@@ -15,6 +16,91 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ----- Profile (display name + username) edit state -----
+  // Inline-edit affordance in the Account row. Backend (updateMyProfile +
+  // checkUsernameAvailable) was always there, but Onboarding's
+  // "you can change it later" promise had no Settings UI to back it up.
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  // null | 'checking' | 'available' | 'taken' | 'invalid'
+  const [usernameStatus, setUsernameStatus] = useState(null);
+  const [profileError, setProfileError] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Debounced username availability check while editing. Skips the call
+  // entirely when the value matches the current profile's username (no
+  // change → already "yours").
+  useEffect(() => {
+    if (!editingProfile) return;
+    const u = editUsername.trim().toLowerCase();
+    if (u === (profile?.username || '')) {
+      setUsernameStatus('available');
+      return;
+    }
+    if (!/^[a-z0-9_]{3,24}$/.test(u)) {
+      setUsernameStatus(u.length === 0 ? null : 'invalid');
+      return;
+    }
+    setUsernameStatus('checking');
+    const t = setTimeout(async () => {
+      try {
+        const ok = await checkUsernameAvailable(u);
+        setUsernameStatus(ok ? 'available' : 'taken');
+      } catch {
+        setUsernameStatus(null);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [editUsername, editingProfile, profile?.username]);
+
+  const openEditProfile = () => {
+    setProfileError('');
+    setEditDisplayName(profile?.displayName || '');
+    setEditUsername(profile?.username || '');
+    setUsernameStatus('available'); // current username is by definition available to self
+    setEditingProfile(true);
+  };
+
+  const cancelEditProfile = () => {
+    setEditingProfile(false);
+    setProfileError('');
+  };
+
+  const saveProfile = async () => {
+    setProfileError('');
+    const nextDisplay = editDisplayName.trim();
+    const nextUsername = editUsername.trim().toLowerCase();
+    if (!nextDisplay) {
+      setProfileError('Display name cannot be empty');
+      return;
+    }
+    if (usernameStatus === 'invalid') {
+      setProfileError('Username must be 3–24 characters: lowercase letters, numbers, or underscores');
+      return;
+    }
+    if (usernameStatus === 'taken') {
+      setProfileError('That username is taken');
+      return;
+    }
+    if (usernameStatus === 'checking') {
+      setProfileError('Still checking availability — try again in a sec');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const patch = {};
+      if (nextDisplay !== (profile?.displayName || '')) patch.displayName = nextDisplay;
+      if (nextUsername !== (profile?.username || '')) patch.username = nextUsername;
+      if (Object.keys(patch).length > 0) await updateProfile(patch);
+      setEditingProfile(false);
+    } catch (err) {
+      setProfileError(err?.message || 'Could not save profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaveError(null);
@@ -274,7 +360,7 @@ export default function Settings() {
       <div className="settings-section">
         <div className="settings-section-title">Account</div>
         <div className="settings-card">
-          {profile && (
+          {profile && !editingProfile && (
             <div className="settings-account-row">
               <div className="settings-account-avatar" style={{ background: profile.avatarColor }}>
                 {(profile.displayName || profile.username || 'M').slice(0, 1).toUpperCase()}
@@ -283,6 +369,76 @@ export default function Settings() {
                 <div className="settings-label">{profile.displayName || profile.username}</div>
                 <p className="settings-desc" style={{ marginBottom: 0 }}>@{profile.username}</p>
               </div>
+              <button
+                className="settings-save-btn"
+                onClick={openEditProfile}
+                style={{ background: 'rgba(61,44,30,0.06)', color: '#3D2C1E', width: 'auto', padding: '8px 14px' }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
+
+          {profile && editingProfile && (
+            <div className="settings-profile-edit">
+              <label className="settings-label" htmlFor="settings-edit-display">Display name</label>
+              <input
+                id="settings-edit-display"
+                className="log-input"
+                type="text"
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+                placeholder="Your name"
+                maxLength={40}
+                style={{ marginBottom: 12 }}
+              />
+              <label className="settings-label" htmlFor="settings-edit-username">Username</label>
+              <div className="auth-username-row">
+                <span className="auth-username-at">@</span>
+                <input
+                  id="settings-edit-username"
+                  className="log-input auth-username-input"
+                  type="text"
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="yourname"
+                  maxLength={24}
+                />
+              </div>
+              <div className="auth-hint" style={{ marginTop: 6, marginBottom: 12 }}>
+                {editUsername.length > 0 && editUsername.length < 3 && 'At least 3 characters'}
+                {usernameStatus === 'checking' && 'Checking…'}
+                {usernameStatus === 'available' && editUsername === (profile?.username || '') && (
+                  <span style={{ opacity: 0.6 }}>Your current username</span>
+                )}
+                {usernameStatus === 'available' && editUsername !== (profile?.username || '') && (
+                  <span className="auth-ok-inline">✓ Available</span>
+                )}
+                {usernameStatus === 'taken' && (
+                  <span className="auth-err-inline">Taken — try another</span>
+                )}
+                {usernameStatus === 'invalid' && (
+                  <span className="auth-err-inline">Lowercase letters, numbers, underscores only</span>
+                )}
+              </div>
+              {profileError && (
+                <p className="settings-desc" style={{ color: '#C34A36', marginBottom: 12 }}>{profileError}</p>
+              )}
+              <button
+                className="settings-save-btn"
+                onClick={saveProfile}
+                disabled={savingProfile}
+              >
+                {savingProfile ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                className="settings-save-btn"
+                onClick={cancelEditProfile}
+                disabled={savingProfile}
+                style={{ background: 'rgba(61,44,30,0.06)', color: '#3D2C1E', marginTop: 8 }}
+              >
+                Cancel
+              </button>
             </div>
           )}
           <button className="settings-danger-btn" onClick={handleSignOut}>
