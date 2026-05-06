@@ -118,6 +118,31 @@ the entire card.
   page ↗" pill above the vibes row when `venueUrl` is non-empty, and
   surfaces a "Find venue page" lookup button for older shows where
   the field is empty.
+- 2026-05-06 (later): UX rework after dev test surfaced two real
+  problems with the first cut: (a) Ticketmaster's `venue.url` points
+  to its own listing page, not the venue's official website, so the
+  pill linked users to Ticketmaster instead of brooklynsteel.com / etc;
+  (b) the pill text used `var(--cream)` against the cream-colored body,
+  rendering the label invisible — only the pin emoji showed. Fixes:
+  - Rewrote `lookupVenueUrl` to use Wikipedia OpenSearch → Wikidata
+    QID → property P856 ("official website"). Anonymous CORS-enabled
+    APIs, no key required. Coverage is great for venues with Wikipedia
+    entries (most major + mid-size venues).
+  - Stopped capturing `venueUrl` from `fetchUpcomingEvents` and
+    `fetchSetlists` — both return their respective platforms' internal
+    venue pages, not official sites. Field stays empty at log-time.
+  - ShowDetail auto-resolves on open instead of waiting for a tap.
+    State machine: idle / loading / not_found. Pill always shows the
+    venue name as label (`{show.venue}`), not "Venue page" — users
+    know what they're tapping. Pin emoji becomes a small leading icon.
+  - Stale-URL detection: any saved `venueUrl` containing
+    `ticketmaster.com` or `setlist.fm` is treated as stale and
+    re-resolved automatically. Heals dev installs that saved bad URLs
+    during the first cut without requiring a wipe.
+  - CSS uses `var(--brown-muted)` for text color — visible against the
+    cream body. Pill background is a soft orange tint, hover deepens.
+    `.detail-link-pill-name` truncates with ellipsis at 220px so a
+    long venue name doesn't break the row.
 
 ## Open questions / follow-ups
 

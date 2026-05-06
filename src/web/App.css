@@ -1445,8 +1445,10 @@ h4 { font-size: 17px; }
 .detail-tickets-arrow { margin-left: auto; opacity: 0.85; font-size: 16px; }
 
 /* Venue + merch link pills. Sits below the vibes row, above photos.
-   Phase 1: just the venue pill. Future merch pills land in the same
-   row. Layout wraps so 3 pills can fit on phone widths. */
+   Pill text uses the same brown family as `.detail-section-title` and
+   `.detail-notes` — the body of ShowDetail is cream, not the dark
+   gradient at the top, so cream-on-cream would be invisible. Layout
+   wraps so future merch pills can land in the same row. */
 .detail-links-row {
   display: flex;
   flex-wrap: wrap;
@@ -1459,9 +1461,9 @@ h4 { font-size: 17px; }
   gap: 8px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  color: var(--cream, #FBF6EE);
+  background: rgba(232, 87, 58, 0.08);
+  border: 1px solid rgba(232, 87, 58, 0.22);
+  color: var(--brown-muted, #4A3327);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -1469,23 +1471,25 @@ h4 { font-size: 17px; }
   cursor: pointer;
   transition: transform 0.12s ease, background 0.15s ease;
   font-family: inherit;
+  max-width: 100%;
+}
+.detail-link-pill-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 .detail-link-pill:active { transform: scale(0.97); }
-.detail-link-pill:hover { background: rgba(255, 255, 255, 0.10); }
-.detail-link-arrow { opacity: 0.7; font-size: 13px; }
-.detail-link-pill-action {
-  background: rgba(232, 87, 58, 0.14);
-  border-color: rgba(232, 87, 58, 0.28);
-}
-.detail-link-pill-action:hover { background: rgba(232, 87, 58, 0.20); }
-.detail-link-pill-action:disabled {
-  opacity: 0.6;
-  cursor: default;
-  transform: none;
-}
+.detail-link-pill:hover { background: rgba(232, 87, 58, 0.14); }
+.detail-link-arrow { opacity: 0.65; font-size: 13px; }
+.detail-link-pill-loading,
 .detail-link-pill-disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: default;
+}
+.detail-link-pill-loading:hover,
+.detail-link-pill-disabled:hover {
+  background: rgba(232, 87, 58, 0.08);
 }
 
 /* Wishlist empty */

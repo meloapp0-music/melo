@@ -7,30 +7,52 @@ import PhotoGallery from './PhotoGallery';
 
 export default function ShowDetail({ show, onClose }) {
   const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow } = useApp();
-  // Local mirror of the venue URL so the Links card flips from
-  // "Find venue page" → live link without forcing the parent to refetch.
-  // Resync if the user opens a different show in the same overlay session.
-  const [venueUrl, setVenueUrl] = useState(show.venueUrl || '');
-  const [venueLookupState, setVenueLookupState] = useState('idle'); // idle | loading | not_found
-  useEffect(() => {
-    setVenueUrl(show.venueUrl || '');
-    setVenueLookupState('idle');
-  }, [show.id, show.venueUrl]);
 
-  const findVenuePage = async () => {
-    if (!show.venue) return;
-    setVenueLookupState('loading');
-    const url = await lookupVenueUrl(show.venue, show.city);
-    if (url) {
-      setVenueUrl(url);
+  // Auto-resolve the official venue website on open. We keep a local
+  // mirror so the pill flips from "Loading…" → live link without forcing
+  // the parent to refetch. State machine:
+  //   idle      — URL is final (either a saved good URL, or we tried + missed)
+  //   loading   — Wikidata lookup in flight
+  //   not_found — lookup completed with no result; pill renders disabled
+  // Stale Ticketmaster URLs from the very first venue-links cut are
+  // detected and re-resolved here so dev installs heal automatically.
+  const [venueUrl, setVenueUrl] = useState('');
+  const [venueLookupState, setVenueLookupState] = useState('idle');
+
+  useEffect(() => {
+    let cancelled = false;
+    const isStale = (url) =>
+      !url || url.includes('ticketmaster.com') || url.includes('setlist.fm');
+
+    if (!show.venue) {
+      setVenueUrl('');
       setVenueLookupState('idle');
-      // Persist so the next ShowDetail open is instant + the field is
-      // correct everywhere `show.venueUrl` is read.
-      try { await updateShow(show.id, { venueUrl: url }); } catch {}
-    } else {
-      setVenueLookupState('not_found');
+      return;
     }
-  };
+
+    if (show.venueUrl && !isStale(show.venueUrl)) {
+      setVenueUrl(show.venueUrl);
+      setVenueLookupState('idle');
+      return;
+    }
+
+    // No saved URL or saved-but-stale → resolve from Wikipedia/Wikidata.
+    setVenueUrl('');
+    setVenueLookupState('loading');
+    lookupVenueUrl(show.venue, show.city).then((resolved) => {
+      if (cancelled) return;
+      if (resolved) {
+        setVenueUrl(resolved);
+        setVenueLookupState('idle');
+        // Persist so the next open is instant.
+        try { updateShow(show.id, { venueUrl: resolved }); } catch {}
+      } else {
+        setVenueLookupState('not_found');
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [show.id, show.venue, show.city, show.venueUrl, updateShow]);
   const artistImage = getArtistImage(show.artist);
   const gradient = getArtistGradient(show.artist);
 
@@ -122,9 +144,12 @@ export default function ShowDetail({ show, onClose }) {
             </div>
           )}
 
-          {/* Venue + merch links card. Phase 1 (v1.0.3): venue link only.
-              Future phases add artist merch + tour merch pills here.
-              Per docs/initiatives/2026-05-05-venue-and-merch-links.md. */}
+          {/* Venue links card. Pill label = the venue name itself, so the
+              user knows where they're going before they tap. URL resolves
+              to the OFFICIAL venue website via Wikipedia/Wikidata, not a
+              Ticketmaster listing. Future phases add artist merch + tour
+              merch pills here. Per
+              docs/initiatives/2026-05-05-venue-and-merch-links.md. */}
           {show.venue && (
             <div className="detail-links-row">
               {venueUrl ? (
@@ -135,25 +160,20 @@ export default function ShowDetail({ show, onClose }) {
                   rel="noopener noreferrer"
                 >
                   <span aria-hidden="true">📍</span>
-                  <span>Venue page</span>
+                  <span className="detail-link-pill-name">{show.venue}</span>
                   <span className="detail-link-arrow" aria-hidden="true">↗</span>
                 </a>
-              ) : venueLookupState === 'not_found' ? (
-                <span className="detail-link-pill detail-link-pill-disabled">
+              ) : venueLookupState === 'loading' ? (
+                <span className="detail-link-pill detail-link-pill-loading">
                   <span aria-hidden="true">📍</span>
-                  <span>Venue page not found</span>
+                  <span className="detail-link-pill-name">{show.venue}</span>
+                  <span className="detail-link-arrow" aria-hidden="true">…</span>
                 </span>
               ) : (
-                <button
-                  className="detail-link-pill detail-link-pill-action"
-                  onClick={findVenuePage}
-                  disabled={venueLookupState === 'loading'}
-                >
+                <span className="detail-link-pill detail-link-pill-disabled">
                   <span aria-hidden="true">📍</span>
-                  <span>
-                    {venueLookupState === 'loading' ? 'Finding…' : 'Find venue page'}
-                  </span>
-                </button>
+                  <span className="detail-link-pill-name">{show.venue}</span>
+                </span>
               )}
             </div>
           )}

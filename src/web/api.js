@@ -196,7 +196,10 @@ export async function fetchSetlists(artistName, _apiKey, opts = {}) {
         return {
           artist: s.artist?.name || artistName,
           venue: s.venue?.name || '',
-          venueUrl: s.venue?.url || '',
+          // Note: Setlist.fm's `venue.url` points to setlist.fm's own
+          // venue page, NOT the official venue website. We deliberately
+          // don't capture it here. ShowDetail resolves the official URL
+          // on demand via Wikipedia/Wikidata in `lookupVenueUrl`.
           city: s.venue?.city?.name || '',
           state: s.venue?.city?.stateCode || '',
           country: s.venue?.city?.country?.code || '',
@@ -281,7 +284,10 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
       return {
         artist: attractions[0]?.name || artistName,
         venue: venue.name || '',
-        venueUrl: venue.url || '',
+        // Note: Ticketmaster's `venue.url` points to the Ticketmaster
+        // venue listing, NOT the official venue website. We deliberately
+        // don't capture it here. ShowDetail resolves the official URL
+        // on demand via Wikipedia/Wikidata in `lookupVenueUrl`.
         city: venue.city?.name || '',
         state: venue.state?.stateCode || venue.state?.name || '',
         country: venue.country?.countryCode || venue.country?.name || '',
@@ -296,67 +302,63 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
   }
 }
 
-// ===== TICKETMASTER — Venue lookup =====
-// Resolve the official venue page URL for a venue name + city. Used as
-// an on-demand resolver for shows logged before `venue_url` was a column,
-// and as a fallback when the autofill source (Setlist.fm or Ticketmaster
-// events.json) didn't return a URL with the show.
+// ===== Wikipedia/Wikidata — Official venue website lookup =====
+// Resolves the OFFICIAL venue website (e.g. brooklynsteel.com), not a
+// Ticketmaster or Setlist.fm listing page. The earlier Ticketmaster-
+// venues approach returned `ticketmaster.com/venue/...` URLs, which is
+// not what users want — they want the venue's own site for parking,
+// calendar, etc.
 //
-// Returns the URL string or '' if nothing matched. Soft-fails on network
-// errors and missing API keys — never throws into the UI.
+// Strategy:
+//   1. Wikipedia OpenSearch for "{venue} {city}" → article title
+//   2. Wikipedia pageprops → Wikidata QID
+//   3. Wikidata Special:EntityData → property P856 ("official website")
 //
-// Match strategy: query the venues endpoint, then prefer an exact
-// case-insensitive name match in the requested city, falling back to the
-// first venue whose name contains the query, falling back to nothing.
-// Ticketmaster's fuzzy match is generous — "Brooklyn Steel" returns
-// dozens of unrelated rows — so we filter strictly here.
+// All three calls are anonymous + CORS-enabled (`origin=*`), so no
+// proxy or API key is needed. Soft-fails to '' on any miss.
+//
+// Coverage: works well for venues with Wikipedia articles (most major
+// + mid-size venues — Madison Square Garden, Red Rocks, Brooklyn
+// Steel, Hollywood Bowl, etc.). Returns '' for small DIY clubs that
+// don't have Wikipedia entries — caller should hide the pill in that
+// case rather than fall back to a search-engine link the user didn't
+// ask for.
 export async function lookupVenueUrl(venueName, city = '') {
   if (!venueName) return '';
-  const key = import.meta.env.VITE_TICKETMASTER_KEY;
-  if (!key) return '';
 
   try {
-    const params = new URLSearchParams({
-      apikey: key,
-      keyword: venueName,
-      size: '20',
-    });
-    const url = `https://app.ticketmaster.com/discovery/v2/venues.json?${params.toString()}`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!res.ok) return '';
-    const data = await res.json();
-    const venues = data?._embedded?.venues || [];
-    if (venues.length === 0) return '';
+    const query = city ? `${venueName} ${city}` : venueName;
 
-    const targetName = venueName.toLowerCase().trim();
-    const targetCity = city.toLowerCase().trim();
+    // 1. Find the Wikipedia article for the venue.
+    const searchUrl =
+      `https://en.wikipedia.org/w/api.php?action=opensearch` +
+      `&search=${encodeURIComponent(query)}&limit=1&format=json&origin=*`;
+    const searchRes = await fetch(searchUrl);
+    if (!searchRes.ok) return '';
+    const searchData = await searchRes.json();
+    const title = searchData?.[1]?.[0];
+    if (!title) return '';
 
-    // 1. Exact name + city match
-    const exact = venues.find(
-      (v) =>
-        (v.name || '').toLowerCase().trim() === targetName &&
-        (!targetCity ||
-          (v.city?.name || '').toLowerCase().trim() === targetCity)
-    );
-    if (exact?.url) return exact.url;
+    // 2. Resolve the article title to a Wikidata QID.
+    const propsUrl =
+      `https://en.wikipedia.org/w/api.php?action=query&prop=pageprops` +
+      `&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+    const propsRes = await fetch(propsUrl);
+    if (!propsRes.ok) return '';
+    const propsData = await propsRes.json();
+    const pages = propsData?.query?.pages || {};
+    const firstPage = Object.values(pages)[0];
+    const qid = firstPage?.pageprops?.wikibase_item;
+    if (!qid) return '';
 
-    // 2. Exact name, any city (city sometimes drifts: "Morrison" vs "Denver")
-    const nameOnly = venues.find(
-      (v) => (v.name || '').toLowerCase().trim() === targetName
-    );
-    if (nameOnly?.url) return nameOnly.url;
-
-    // 3. Substring match in the requested city
-    if (targetCity) {
-      const inCity = venues.find(
-        (v) =>
-          (v.name || '').toLowerCase().includes(targetName) &&
-          (v.city?.name || '').toLowerCase().trim() === targetCity
-      );
-      if (inCity?.url) return inCity.url;
-    }
-
-    return '';
+    // 3. Pull the official website (Wikidata property P856).
+    const entityUrl = `https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`;
+    const entityRes = await fetch(entityUrl);
+    if (!entityRes.ok) return '';
+    const entityData = await entityRes.json();
+    const claims = entityData?.entities?.[qid]?.claims || {};
+    const website = claims.P856?.[0]?.mainsnak?.datavalue?.value;
+    return website || '';
   } catch (err) {
     console.warn('[Melo] Venue URL lookup failed for', venueName, err.message);
     return '';
