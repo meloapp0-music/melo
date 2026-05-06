@@ -52,10 +52,10 @@ initiative. See `CLAUDE.md` in the repo root for the full process.
   city + state/country counts, total miles, animated map showing every
   concert location in chronological order. Reuses existing Leaflet
   stack from ConcertMap.
-- `2026-05-03-v1-0-2-fixes.md` — in-progress · Post-launch hotfixes
-  round 2 (Build 6). Adds inline username + display name editing in
-  Settings (Onboarding promised "you can change it later" but the UI
-  never existed). Awaiting v1.0.1 approval + stabilization before ship.
+- `2026-05-03-v1-0-2-fixes.md` — shipped 2026-05-06 · Build 6 live
+  in App Store. Inline username + display name editing in Settings,
+  "Edit show" button on ShowDetail, "+ Add" buddy modal on the
+  Buddies page.
 - `2026-05-01-llc-formation.md` — planned · Form Melo LLC, get EIN +
   DUNS, switch Apple Developer account from Individual to Organization
   so the App Store seller name reads "Melo, LLC", move recurring expenses
