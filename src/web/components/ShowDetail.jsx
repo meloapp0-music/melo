@@ -1,12 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, VIBES, isAttended, ticketmasterSearchUrl } from '../store';
-import { fetchArtistBio } from '../api';
+import { fetchArtistBio, lookupVenueUrl } from '../api';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow } = useApp();
+  // Local mirror of the venue URL so the Links card flips from
+  // "Find venue page" → live link without forcing the parent to refetch.
+  // Resync if the user opens a different show in the same overlay session.
+  const [venueUrl, setVenueUrl] = useState(show.venueUrl || '');
+  const [venueLookupState, setVenueLookupState] = useState('idle'); // idle | loading | not_found
+  useEffect(() => {
+    setVenueUrl(show.venueUrl || '');
+    setVenueLookupState('idle');
+  }, [show.id, show.venueUrl]);
+
+  const findVenuePage = async () => {
+    if (!show.venue) return;
+    setVenueLookupState('loading');
+    const url = await lookupVenueUrl(show.venue, show.city);
+    if (url) {
+      setVenueUrl(url);
+      setVenueLookupState('idle');
+      // Persist so the next ShowDetail open is instant + the field is
+      // correct everywhere `show.venueUrl` is read.
+      try { await updateShow(show.id, { venueUrl: url }); } catch {}
+    } else {
+      setVenueLookupState('not_found');
+    }
+  };
   const artistImage = getArtistImage(show.artist);
   const gradient = getArtistGradient(show.artist);
 
@@ -95,6 +119,42 @@ export default function ShowDetail({ show, onClose }) {
                   {v}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Venue + merch links card. Phase 1 (v1.0.3): venue link only.
+              Future phases add artist merch + tour merch pills here.
+              Per docs/initiatives/2026-05-05-venue-and-merch-links.md. */}
+          {show.venue && (
+            <div className="detail-links-row">
+              {venueUrl ? (
+                <a
+                  className="detail-link-pill"
+                  href={venueUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span aria-hidden="true">📍</span>
+                  <span>Venue page</span>
+                  <span className="detail-link-arrow" aria-hidden="true">↗</span>
+                </a>
+              ) : venueLookupState === 'not_found' ? (
+                <span className="detail-link-pill detail-link-pill-disabled">
+                  <span aria-hidden="true">📍</span>
+                  <span>Venue page not found</span>
+                </span>
+              ) : (
+                <button
+                  className="detail-link-pill detail-link-pill-action"
+                  onClick={findVenuePage}
+                  disabled={venueLookupState === 'loading'}
+                >
+                  <span aria-hidden="true">📍</span>
+                  <span>
+                    {venueLookupState === 'loading' ? 'Finding…' : 'Find venue page'}
+                  </span>
+                </button>
+              )}
             </div>
           )}
 

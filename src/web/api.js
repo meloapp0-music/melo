@@ -196,6 +196,7 @@ export async function fetchSetlists(artistName, _apiKey, opts = {}) {
         return {
           artist: s.artist?.name || artistName,
           venue: s.venue?.name || '',
+          venueUrl: s.venue?.url || '',
           city: s.venue?.city?.name || '',
           state: s.venue?.city?.stateCode || '',
           country: s.venue?.city?.country?.code || '',
@@ -280,6 +281,7 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
       return {
         artist: attractions[0]?.name || artistName,
         venue: venue.name || '',
+        venueUrl: venue.url || '',
         city: venue.city?.name || '',
         state: venue.state?.stateCode || venue.state?.name || '',
         country: venue.country?.countryCode || venue.country?.name || '',
@@ -291,6 +293,73 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
   } catch (err) {
     console.warn('[Melo] Ticketmaster fetch failed for', artistName, err.message);
     return [];
+  }
+}
+
+// ===== TICKETMASTER — Venue lookup =====
+// Resolve the official venue page URL for a venue name + city. Used as
+// an on-demand resolver for shows logged before `venue_url` was a column,
+// and as a fallback when the autofill source (Setlist.fm or Ticketmaster
+// events.json) didn't return a URL with the show.
+//
+// Returns the URL string or '' if nothing matched. Soft-fails on network
+// errors and missing API keys — never throws into the UI.
+//
+// Match strategy: query the venues endpoint, then prefer an exact
+// case-insensitive name match in the requested city, falling back to the
+// first venue whose name contains the query, falling back to nothing.
+// Ticketmaster's fuzzy match is generous — "Brooklyn Steel" returns
+// dozens of unrelated rows — so we filter strictly here.
+export async function lookupVenueUrl(venueName, city = '') {
+  if (!venueName) return '';
+  const key = import.meta.env.VITE_TICKETMASTER_KEY;
+  if (!key) return '';
+
+  try {
+    const params = new URLSearchParams({
+      apikey: key,
+      keyword: venueName,
+      size: '20',
+    });
+    const url = `https://app.ticketmaster.com/discovery/v2/venues.json?${params.toString()}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const venues = data?._embedded?.venues || [];
+    if (venues.length === 0) return '';
+
+    const targetName = venueName.toLowerCase().trim();
+    const targetCity = city.toLowerCase().trim();
+
+    // 1. Exact name + city match
+    const exact = venues.find(
+      (v) =>
+        (v.name || '').toLowerCase().trim() === targetName &&
+        (!targetCity ||
+          (v.city?.name || '').toLowerCase().trim() === targetCity)
+    );
+    if (exact?.url) return exact.url;
+
+    // 2. Exact name, any city (city sometimes drifts: "Morrison" vs "Denver")
+    const nameOnly = venues.find(
+      (v) => (v.name || '').toLowerCase().trim() === targetName
+    );
+    if (nameOnly?.url) return nameOnly.url;
+
+    // 3. Substring match in the requested city
+    if (targetCity) {
+      const inCity = venues.find(
+        (v) =>
+          (v.name || '').toLowerCase().includes(targetName) &&
+          (v.city?.name || '').toLowerCase().trim() === targetCity
+      );
+      if (inCity?.url) return inCity.url;
+    }
+
+    return '';
+  } catch (err) {
+    console.warn('[Melo] Venue URL lookup failed for', venueName, err.message);
+    return '';
   }
 }
 

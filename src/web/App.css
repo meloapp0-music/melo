@@ -1444,6 +1444,50 @@ h4 { font-size: 17px; }
 .detail-tickets-icon { font-size: 18px; }
 .detail-tickets-arrow { margin-left: auto; opacity: 0.85; font-size: 16px; }
 
+/* Venue + merch link pills. Sits below the vibes row, above photos.
+   Phase 1: just the venue pill. Future merch pills land in the same
+   row. Layout wraps so 3 pills can fit on phone widths. */
+.detail-links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.detail-link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--cream, #FBF6EE);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease;
+  font-family: inherit;
+}
+.detail-link-pill:active { transform: scale(0.97); }
+.detail-link-pill:hover { background: rgba(255, 255, 255, 0.10); }
+.detail-link-arrow { opacity: 0.7; font-size: 13px; }
+.detail-link-pill-action {
+  background: rgba(232, 87, 58, 0.14);
+  border-color: rgba(232, 87, 58, 0.28);
+}
+.detail-link-pill-action:hover { background: rgba(232, 87, 58, 0.20); }
+.detail-link-pill-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+.detail-link-pill-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Wishlist empty */
 .shows-empty {
   text-align: center;

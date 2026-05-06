@@ -35,6 +35,12 @@ export default function LogShow({ onClose, editingShow = null }) {
   const [date, setDate] = useState(editingShow?.date || '');
   const [city, setCity] = useState(editingShow?.city || '');
   const [venue, setVenue] = useState(editingShow?.venue || '');
+  // Captured from autofill (Ticketmaster events / Setlist.fm setlists) when
+  // the user picks a real show. Empty string = "no URL captured" — the
+  // ShowDetail "Find venue page" button kicks in for resolution there.
+  // Cleared whenever the user manually edits the venue field, since the
+  // saved URL no longer matches what they typed.
+  const [venueUrl, setVenueUrl] = useState(editingShow?.venueUrl || '');
   const [festival, setFestival] = useState(editingShow?.festival || '');
   const [genre, setGenre] = useState(editingShow?.genre || '');
   const [score, setScore] = useState(editingShow?.score || 0);
@@ -206,6 +212,11 @@ export default function LogShow({ onClose, editingShow = null }) {
     if (show.venue) setVenue(show.venue);
     if (show.city) setCity(show.city);
     if (show.date) setDate(show.date);
+    // Capture the official venue URL when the autofill source provides
+    // one. Ticketmaster events.json reliably has it; Setlist.fm has it
+    // sometimes. The ShowDetail "Find venue page" button covers the
+    // misses on demand.
+    if (show.venueUrl) setVenueUrl(show.venueUrl);
     // Auto-fill festival from setlist.fm if it's there and the user
     // hasn't already typed something. They can still edit after.
     if (show.festival && !festival.trim()) setFestival(show.festival);
@@ -213,6 +224,14 @@ export default function LogShow({ onClose, editingShow = null }) {
     setArtistOpen(false);
     setShowResults([]);
     setArtistMatches([]);
+  };
+
+  // If the user edits the venue text after an autofill, the saved
+  // `venueUrl` no longer matches what they typed — clear it so the
+  // saved row reflects "no resolved URL" rather than a misleading link.
+  const handleVenueChange = (next) => {
+    setVenue(next);
+    if (venueUrl) setVenueUrl('');
   };
 
   // User picked an artist suggestion (Deezer) — replace the typed text
@@ -231,6 +250,7 @@ export default function LogShow({ onClose, editingShow = null }) {
       date: date || new Date().toISOString().split('T')[0],
       city: city.trim(),
       venue: venue.trim(),
+      venueUrl: venueUrl.trim(),
       festival: festival.trim(),
       genre,
       score,
@@ -471,7 +491,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                 placeholder="Venue"
                 value={venue}
                 onChange={(e) => {
-                  setVenue(e.target.value);
+                  handleVenueChange(e.target.value);
                   setVenueOpen(true);
                 }}
                 onFocus={() => setVenueOpen(true)}
@@ -484,7 +504,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                       key={v}
                       className="log-autocomplete-item"
                       onClick={() => {
-                        setVenue(v);
+                        handleVenueChange(v);
                         setVenueOpen(false);
                       }}
                     >

@@ -3,6 +3,51 @@
 Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
+- `2026-05-06-email-mfa.md` — planned · v1.0.4 (Phase 1) · Email
+  confirmation on signup — 6-digit OTP via email before account
+  becomes active. Closes the spam/typo/recovery hole left over from
+  Phase 1 alpha. Phase 2 (optional TOTP 2FA in Settings) follows in
+  v1.2+. Prerequisite for `2026-05-06-contacts-buddy-discovery.md`.
+- `2026-05-06-contacts-buddy-discovery.md` — planned · v1.2 · Sync
+  iOS contacts (hashed client-side, never raw) → match against opted-in
+  Melo users → "Add" for matches, "Invite via SMS" for the rest.
+  Privacy-first: SHA-256 + server pepper, no raw phone/email ever
+  leaves the device, opt-in for being discoverable. Depends on
+  `2026-05-05-buddies-phase-2.md` Phase 2a.
+- `2026-05-05-social-layer.md` — planned · v2.0+ · The big one. DMs,
+  show plans (group event coordination), discoverability at shows,
+  meet-new-people, "concert family" surfaces. Hard-blocked on a
+  moderation/T&S layer (blocks, reports, admin tooling, image scanning,
+  underage policy). Re-confirmed 2026-05-06 — App Store Guideline 1.2
+  requires this floor; not shipping until ~2-3 weeks of T&S infra is in.
+- `2026-05-05-notifications-system.md` — planned · v1.1+ · Full
+  notification matrix on top of existing `tour-alerts` cron — tour
+  announces, ticket price drops, festival lineup adds for liked
+  artists, best-value alerts, buddy events. Re-cut 2026-05-06: in-app
+  inbox + `lineup-watcher` pulled forward to v1.1 (~1 week), price-
+  poller v1.2, buddy-events follow buddies-phase-2, best-value v1.4+.
+- `2026-05-05-recommendations.md` — planned · v1.2 · The Melo
+  algorithm. 3-tier recommender: content-based taste profile (Tier 1),
+  festival fit scoring (Tier 2), collaborative filtering once we have
+  enough users (Tier 3). Re-cut 2026-05-06: Tier 1 pulled forward to
+  v1.2 (~1 week, no ML infra). Tier 3 honestly needs ~1k MAU first.
+- `2026-05-05-venue-and-merch-links.md` — in-progress · v1.0.3 ·
+  Per-show links to the official venue page + artist merch + tour-
+  specific merch. Re-cut 2026-05-06: Phase 1 (venue links via
+  Ticketmaster) pulled into v1.0.3 — the cheapest user-facing win in
+  the whole roadmap. Implementation starting today.
+- `2026-05-05-buddies-phase-2.md` — planned · v1.1 · Bridge from
+  free-text buddy labels → real Melo accounts. Friendships table,
+  username search + autocomplete, `show_attendees` for shared shows,
+  buddy profile view, see-buddies-going on upcoming shows. Re-cut
+  2026-05-06: Phase 2a + 2b pulled forward to v1.1 (~2-3 weeks),
+  shipping with a basic `blocks` table from day one. Canonical
+  Phase 2 of `2026-04-17-backend-and-social.md`.
+- `2026-05-05-wrapped-map-slides.md` — planned · v1.1 Wrapped
+  enhancement. New "You traveled for music" slide section: venue +
+  city + state/country counts, total miles, animated map showing every
+  concert location in chronological order. Reuses existing Leaflet
+  stack from ConcertMap.
 - `2026-05-03-v1-0-2-fixes.md` — in-progress · Post-launch hotfixes
   round 2 (Build 6). Adds inline username + display name editing in
   Settings (Onboarding promised "you can change it later" but the UI
