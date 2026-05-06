@@ -326,24 +326,34 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
 export async function lookupVenueUrl(venueName, city = '') {
   if (!venueName) return '';
 
+  // 5-second total timeout — Wikipedia/Wikidata is usually fast, but
+  // we'd rather fall back to the Google search URL than hang the pill.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+
   try {
     const query = city ? `${venueName} ${city}` : venueName;
 
-    // 1. Find the Wikipedia article for the venue.
+    // 1. Find the Wikipedia article for the venue. Uses full-text
+    //    search (`list=search`) instead of OpenSearch — OpenSearch is
+    //    prefix-only, so "Moody Center Austin" returns nothing because
+    //    no article starts with that phrase. Full-text search ranks by
+    //    article relevance and correctly returns the venue article
+    //    even when the query includes the city for disambiguation.
     const searchUrl =
-      `https://en.wikipedia.org/w/api.php?action=opensearch` +
-      `&search=${encodeURIComponent(query)}&limit=1&format=json&origin=*`;
-    const searchRes = await fetch(searchUrl);
+      `https://en.wikipedia.org/w/api.php?action=query&list=search` +
+      `&srsearch=${encodeURIComponent(query)}&srlimit=1&format=json&origin=*`;
+    const searchRes = await fetch(searchUrl, { signal: controller.signal });
     if (!searchRes.ok) return '';
     const searchData = await searchRes.json();
-    const title = searchData?.[1]?.[0];
+    const title = searchData?.query?.search?.[0]?.title;
     if (!title) return '';
 
     // 2. Resolve the article title to a Wikidata QID.
     const propsUrl =
       `https://en.wikipedia.org/w/api.php?action=query&prop=pageprops` +
       `&titles=${encodeURIComponent(title)}&format=json&origin=*`;
-    const propsRes = await fetch(propsUrl);
+    const propsRes = await fetch(propsUrl, { signal: controller.signal });
     if (!propsRes.ok) return '';
     const propsData = await propsRes.json();
     const pages = propsData?.query?.pages || {};
@@ -353,16 +363,113 @@ export async function lookupVenueUrl(venueName, city = '') {
 
     // 3. Pull the official website (Wikidata property P856).
     const entityUrl = `https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`;
-    const entityRes = await fetch(entityUrl);
-    if (!entityRes.ok) return '';
-    const entityData = await entityRes.json();
-    const claims = entityData?.entities?.[qid]?.claims || {};
-    const website = claims.P856?.[0]?.mainsnak?.datavalue?.value;
-    return website || '';
+    const entityRes = await fetch(entityUrl, { signal: controller.signal });
+    if (entityRes.ok) {
+      const entityData = await entityRes.json();
+      const claims = entityData?.entities?.[qid]?.claims || {};
+      const website = claims.P856?.[0]?.mainsnak?.datavalue?.value;
+      if (website) return website;
+    }
+
+    // 4. Fallback: scan the Wikipedia article's external links and
+    //    pick one that looks like an official venue site. Newer venues
+    //    (Moody Center, Sphere, etc.) often have a complete Wikipedia
+    //    article with the official site in the infobox but no P856
+    //    populated on Wikidata yet.
+    const extlinksUrl =
+      `https://en.wikipedia.org/w/api.php?action=query&prop=extlinks` +
+      `&titles=${encodeURIComponent(title)}&ellimit=30&format=json&origin=*`;
+    const extlinksRes = await fetch(extlinksUrl, { signal: controller.signal });
+    if (!extlinksRes.ok) return '';
+    const extlinksData = await extlinksRes.json();
+    const extPages = extlinksData?.query?.pages || {};
+    const firstExtPage = Object.values(extPages)[0];
+    const links = (firstExtPage?.extlinks || [])
+      .map((l) => l['*'])
+      .filter(Boolean);
+    return pickOfficialLink(links, venueName);
   } catch (err) {
     console.warn('[Melo] Venue URL lookup failed for', venueName, err.message);
     return '';
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+// Heuristic: from a list of external links scraped off a Wikipedia
+// article, pick the one most likely to be the venue's official website.
+//
+// Strategy:
+//   1. Filter out social media, ticketing partners, archive sites,
+//      and other non-official domains
+//   2. Prefer a URL whose hostname contains a meaningful word from the
+//      venue name (so "moodycenter.com" wins for "Moody Center")
+//   3. Otherwise fall back to the first remaining link, which on
+//      Wikipedia is conventionally the infobox `website` field
+function pickOfficialLink(links, venueName) {
+  if (!links || links.length === 0) return '';
+
+  const blocklist = [
+    'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
+    'youtube.com', 'youtu.be', 'tiktok.com', 'linkedin.com',
+    'ticketmaster.com', 'songkick.com', 'axs.com', 'livenation.com',
+    'stubhub.com', 'seatgeek.com', 'vividseats.com', 'setlist.fm',
+    'archive.org', 'web.archive.org', 'wikipedia.org',
+    'wikimedia.org', 'wikidata.org', 'commons.wikimedia.org',
+    'doi.org', 'jstor.org', 'google.com', 'maps.google.com',
+    'goo.gl', 'bit.ly', 'tinyurl.com',
+  ];
+
+  const hostnameOf = (url) => {
+    try { return new URL(url).hostname.toLowerCase(); }
+    catch { return ''; }
+  };
+  // When extlinks contain a venue's domain, they often link a deep
+  // page (event listing, "about" page, etc). The user wants the
+  // venue's website — return its origin (homepage), not the deep link.
+  const homepageOf = (url) => {
+    try {
+      const u = new URL(url);
+      return `${u.protocol}//${u.host}/`;
+    } catch {
+      return url;
+    }
+  };
+  const isOfficial = (url) => {
+    const h = hostnameOf(url);
+    return h && !blocklist.some((b) => h === b || h.endsWith('.' + b));
+  };
+
+  const venueWords = venueName
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && w !== 'center' && w !== 'theater'
+      && w !== 'theatre' && w !== 'arena' && w !== 'stadium' && w !== 'hall');
+
+  // 1. Prefer hostname-matches a meaningful venue word → return the
+  //    homepage of that domain (strips deep paths like /event/...).
+  for (const url of links) {
+    if (!isOfficial(url)) continue;
+    const h = hostnameOf(url);
+    if (venueWords.some((w) => h.includes(w))) return homepageOf(url);
+  }
+  // 2. Otherwise return the first non-blocklist link as-is
+  for (const url of links) {
+    if (isOfficial(url)) return url;
+  }
+  return '';
+}
+
+// Always-works fallback when Wikidata doesn't have the venue. Links to
+// a Google search for "{venue} {city} official site" — top result is
+// almost always the official venue page. One extra click, but never a
+// dead pill.
+export function venueSearchUrl(venueName, city = '') {
+  const q = encodeURIComponent(
+    `${venueName} ${city ? city + ' ' : ''}official site`
+  );
+  return `https://www.google.com/search?q=${q}`;
 }
 
 // Fetch upcoming for all logged artists

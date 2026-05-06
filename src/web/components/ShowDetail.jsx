@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, VIBES, isAttended, ticketmasterSearchUrl } from '../store';
-import { fetchArtistBio, lookupVenueUrl } from '../api';
+import { fetchArtistBio, lookupVenueUrl, venueSearchUrl } from '../api';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 
@@ -145,36 +145,30 @@ export default function ShowDetail({ show, onClose }) {
           )}
 
           {/* Venue links card. Pill label = the venue name itself, so the
-              user knows where they're going before they tap. URL resolves
-              to the OFFICIAL venue website via Wikipedia/Wikidata, not a
-              Ticketmaster listing. Future phases add artist merch + tour
-              merch pills here. Per
+              user knows where they're going before they tap. The pill is
+              ALWAYS clickable — preferred URL is the official site
+              resolved via Wikipedia/Wikidata, fallback is a Google
+              search for "{venue} {city} official site" so the user
+              always lands somewhere useful. Future phases add artist
+              merch + tour merch pills here. Per
               docs/initiatives/2026-05-05-venue-and-merch-links.md. */}
           {show.venue && (
             <div className="detail-links-row">
-              {venueUrl ? (
-                <a
-                  className="detail-link-pill"
-                  href={venueUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span aria-hidden="true">📍</span>
-                  <span className="detail-link-pill-name">{show.venue}</span>
-                  <span className="detail-link-arrow" aria-hidden="true">↗</span>
-                </a>
-              ) : venueLookupState === 'loading' ? (
-                <span className="detail-link-pill detail-link-pill-loading">
-                  <span aria-hidden="true">📍</span>
-                  <span className="detail-link-pill-name">{show.venue}</span>
-                  <span className="detail-link-arrow" aria-hidden="true">…</span>
+              <a
+                className={
+                  'detail-link-pill' +
+                  (venueLookupState === 'loading' ? ' detail-link-pill-loading' : '')
+                }
+                href={venueUrl || venueSearchUrl(show.venue, show.city)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span aria-hidden="true">📍</span>
+                <span className="detail-link-pill-name">{show.venue}</span>
+                <span className="detail-link-arrow" aria-hidden="true">
+                  {venueLookupState === 'loading' ? '…' : venueUrl ? '↗' : '🔍'}
                 </span>
-              ) : (
-                <span className="detail-link-pill detail-link-pill-disabled">
-                  <span aria-hidden="true">📍</span>
-                  <span className="detail-link-pill-name">{show.venue}</span>
-                </span>
-              )}
+              </a>
             </div>
           )}
 
