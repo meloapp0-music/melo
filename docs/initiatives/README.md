@@ -4,14 +4,15 @@ Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
 - `2026-05-06-v1-0-3-venue-links.md` — in-progress · v1.0.3 release
-  tracker. Bundles Phase 1 of `2026-05-05-venue-and-merch-links.md`
-  only — small feature release per the staged-release plan adopted
-  2026-05-06. Code on main; awaiting v1.0.2 App Review clearance.
-- `2026-05-06-email-mfa.md` — planned · v1.0.4 (Phase 1) · Email
-  confirmation on signup — 6-digit OTP via email before account
-  becomes active. Closes the spam/typo/recovery hole left over from
-  Phase 1 alpha. Phase 2 (optional TOTP 2FA in Settings) follows in
-  v1.2+. Prerequisite for `2026-05-06-contacts-buddy-discovery.md`.
+  tracker. Now bundles BOTH venue links (Phase 1 of
+  `2026-05-05-venue-and-merch-links.md`) AND email confirmation
+  on signup (Phase 1 of `2026-05-06-email-mfa.md`) — scope expanded
+  late on 2026-05-06 at user's request. All code on main; pending
+  Supabase Dashboard config + dev sanity test.
+- `2026-05-06-email-mfa.md` — in-progress · Phase 1 (email
+  confirmation) bundled into v1.0.3 instead of v1.0.4. Phase 2
+  (optional TOTP 2FA in Settings) still planned for v1.2+.
+  Prerequisite for `2026-05-06-contacts-buddy-discovery.md`.
 - `2026-05-06-contacts-buddy-discovery.md` — planned · v1.2 · Sync
   iOS contacts (hashed client-side, never raw) → match against opted-in
   Melo users → "Add" for matches, "Invite via SMS" for the rest.

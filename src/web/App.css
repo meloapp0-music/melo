@@ -4596,6 +4596,50 @@ h4 { font-size: 17px; }
   color: #E8573A;
   font-weight: 600;
 }
+.auth-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 6-digit OTP entry. Single row of square inputs that auto-advance
+   on type. Mobile keyboards see `inputmode=numeric` + `autocomplete=
+   one-time-code` and surface the iOS auto-fill chip when an email
+   with a 6-digit code lands during this view. */
+.otp-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px 0 8px;
+}
+.otp-box {
+  width: 44px;
+  height: 56px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  font-family: var(--font-heading, inherit);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brown-deep, #3A2C20);
+  letter-spacing: 0;
+  caret-color: #E8573A;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.otp-box:focus {
+  outline: none;
+  border-color: #E8573A;
+  box-shadow: 0 0 0 3px rgba(232, 87, 58, 0.18);
+}
+.otp-box:disabled {
+  opacity: 0.6;
+}
+@media (max-width: 380px) {
+  .otp-box { width: 38px; height: 50px; font-size: 19px; }
+  .otp-row { gap: 6px; }
+}
 
 .auth-username-row {
   display: flex;

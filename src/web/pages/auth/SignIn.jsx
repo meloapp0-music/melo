@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { signIn, sendPasswordReset } from '../../lib/auth';
+import { signIn, sendPasswordReset, resendSignupOtp } from '../../lib/auth';
 import { MeloLockup } from '../../components/MeloLogo';
+import OtpEntry from '../../components/OtpEntry';
 
 export default function SignIn({ onToggle }) {
   const [email, setEmail] = useState('');
@@ -8,6 +9,7 @@ export default function SignIn({ onToggle }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -17,7 +19,20 @@ export default function SignIn({ onToggle }) {
       await signIn({ email: email.trim(), password });
       // onAuthStateChange in App.jsx will pick up from here
     } catch (err) {
-      setError(err.message || 'Sign in failed');
+      // Supabase returns this code when a user has signed up but not
+      // confirmed their email yet (typically because they bailed
+      // mid-OTP-flow). Auto-resend a fresh code and route them into
+      // OtpEntry so they can finish without re-typing their email.
+      const code = err?.code || err?.error_code;
+      const msg = (err?.message || '').toLowerCase();
+      const isUnconfirmed =
+        code === 'email_not_confirmed' || msg.includes('email not confirmed');
+      if (isUnconfirmed) {
+        try { await resendSignupOtp(email.trim()); } catch {}
+        setNeedsConfirm(true);
+      } else {
+        setError(err.message || 'Sign in failed');
+      }
     } finally {
       setBusy(false);
     }
@@ -33,6 +48,15 @@ export default function SignIn({ onToggle }) {
       setError(err.message || 'Reset failed');
     }
   };
+
+  if (needsConfirm) {
+    return (
+      <OtpEntry
+        email={email.trim()}
+        onChangeEmail={() => setNeedsConfirm(false)}
+      />
+    );
+  }
 
   return (
     <div className="page auth-page">

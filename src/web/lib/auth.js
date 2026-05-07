@@ -46,6 +46,34 @@ export async function signUp({ email, password }) {
   return data;
 }
 
+// Email confirmation OTP flow. Requires the Supabase project's
+// "Confirm email" setting to be ON and the email template configured
+// to send the 6-digit `{{ .Token }}` value. With those in place,
+// signUp() returns a session=null result and the proxy automatically
+// emails the OTP. The client then prompts the user with an OtpEntry
+// step, calls verifyEmailOtp() to confirm, and the resulting session
+// flips them straight into the app without a second sign-in step.
+export async function verifyEmailOtp({ email, token }) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token: token.trim(),
+    type: 'signup',
+  });
+  if (error) throw error;
+  return data;
+}
+
+// Resends the signup confirmation email. Supabase rate-limits this
+// internally (default 5 emails/hour per address) so a fast click on
+// the resend button can return an error — we surface that to the user.
+export async function resendSignupOtp(email) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+  });
+  if (error) throw error;
+}
+
 export async function signIn({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;

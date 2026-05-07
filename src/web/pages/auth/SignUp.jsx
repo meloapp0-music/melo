@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { signUp } from '../../lib/auth';
 import { MeloLockup } from '../../components/MeloLogo';
+import OtpEntry from '../../components/OtpEntry';
 
 export default function SignUp({ onToggle }) {
   const [email, setEmail] = useState('');
@@ -25,10 +26,14 @@ export default function SignUp({ onToggle }) {
     try {
       const { session } = await signUp({ email: email.trim(), password });
       if (!session) {
-        // Email confirmation required — nothing happens automatically
+        // Email confirmation required (Supabase project has "Confirm
+        // email" turned on). Show the 6-digit OTP entry; on success
+        // App.jsx's onAuthStateChange picks up the new session
+        // automatically.
         setNeedsConfirm(true);
       }
-      // If session is returned, App.jsx's onAuthStateChange takes over
+      // If session is returned (confirmation off, dev only), App.jsx
+      // takes over directly.
     } catch (err) {
       setError(err.message || 'Sign up failed');
     } finally {
@@ -38,17 +43,12 @@ export default function SignUp({ onToggle }) {
 
   if (needsConfirm) {
     return (
-      <div className="page auth-page">
-        <div className="auth-brand"><MeloLockup iconSize={56} wordmarkSize={40} tagline /></div>
-        <div className="auth-form">
-          <h1 className="auth-title">Check your email</h1>
-          <p className="auth-sub">
-            We sent a confirmation link to <b>{email}</b>. Tap it to finish signing up,
-            then come back here and sign in.
-          </p>
-          <button className="settings-save-btn" onClick={onToggle}>Back to Sign In</button>
-        </div>
-      </div>
+      <OtpEntry
+        email={email.trim()}
+        onChangeEmail={() => setNeedsConfirm(false)}
+        // No onVerified — App.jsx's session listener flips the user
+        // into the app automatically once verifyOtp succeeds.
+      />
     );
   }
 
