@@ -4601,25 +4601,26 @@ h4 { font-size: 17px; }
   cursor: default;
 }
 
-/* 6-digit OTP entry. Single row of square inputs that auto-advance
-   on type. Mobile keyboards see `inputmode=numeric` + `autocomplete=
-   one-time-code` and surface the iOS auto-fill chip when an email
-   with a 6-digit code lands during this view. */
+/* OTP entry. Single row of square inputs that auto-advance on type.
+   Sized for 8 boxes (Supabase signup-confirmation tokens are 8
+   digits in practice — their docs say 6 but the actual default is
+   8). The boxes get tighter on narrow screens so 8 still fit on a
+   small phone (iPhone SE = 375px wide, less padding). */
 .otp-row {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin: 18px 0 8px;
 }
 .otp-box {
-  width: 44px;
-  height: 56px;
+  width: 36px;
+  height: 50px;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.85);
   text-align: center;
   font-family: var(--font-heading, inherit);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--brown-deep, #3A2C20);
   letter-spacing: 0;
@@ -4627,6 +4628,7 @@ h4 { font-size: 17px; }
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
   -webkit-appearance: none;
   appearance: none;
+  padding: 0;
 }
 .otp-box:focus {
   outline: none;
@@ -4637,8 +4639,8 @@ h4 { font-size: 17px; }
   opacity: 0.6;
 }
 @media (max-width: 380px) {
-  .otp-box { width: 38px; height: 50px; font-size: 19px; }
-  .otp-row { gap: 6px; }
+  .otp-box { width: 32px; height: 46px; font-size: 18px; }
+  .otp-row { gap: 4px; }
 }
 
 .auth-username-row {

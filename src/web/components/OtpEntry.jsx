@@ -2,24 +2,29 @@ import { useState, useEffect, useRef } from 'react';
 import { verifyEmailOtp, resendSignupOtp } from '../lib/auth';
 import { MeloLockup } from './MeloLogo';
 
-// Six single-digit input boxes for an email OTP code.
+// Single-digit input boxes for an email OTP code.
 // - Auto-advances on type, jumps back on Backspace
-// - Paste-to-fill from a 6-digit string (Cmd+V works after copying
-//   the code out of the email)
+// - Paste-to-fill from any-length digit string (Cmd+V works after
+//   copying the code out of the email; non-digits are stripped)
 // - `autoComplete="one-time-code"` + `inputMode="numeric"` enable
 //   the iOS keyboard's auto-fill suggestion (iOS 17+ surfaces the
 //   code when the email subject contains "code")
 // - Resend has a 60-second cooldown (Supabase rate-limits anyway,
 //   but the local cooldown keeps the UI honest)
 //
+// LENGTH NOTE: Supabase's signup-confirmation `{{ .Token }}` is
+// actually 8 digits (their docs say 6 but the actual default is 8).
+// Configurable via the `length` prop in case it changes again.
+//
 // Props:
 //   email          — the address that should receive the code
+//   length         — number of OTP digits expected (default 8)
 //   onVerified()   — called when verifyOtp succeeds; parent should
 //                    flip back to its loading state and let
 //                    onAuthStateChange in App.jsx take it from there
 //   onChangeEmail()— optional escape hatch ("use a different email")
-export default function OtpEntry({ email, onVerified, onChangeEmail }) {
-  const [digits, setDigits] = useState(['', '', '', '', '', '']);
+export default function OtpEntry({ email, length = 8, onVerified, onChangeEmail }) {
+  const [digits, setDigits] = useState(() => Array(length).fill(''));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(60);
@@ -53,17 +58,18 @@ export default function OtpEntry({ email, onVerified, onChangeEmail }) {
 
     // If they typed/pasted multiple chars at once, fan them out.
     const next = [...digits];
-    for (let k = 0; k < v.length && i + k < 6; k++) {
+    for (let k = 0; k < v.length && i + k < length; k++) {
       next[i + k] = v[k];
     }
     setDigits(next);
 
     // Advance focus to the next empty box (or stay on last if filled).
-    const lastFilled = Math.min(i + v.length, 5);
-    inputRefs.current[lastFilled === 5 ? 5 : lastFilled]?.focus();
+    const lastIdx = length - 1;
+    const lastFilled = Math.min(i + v.length, lastIdx);
+    inputRefs.current[lastFilled]?.focus();
 
-    // If we now have all 6, auto-submit so the user doesn't have to
-    // hunt for the button.
+    // If we now have every box filled, auto-submit so the user doesn't
+    // have to hunt for the button.
     if (next.every((d) => d !== '')) {
       submit(next.join(''));
     }
@@ -82,7 +88,7 @@ export default function OtpEntry({ email, onVerified, onChangeEmail }) {
       e.preventDefault();
       inputRefs.current[i - 1]?.focus();
     }
-    if (e.key === 'ArrowRight' && i < 5) {
+    if (e.key === 'ArrowRight' && i < length - 1) {
       e.preventDefault();
       inputRefs.current[i + 1]?.focus();
     }
@@ -90,8 +96,8 @@ export default function OtpEntry({ email, onVerified, onChangeEmail }) {
 
   const submit = async (overrideToken) => {
     const token = overrideToken || digits.join('');
-    if (token.length !== 6) {
-      setError('Enter all 6 digits');
+    if (token.length !== length) {
+      setError(`Enter all ${length} digits`);
       return;
     }
     setError('');
@@ -102,7 +108,7 @@ export default function OtpEntry({ email, onVerified, onChangeEmail }) {
       onVerified?.();
     } catch (err) {
       setError(err.message || 'That code didn\'t match — try again');
-      setDigits(['', '', '', '', '', '']);
+      setDigits(Array(length).fill(''));
       inputRefs.current[0]?.focus();
     } finally {
       setBusy(false);
@@ -133,7 +139,7 @@ export default function OtpEntry({ email, onVerified, onChangeEmail }) {
       <div className="auth-form">
         <h1 className="auth-title">Check your email</h1>
         <p className="auth-sub">
-          We sent a 6-digit code to <b>{email}</b>. Enter it below to
+          We sent a {length}-digit code to <b>{email}</b>. Enter it below to
           finish signing up.
         </p>
 
