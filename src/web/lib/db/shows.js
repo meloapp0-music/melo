@@ -40,7 +40,7 @@ function fromRow(row) {
 
 function toRow(show, userId) {
   const status = deriveStatus(show);
-  return {
+  const row = {
     id: show.id,
     user_id: userId,
     artist: show.artist,
@@ -55,11 +55,19 @@ function toRow(show, userId) {
     buddies: show.buddies || [],
     photos: show.photos || [],
     festival: show.festival || '',
-    venue_url: show.venueUrl || '',
     status,
     wishlist: status === 'wishlist',
     visibility: show.visibility || null,
   };
+  // Only include `venue_url` when the caller actually has a value.
+  // The column landed in migration 0006; sending it on a database
+  // where 0006 hasn't been applied causes Supabase to reject the
+  // INSERT with "column 'venue_url' does not exist" and the show
+  // silently fails to save. Empty default is unrelated to the column
+  // existing — this gate is purely about not naming a column we
+  // don't need to set.
+  if (show.venueUrl) row.venue_url = show.venueUrl;
+  return row;
 }
 
 export async function listMyShows() {

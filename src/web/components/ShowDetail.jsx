@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, VIBES, isAttended, ticketmasterSearchUrl } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl } from '../api';
@@ -13,11 +13,21 @@ export default function ShowDetail({ show, onClose }) {
   // the parent to refetch. State machine:
   //   idle      — URL is final (either a saved good URL, or we tried + missed)
   //   loading   — Wikidata lookup in flight
-  //   not_found — lookup completed with no result; pill renders disabled
+  //   not_found — lookup completed with no result; pill falls back to search
   // Stale Ticketmaster URLs from the very first venue-links cut are
   // detected and re-resolved here so dev installs heal automatically.
+  //
+  // CRITICAL: this effect runs ONCE per show.id change, not on every
+  // re-render. Earlier we depended on `updateShow` (an unstable ref
+  // from App.jsx) which created an infinite loop when the persist call
+  // failed (App.jsx's updateShow refetches on error → state churn →
+  // effect re-fires → resolves → persist fails → refetch → loop). With
+  // a stable ref for updateShow + show.id-only deps, a failed save
+  // logs and stops.
   const [venueUrl, setVenueUrl] = useState('');
   const [venueLookupState, setVenueLookupState] = useState('idle');
+  const updateShowRef = useRef(updateShow);
+  useEffect(() => { updateShowRef.current = updateShow; }, [updateShow]);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,15 +54,19 @@ export default function ShowDetail({ show, onClose }) {
       if (resolved) {
         setVenueUrl(resolved);
         setVenueLookupState('idle');
-        // Persist so the next open is instant.
-        try { updateShow(show.id, { venueUrl: resolved }); } catch {}
+        // Best-effort persist so the next open is instant. Failures
+        // (e.g. column doesn't exist because the migration hasn't been
+        // run) are logged by App.jsx's updateShow but never bubble up
+        // here — the in-memory pill still works for this session.
+        try { updateShowRef.current(show.id, { venueUrl: resolved }); } catch {}
       } else {
         setVenueLookupState('not_found');
       }
     });
 
     return () => { cancelled = true; };
-  }, [show.id, show.venue, show.city, show.venueUrl, updateShow]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show.id]);
   const artistImage = getArtistImage(show.artist);
   const gradient = getArtistGradient(show.artist);
 
