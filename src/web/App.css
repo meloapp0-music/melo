@@ -3892,29 +3892,23 @@ h4 { font-size: 17px; }
   color: #fff;
 }
 
-.wrapped-vibes-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: center;
-  margin-top: 16px;
-}
-
-.wrapped-vibe-item {
+/* Stack of kinetic vibe moments — top vibe huge with full motion,
+   secondary vibes smaller stacked below. Replaces the old
+   emoji-row layout. */
+.wrapped-vibes-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 18px;
+  margin-top: 24px;
+  width: 100%;
 }
-
-.wrapped-vibe-emoji {
-  font-size: 40px;
-}
-
-.wrapped-vibe-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+.wrapped-vibes-secondary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .wrapped-personality {
@@ -3925,6 +3919,33 @@ h4 { font-size: 17px; }
   line-height: 1.3;
   letter-spacing: -0.02em;
   margin-top: 12px;
+}
+
+/* Personality slide v1.0.4 — kinetic archetype layout */
+.wrapped-personality-prefix {
+  margin-top: 18px;
+  font-size: 17px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+}
+.wrapped-personality-stack {
+  margin: 14px 0 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.wrapped-personality-suffix {
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  font-style: italic;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  max-width: 320px;
+  text-align: center;
 }
 
 /* Wrapped Summary Slide */
@@ -5855,3 +5876,555 @@ h4 { font-size: 17px; }
 }
 
 .import-cal-import-btn { margin-top: 8px; }
+
+/* ============================================================
+   Kinetic Vibes — typography + motion that replaces system emojis
+   in Wrapped's Vibes and Personality slides. Each vibe owns its
+   own gradient and motion language tied to character. Per
+   docs/initiatives/2026-05-07-v1-0-4-wrapped-juice.md.
+   ============================================================ */
+
+.kv {
+  display: inline-block;
+  position: relative;
+  isolation: isolate;
+  font-family: var(--font-heading);
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  line-height: 0.95;
+  /* Default fill — overridden per vibe */
+  background: linear-gradient(135deg, #FFFFFF 0%, #E5E5E5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* Entry animation — every vibe scales+fades in */
+  opacity: 0;
+  transform: scale(0.85);
+  animation: kv-enter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  text-align: center;
+}
+.kv-text { display: inline-block; }
+
+@keyframes kv-enter {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Sizes ---------------------------------------------------- */
+.kv-hero   { font-size: clamp(56px, 14vw, 110px); line-height: 0.92; }
+.kv-large  { font-size: clamp(44px, 11vw, 78px);  line-height: 0.95; }
+.kv-medium { font-size: clamp(28px, 7vw, 44px);   line-height: 1.0; }
+.kv-small  { font-size: 20px; line-height: 1.1; opacity: 0.85; font-weight: 800; }
+
+/* Glow rings (decoration via ::before) ---------------------- */
+.kv::before {
+  content: '';
+  position: absolute;
+  inset: -28% -16%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.kv-large::before, .kv-hero::before { opacity: 0.7; }
+
+/* ===== Per-vibe gradients + motion ===== */
+
+/* EUPHORIC — gold→white→gold radiating glow */
+.kv-euphoric {
+  background: linear-gradient(135deg, #FFD700 0%, #FFFAF0 50%, #FFB800 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(255, 200, 60, 0.55));
+}
+.kv-euphoric.kv-hero, .kv-euphoric.kv-large {
+  animation: kv-enter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-radiate 2.6s ease-in-out 0.7s infinite;
+}
+.kv-euphoric::before { background: radial-gradient(ellipse at center, rgba(255,200,60,0.28) 0%, transparent 65%); }
+@keyframes kv-radiate {
+  0%, 100% { filter: drop-shadow(0 0 16px rgba(255, 200, 60, 0.45)); }
+  50%      { filter: drop-shadow(0 0 42px rgba(255, 220, 100, 0.95)); }
+}
+
+/* HIGH ENERGY — electric red-orange, strobe + shake */
+.kv-high-energy {
+  background: linear-gradient(135deg, #FF3D2E 0%, #FF9D2E 50%, #FFD93D 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(255, 90, 46, 0.6));
+}
+.kv-high-energy.kv-hero, .kv-high-energy.kv-large {
+  animation: kv-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-energy 0.55s steps(2) 0.5s infinite;
+}
+.kv-high-energy::before { background: radial-gradient(ellipse at center, rgba(255,90,46,0.3) 0%, transparent 60%); }
+@keyframes kv-energy {
+  0%   { transform: translate(0, 0) scale(1); filter: drop-shadow(0 0 14px rgba(255, 90, 46, 0.5)); }
+  25%  { transform: translate(-1px, 0.5px) scale(1.01); }
+  50%  { transform: translate(1px, -0.5px) scale(1); filter: drop-shadow(0 0 26px rgba(255, 217, 61, 0.8)); }
+  75%  { transform: translate(-0.5px, 1px) scale(1.01); }
+  100% { transform: translate(0, 0) scale(1); filter: drop-shadow(0 0 14px rgba(255, 90, 46, 0.5)); }
+}
+
+/* CHILL — ice blue → frost white, slow drift */
+.kv-chill {
+  background: linear-gradient(135deg, #B5E8FF 0%, #FFFFFF 50%, #7AC9FF 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(180, 220, 255, 0.5));
+}
+.kv-chill.kv-hero, .kv-chill.kv-large {
+  animation: kv-enter 0.9s ease-out forwards,
+             kv-drift 4.5s ease-in-out 0.9s infinite;
+}
+.kv-chill::before { background: radial-gradient(ellipse at center, rgba(150,200,255,0.25) 0%, transparent 65%); }
+@keyframes kv-drift {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 12px rgba(180,220,255,0.5)); }
+  50%      { transform: translateY(6px); filter: drop-shadow(0 0 22px rgba(180,220,255,0.85)); }
+}
+
+/* EMOTIONAL — deep blue → violet, slow pulse */
+.kv-emotional {
+  background: linear-gradient(135deg, #4B7BE5 0%, #845EC2 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(100, 110, 220, 0.55));
+}
+.kv-emotional.kv-hero, .kv-emotional.kv-large {
+  animation: kv-enter 0.9s ease-out forwards,
+             kv-tear 3.4s ease-in-out 0.9s infinite;
+}
+.kv-emotional::before { background: radial-gradient(ellipse at center, rgba(100,110,220,0.28) 0%, transparent 65%); }
+@keyframes kv-tear {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(100,110,220,0.5)); }
+  50%      { transform: scale(1.02); filter: drop-shadow(0 4px 32px rgba(132, 94, 194, 0.85)); }
+}
+
+/* INTIMATE — warm amber, candle-flicker */
+.kv-intimate {
+  background: linear-gradient(135deg, #FFB870 0%, #FF8A4C 50%, #C7522B 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+.kv-intimate.kv-hero, .kv-intimate.kv-large {
+  animation: kv-enter 0.9s ease-out forwards,
+             kv-flicker 0.18s steps(2, end) 0.9s infinite;
+}
+.kv-intimate::before { background: radial-gradient(ellipse at center, rgba(255,138,76,0.32) 0%, transparent 60%); }
+@keyframes kv-flicker {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(255,138,76,0.7)) brightness(1); }
+  50%      { filter: drop-shadow(0 0 14px rgba(255,138,76,0.55)) brightness(1.08); }
+}
+
+/* NOSTALGIC — sepia, VHS scan-line jitter */
+.kv-nostalgic {
+  background: linear-gradient(135deg, #C4956C 0%, #F4E1C1 50%, #8B6F47 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 8px rgba(180, 140, 90, 0.5));
+}
+.kv-nostalgic.kv-hero, .kv-nostalgic.kv-large {
+  animation: kv-enter 1s ease-out forwards,
+             kv-vhs 4s steps(40) 1s infinite;
+}
+.kv-nostalgic::before {
+  background:
+    radial-gradient(ellipse at center, rgba(180,140,90,0.2) 0%, transparent 65%),
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,0.06) 2px 3px);
+}
+@keyframes kv-vhs {
+  0%, 100% { transform: translateX(0); }
+  10%      { transform: translateX(-1px); }
+  20%      { transform: translateX(1px); }
+  30%      { transform: translateX(0); }
+}
+
+/* GROOVY — magenta, mirror-ball pulse */
+.kv-groovy {
+  background: linear-gradient(135deg, #FF4FBE 0%, #00D2FC 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(255, 79, 190, 0.55));
+}
+.kv-groovy.kv-hero, .kv-groovy.kv-large {
+  animation: kv-enter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-bounce 0.6s ease-in-out 0.7s infinite;
+}
+.kv-groovy::before { background: radial-gradient(ellipse at center, rgba(255,79,190,0.3) 0%, rgba(0,210,252,0.18) 50%, transparent 70%); }
+@keyframes kv-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-4px) scale(1.015); filter: drop-shadow(0 6px 22px rgba(0, 210, 252, 0.6)); }
+}
+
+/* ROWDY — fire red→orange, aggressive shake + chromatic */
+.kv-rowdy {
+  background: linear-gradient(135deg, #FF1500 0%, #FF6A00 50%, #FFB800 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(255, 60, 0, 0.65));
+}
+.kv-rowdy.kv-hero, .kv-rowdy.kv-large {
+  animation: kv-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-shake 0.42s steps(3) 0.5s infinite;
+}
+.kv-rowdy::before { background: radial-gradient(ellipse at center, rgba(255,60,0,0.36) 0%, transparent 60%); }
+@keyframes kv-shake {
+  0%, 100% { transform: translate(0, 0); text-shadow: 2px 0 0 rgba(255,80,0,0.4), -2px 0 0 rgba(255,200,0,0.4); }
+  33%      { transform: translate(-1.5px, 1px); }
+  66%      { transform: translate(1.5px, -1px); }
+}
+
+/* DREAMY — pastel cloud, slow blur cycle */
+.kv-dreamy {
+  background: linear-gradient(135deg, #E5D4FF 0%, #FFFFFF 50%, #B8D4FF 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+.kv-dreamy.kv-hero, .kv-dreamy.kv-large {
+  animation: kv-enter 1.1s ease-out forwards,
+             kv-dream 4.5s ease-in-out 1.1s infinite;
+}
+.kv-dreamy::before { background: radial-gradient(ellipse at center, rgba(229,212,255,0.4) 0%, transparent 65%); }
+@keyframes kv-dream {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(180,200,255,0.4)) blur(0px); transform: translateY(0); }
+  50%      { filter: drop-shadow(0 0 28px rgba(229,212,255,0.85)) blur(0.8px); transform: translateY(-4px); }
+}
+
+/* TRANSCENDENT — opal multi-hue, light rays */
+.kv-transcendent {
+  background: linear-gradient(135deg, #D65DB1 0%, #845EC2 25%, #4B7BE5 50%, #00C9A7 75%, #FFC75F 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(214, 93, 177, 0.5));
+}
+.kv-transcendent.kv-hero, .kv-transcendent.kv-large {
+  animation: kv-enter 1s ease-out forwards,
+             kv-rays 5s linear 1s infinite;
+  background-size: 200% 200%;
+}
+.kv-transcendent::before {
+  background: conic-gradient(from 0deg, rgba(214,93,177,0.18), rgba(75,123,229,0.18), rgba(0,201,167,0.18), rgba(255,199,95,0.18), rgba(214,93,177,0.18));
+  animation: kv-rays-rotate 8s linear infinite;
+}
+@keyframes kv-rays {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes kv-rays-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* MIND-BLOWING — electric magenta, expand→contract burst */
+.kv-mind-blowing {
+  background: linear-gradient(135deg, #FF00C8 0%, #FFC75F 50%, #FF00C8 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(255, 0, 200, 0.6));
+}
+.kv-mind-blowing.kv-hero, .kv-mind-blowing.kv-large {
+  animation: kv-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-burst 1.6s ease-in-out 0.5s infinite;
+}
+.kv-mind-blowing::before { background: radial-gradient(ellipse at center, rgba(255,0,200,0.35) 0%, transparent 60%); }
+@keyframes kv-burst {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 18px rgba(255,0,200,0.55)); }
+  50%      { transform: scale(1.06); filter: drop-shadow(0 0 38px rgba(255,199,95,0.95)); }
+}
+
+/* SPIRITUAL — celestial blue→gold, slow halo rotation */
+.kv-spiritual {
+  background: linear-gradient(135deg, #7EC8E3 0%, #FFFFFF 50%, #FFD700 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(126, 200, 227, 0.55));
+}
+.kv-spiritual.kv-hero, .kv-spiritual.kv-large {
+  animation: kv-enter 1.2s ease-out forwards;
+}
+.kv-spiritual::before {
+  background: conic-gradient(from 0deg, rgba(255,215,0,0.3), rgba(126,200,227,0.3), rgba(255,255,255,0.3), rgba(255,215,0,0.3));
+  animation: kv-rays-rotate 12s linear infinite;
+}
+
+/* LEGENDARY — royal gold→deep red, slow weight-shift */
+.kv-legendary {
+  background: linear-gradient(135deg, #FFD700 0%, #E8573A 50%, #8B0000 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(232, 87, 58, 0.6));
+}
+.kv-legendary.kv-hero, .kv-legendary.kv-large {
+  animation: kv-enter 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-crown 3.2s ease-in-out 0.9s infinite;
+}
+.kv-legendary::before { background: radial-gradient(ellipse at center, rgba(255,215,0,0.32) 0%, rgba(232,87,58,0.18) 50%, transparent 70%); }
+@keyframes kv-crown {
+  0%, 100% { filter: drop-shadow(0 0 16px rgba(255,215,0,0.55)); transform: scale(1); }
+  50%      { filter: drop-shadow(0 0 40px rgba(255,215,0,0.95)); transform: scale(1.015); }
+}
+
+/* RAW — matte charcoal→red, glitch frames */
+.kv-raw {
+  background: linear-gradient(135deg, #2A2A2A 0%, #C34A36 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-stroke: 0.5px rgba(195, 74, 54, 0.4);
+}
+.kv-raw.kv-hero, .kv-raw.kv-large {
+  animation: kv-enter 0.6s ease-out forwards,
+             kv-glitch 2.8s steps(20) 0.6s infinite;
+}
+.kv-raw::before { background: radial-gradient(ellipse at center, rgba(195,74,54,0.22) 0%, transparent 65%); }
+@keyframes kv-glitch {
+  0%, 100% { transform: translate(0, 0); text-shadow: none; }
+  10%      { transform: translate(-1px, 0); text-shadow: 1.5px 0 rgba(195,74,54,0.5); }
+  12%      { transform: translate(0, 0); text-shadow: none; }
+  60%      { transform: translate(1px, 0); text-shadow: -1.5px 0 rgba(0,200,200,0.4); }
+  62%      { transform: translate(0, 0); text-shadow: none; }
+}
+
+/* CHAOTIC — rainbow scramble, rotation jitter */
+.kv-chaotic {
+  background: linear-gradient(135deg, #FF4757, #FFC75F, #00D2FC, #845EC2, #FF4757);
+  -webkit-background-clip: text; background-clip: text;
+  background-size: 400% 100%;
+  filter: drop-shadow(0 0 14px rgba(255, 71, 87, 0.55));
+}
+.kv-chaotic.kv-hero, .kv-chaotic.kv-large {
+  animation: kv-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-chaos-shift 2s linear 0.5s infinite,
+             kv-chaos-rot 1.4s ease-in-out 0.5s infinite;
+}
+.kv-chaotic::before { background: radial-gradient(ellipse at center, rgba(255,71,87,0.28) 0%, transparent 70%); }
+@keyframes kv-chaos-shift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+@keyframes kv-chaos-rot {
+  0%, 100% { transform: rotate(0deg) translate(0, 0); }
+  25%      { transform: rotate(-1.2deg) translate(-2px, 0); }
+  75%      { transform: rotate(1.2deg) translate(2px, 0); }
+}
+
+/* ===== Personality archetypes ===== */
+
+/* INDIE NIGHT OWL — midnight purple, dual eye-glow pulse */
+.kv-indie-night-owl {
+  background: linear-gradient(135deg, #6B4FBB 0%, #C9B6FF 50%, #4B2E9C 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(107, 79, 187, 0.6));
+}
+.kv-indie-night-owl.kv-hero, .kv-indie-night-owl.kv-large {
+  animation: kv-enter 1s ease-out forwards,
+             kv-owl 3s ease-in-out 1s infinite;
+}
+.kv-indie-night-owl::before {
+  background: radial-gradient(circle at 32% 50%, rgba(255,220,140,0.32) 0%, transparent 14%),
+              radial-gradient(circle at 68% 50%, rgba(255,220,140,0.32) 0%, transparent 14%),
+              radial-gradient(ellipse at center, rgba(107,79,187,0.28) 0%, transparent 65%);
+}
+@keyframes kv-owl {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(107,79,187,0.55)); }
+  50%      { filter: drop-shadow(0 0 36px rgba(201,182,255,0.85)); }
+}
+
+/* BASS DEVOTEE — electric blue, low-frequency thump */
+.kv-bass-devotee {
+  background: linear-gradient(135deg, #00D2FC 0%, #4B7BE5 50%, #1A40C0 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(0, 210, 252, 0.55));
+}
+.kv-bass-devotee.kv-hero, .kv-bass-devotee.kv-large {
+  animation: kv-enter 0.6s ease-out forwards,
+             kv-thump 0.85s ease-in-out 0.6s infinite;
+}
+.kv-bass-devotee::before { background: radial-gradient(ellipse at center, rgba(0,210,252,0.32) 0%, transparent 60%); }
+@keyframes kv-thump {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(0,210,252,0.5)); }
+  10%      { transform: scale(1.04); filter: drop-shadow(0 0 36px rgba(0,210,252,0.95)); }
+  30%      { transform: scale(1); filter: drop-shadow(0 0 18px rgba(0,210,252,0.6)); }
+}
+
+/* ALT-ROCK PILGRIM — orange, sway + distortion */
+.kv-alt-rock-pilgrim {
+  background: linear-gradient(135deg, #FF8A4C 0%, #FFD93D 50%, #FF5733 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(255, 138, 76, 0.55));
+}
+.kv-alt-rock-pilgrim.kv-hero, .kv-alt-rock-pilgrim.kv-large {
+  animation: kv-enter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-sway 4s ease-in-out 0.7s infinite;
+}
+.kv-alt-rock-pilgrim::before { background: radial-gradient(ellipse at center, rgba(255,138,76,0.3) 0%, transparent 65%); }
+@keyframes kv-sway {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-1.2deg); }
+}
+
+/* HIP-HOP CONNOISSEUR — gold, sharp scale-stamp + mic-drop */
+.kv-hip-hop-connoisseur {
+  background: linear-gradient(135deg, #FFD700 0%, #FFFAF0 50%, #B8860B 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.6));
+}
+.kv-hip-hop-connoisseur.kv-hero, .kv-hip-hop-connoisseur.kv-large {
+  animation: kv-stamp 0.6s cubic-bezier(0.34, 1.8, 0.64, 1) forwards,
+             kv-radiate 3.4s ease-in-out 0.6s infinite;
+}
+.kv-hip-hop-connoisseur::before { background: radial-gradient(ellipse at center, rgba(255,215,0,0.35) 0%, transparent 60%); }
+@keyframes kv-stamp {
+  0%   { opacity: 0; transform: scale(1.3); }
+  60%  { opacity: 1; transform: scale(0.94); }
+  80%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* SOUL SEARCHER — deep red, warm radial bloom */
+.kv-soul-searcher {
+  background: linear-gradient(135deg, #C7263F 0%, #FF6B6B 50%, #8B0028 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(199, 38, 63, 0.55));
+}
+.kv-soul-searcher.kv-hero, .kv-soul-searcher.kv-large {
+  animation: kv-enter 1s ease-out forwards,
+             kv-bloom 4s ease-in-out 1s infinite;
+}
+.kv-soul-searcher::before { background: radial-gradient(ellipse at center, rgba(199,38,63,0.32) 0%, transparent 65%); }
+@keyframes kv-bloom {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(199,38,63,0.5)); }
+  50%      { filter: drop-shadow(0 0 42px rgba(255,107,107,0.9)); }
+}
+
+/* POP VISIONARY — magenta, mirror-ball glints */
+.kv-pop-visionary {
+  background: linear-gradient(135deg, #FF4FBE 0%, #FFC75F 50%, #00D2FC 100%);
+  -webkit-background-clip: text; background-clip: text;
+  background-size: 200% 200%;
+  filter: drop-shadow(0 0 16px rgba(255, 79, 190, 0.55));
+}
+.kv-pop-visionary.kv-hero, .kv-pop-visionary.kv-large {
+  animation: kv-enter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-glints 3s linear 0.7s infinite;
+}
+.kv-pop-visionary::before { background: radial-gradient(ellipse at center, rgba(255,79,190,0.3) 0%, transparent 65%); }
+@keyframes kv-glints {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* ROCK PURIST — red, strong scale-stamp + stadium glow */
+.kv-rock-purist {
+  background: linear-gradient(135deg, #FF1500 0%, #FF6A00 50%, #C7263F 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(255, 21, 0, 0.6));
+}
+.kv-rock-purist.kv-hero, .kv-rock-purist.kv-large {
+  animation: kv-stamp 0.6s cubic-bezier(0.34, 1.8, 0.64, 1) forwards,
+             kv-stadium 3s ease-in-out 0.6s infinite;
+}
+.kv-rock-purist::before { background: radial-gradient(ellipse at center, rgba(255,21,0,0.35) 0%, transparent 60%); }
+@keyframes kv-stadium {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(255,21,0,0.55)); }
+  50%      { filter: drop-shadow(0 0 50px rgba(255,106,0,0.95)); }
+}
+
+/* JAZZ WANDERER — smoky teal, slow drift with smoke */
+.kv-jazz-wanderer {
+  background: linear-gradient(135deg, #00A88C 0%, #B8D4D4 50%, #1A4D45 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(0, 168, 140, 0.5));
+}
+.kv-jazz-wanderer.kv-hero, .kv-jazz-wanderer.kv-large {
+  animation: kv-enter 1.2s ease-out forwards,
+             kv-smoke 5s ease-in-out 1.2s infinite;
+}
+.kv-jazz-wanderer::before { background: radial-gradient(ellipse at center, rgba(0,168,140,0.28) 0%, transparent 70%); }
+@keyframes kv-smoke {
+  0%, 100% { transform: translate(0, 0); filter: drop-shadow(0 0 14px rgba(0,168,140,0.4)) blur(0); }
+  50%      { transform: translate(2px, -3px); filter: drop-shadow(0 0 32px rgba(184,212,212,0.8)) blur(0.4px); }
+}
+
+/* FOLK POET — warm cream, gentle handwriting cadence */
+.kv-folk-poet {
+  background: linear-gradient(135deg, #D4A574 0%, #FFF4E6 50%, #B8956C 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(212, 165, 116, 0.5));
+}
+.kv-folk-poet.kv-hero, .kv-folk-poet.kv-large {
+  animation: kv-enter 1.4s ease-out forwards,
+             kv-breathe 5s ease-in-out 1.4s infinite;
+}
+.kv-folk-poet::before { background: radial-gradient(ellipse at center, rgba(212,165,116,0.28) 0%, transparent 65%); }
+@keyframes kv-breathe {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(212,165,116,0.45)); }
+  50%      { transform: scale(1.012); filter: drop-shadow(0 0 24px rgba(255,244,230,0.8)); }
+}
+
+/* METAL WARRIOR — blood red, aggressive stamp + fire halo */
+.kv-metal-warrior {
+  background: linear-gradient(135deg, #8B0000 0%, #FF1500 50%, #2A0000 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(139, 0, 0, 0.65));
+  -webkit-text-stroke: 0.5px rgba(255, 21, 0, 0.4);
+}
+.kv-metal-warrior.kv-hero, .kv-metal-warrior.kv-large {
+  animation: kv-stamp 0.45s cubic-bezier(0.34, 1.8, 0.64, 1) forwards,
+             kv-fire 0.6s steps(2) 0.45s infinite;
+}
+.kv-metal-warrior::before { background: radial-gradient(ellipse at center, rgba(255,21,0,0.4) 0%, transparent 60%); }
+@keyframes kv-fire {
+  0%, 100% { filter: drop-shadow(0 0 18px rgba(139,0,0,0.6)) brightness(1); }
+  50%      { filter: drop-shadow(0 0 32px rgba(255,21,0,0.95)) brightness(1.1); }
+}
+
+/* COUNTRY STORYTELLER — amber sunset bloom */
+.kv-country-storyteller {
+  background: linear-gradient(135deg, #FFB870 0%, #FF8A4C 40%, #C7522B 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(255, 138, 76, 0.55));
+}
+.kv-country-storyteller.kv-hero, .kv-country-storyteller.kv-large {
+  animation: kv-enter 1s ease-out forwards,
+             kv-bloom 4.5s ease-in-out 1s infinite;
+}
+.kv-country-storyteller::before { background: radial-gradient(ellipse at center, rgba(255,138,76,0.3) 0%, transparent 65%); }
+
+/* CLASSICAL SOUL — ivory, precise scale-in, soft halo */
+.kv-classical-soul {
+  background: linear-gradient(135deg, #F4E1C1 0%, #FFFFFF 50%, #C4956C 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(244, 225, 193, 0.55));
+}
+.kv-classical-soul.kv-hero, .kv-classical-soul.kv-large {
+  animation: kv-enter 1.3s ease-out forwards,
+             kv-breathe 5.5s ease-in-out 1.3s infinite;
+}
+.kv-classical-soul::before { background: radial-gradient(ellipse at center, rgba(244,225,193,0.32) 0%, transparent 70%); }
+
+/* PUNK SPIRIT — lime, rough scale-in with chromatic offset */
+.kv-punk-spirit {
+  background: linear-gradient(135deg, #C4E538 0%, #FFD93D 50%, #00C9A7 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 14px rgba(196, 229, 56, 0.55));
+}
+.kv-punk-spirit.kv-hero, .kv-punk-spirit.kv-large {
+  animation: kv-enter 0.45s steps(3) forwards,
+             kv-glitch 2.4s steps(20) 0.45s infinite;
+}
+.kv-punk-spirit::before { background: radial-gradient(ellipse at center, rgba(196,229,56,0.3) 0%, transparent 60%); }
+
+/* MUSIC EXPLORER (default) — melo orange, warm scale-in */
+.kv-music-explorer {
+  background: linear-gradient(135deg, #FF8A4C 0%, #FFD93D 50%, #E8573A 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 16px rgba(232, 87, 58, 0.55));
+}
+.kv-music-explorer.kv-hero, .kv-music-explorer.kv-large {
+  animation: kv-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             kv-radiate 3.2s ease-in-out 0.8s infinite;
+}
+.kv-music-explorer::before { background: radial-gradient(ellipse at center, rgba(255,138,76,0.3) 0%, transparent 65%); }
+
+/* On low-power devices / reduced-motion preference, kill the
+   continuous animations and keep just the enter motion. */
+@media (prefers-reduced-motion: reduce) {
+  .kv,
+  .kv.kv-hero,
+  .kv.kv-large,
+  .kv.kv-medium,
+  .kv.kv-small {
+    animation: kv-enter 0.6s ease-out forwards !important;
+  }
+  .kv::before { animation: none !important; }
+}

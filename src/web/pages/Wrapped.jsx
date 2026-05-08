@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, VIBES, isAttended } from '../store';
 import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
+import KineticVibe from '../components/KineticVibe';
 
 // Each slide picks a tonal overlay so the artist photo behind it stays
 // readable but the slide still has its own personality.
@@ -36,12 +37,19 @@ function CountUp({ end, duration = 1500, prefix = '', suffix = '', decimals = 0 
   return <span>{prefix}{display}{suffix}</span>;
 }
 
+// Returns { archetype, suffix, sentence } so the Personality slide can
+// render the archetype name as a kinetic typography moment (big +
+// motion-rich) with the suffix as a subtitle below. The full sentence
+// is preserved for share cards / accessibility.
 function generatePersonality(topGenre, topVibe) {
+  // Archetype names — stripped of leading article so they render
+  // cleanly in display type. KineticVibe's slug derivation
+  // (lowercase + hyphens) maps these to their CSS classes.
   const g = {
-    Indie: 'an Indie Night Owl', Electronic: 'a Bass Devotee', Alternative: 'an Alt-Rock Pilgrim',
-    'Hip-Hop': 'a Hip-Hop Connoisseur', 'R&B': 'a Soul Searcher', Pop: 'a Pop Visionary',
-    Rock: 'a Rock Purist', Jazz: 'a Jazz Wanderer', Folk: 'a Folk Poet', Metal: 'a Metal Warrior',
-    Country: 'a Country Storyteller', Classical: 'a Classical Soul', Punk: 'a Punk Spirit',
+    Indie: 'Indie Night Owl', Electronic: 'Bass Devotee', Alternative: 'Alt-Rock Pilgrim',
+    'Hip-Hop': 'Hip-Hop Connoisseur', 'R&B': 'Soul Searcher', Pop: 'Pop Visionary',
+    Rock: 'Rock Purist', Jazz: 'Jazz Wanderer', Folk: 'Folk Poet', Metal: 'Metal Warrior',
+    Country: 'Country Storyteller', Classical: 'Classical Soul', Punk: 'Punk Spirit',
   };
   const v = {
     Intimate: 'who lives for small rooms', 'High Energy': 'who thrives in the chaos',
@@ -52,17 +60,21 @@ function generatePersonality(topGenre, topVibe) {
     Chill: 'floating through the vibes', 'Mind-Blowing': 'always chasing the next high',
     Legendary: 'witnessing history', Chaotic: 'who loves the beautiful chaos',
   };
-  return `You're ${g[topGenre] || 'a Music Explorer'} ${v[topVibe] || 'who lives for the live experience'}`;
+  // Vowel-aware article for the share-out sentence ("an Indie..." vs
+  // "a Bass...") so the prose still reads correctly when shared.
+  const archetype = g[topGenre] || 'Music Explorer';
+  const suffix = v[topVibe] || 'who lives for the live experience';
+  const article = /^[aeiou]/i.test(archetype) ? 'an' : 'a';
+  return {
+    archetype,
+    suffix,
+    sentence: `You're ${article} ${archetype} ${suffix}`,
+  };
 }
 
-function getVibeEmoji(name) {
-  const map = {
-    Euphoric: '🌟', Intimate: '🕯️', 'High Energy': '⚡', Chill: '🧊', Emotional: '💧',
-    'Mind-Blowing': '🤯', Rowdy: '🔥', Transcendent: '✨', Nostalgic: '🥀', Groovy: '🪩',
-    Raw: '🎸', Dreamy: '☁️', Chaotic: '🌪️', Spiritual: '🙏', Legendary: '👑',
-  };
-  return map[name] || '🎵';
-}
+// (getVibeEmoji removed in v1.0.4 — vibes now render as kinetic
+// typography via <KineticVibe />. Per
+// docs/initiatives/2026-05-07-v1-0-4-wrapped-juice.md.)
 
 // Reusable slide background: full-bleed image with Ken-Burns zoom, plus
 // a tonal gradient overlay. Falls back to artist gradient if no image.
@@ -322,33 +334,44 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 6 — Vibes */}
+        {/* Slide 6 — Vibes (kinetic typography per vibe). Top vibe is
+            the hero moment with full motion treatment; runners-up
+            stack below at smaller scale. v1.0.4. */}
         <div className={`wrapped-slide ${slide === 5 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[5]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR VIBE</p>
-            <div className="wrapped-vibes-grid">
-              {data.topVibes.map(([name], i) => (
-                <div
-                  key={name}
-                  className="wrapped-vibe-item wrapped-stagger"
-                  style={{ animationDelay: `${0.25 + i * 0.08}s` }}
-                >
-                  <div className="wrapped-vibe-emoji">{getVibeEmoji(name)}</div>
-                  <div className="wrapped-vibe-name">{name}</div>
+            <div className="wrapped-vibes-stack">
+              {data.topVibes[0] && (
+                <KineticVibe name={data.topVibes[0][0]} size="hero" delay={0.25} />
+              )}
+              {data.topVibes.length > 1 && (
+                <div className="wrapped-vibes-secondary">
+                  {data.topVibes.slice(1, 4).map(([name], i) => (
+                    <KineticVibe
+                      key={name}
+                      name={name}
+                      size={i === 0 ? 'medium' : 'small'}
+                      delay={0.55 + i * 0.18}
+                    />
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
             <p
               className="wrapped-subtitle wrapped-stagger"
-              style={{ marginTop: 24, animationDelay: '0.85s' }}
+              style={{ marginTop: 28, animationDelay: '1.15s' }}
             >
               You chase the {data.topVibe.toLowerCase()} shows
             </p>
           </div>
         </div>
 
-        {/* Slide 7 — Personality (collage of artist photos) */}
+        {/* Slide 7 — Personality. Archetype name renders as a kinetic
+            typography moment with archetype-specific motion (e.g.
+            INDIE NIGHT OWL gets midnight purple + dual-eye-glow
+            pulse). Suffix renders as a subtitle below for the prose
+            half of the personality. v1.0.4. */}
         <div className={`wrapped-slide ${slide === 6 ? 'is-active' : ''}`}>
           <div className="wrapped-bg-collage">
             {collageImgs.length > 0
@@ -360,10 +383,15 @@ export default function Wrapped({ year, onClose }) {
           <div className="wrapped-bg-overlay" style={{ background: SLIDE_OVERLAYS[6] }} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR MUSIC PERSONALITY</p>
-            <div className="wrapped-emoji wrapped-stagger" style={{ animationDelay: '0.25s' }}>🎭</div>
-            <h1 className="wrapped-personality wrapped-stagger" style={{ animationDelay: '0.45s' }}>
-              {data.personality}
-            </h1>
+            <p className="wrapped-personality-prefix wrapped-stagger" style={{ animationDelay: '0.25s' }}>
+              You're
+            </p>
+            <div className="wrapped-personality-stack">
+              <KineticVibe name={data.personality.archetype} size="hero" delay={0.4} />
+            </div>
+            <p className="wrapped-personality-suffix wrapped-stagger" style={{ animationDelay: '1.0s' }}>
+              {data.personality.suffix}
+            </p>
           </div>
         </div>
 
@@ -403,7 +431,7 @@ export default function Wrapped({ year, onClose }) {
               )}
             </div>
             <p className="wrapped-summary-personality wrapped-stagger" style={{ animationDelay: '0.85s' }}>
-              {data.personality}
+              {data.personality.sentence}
             </p>
             <p className="wrapped-summary-footer wrapped-stagger" style={{ animationDelay: '1s' }}>
               Share your year in music
