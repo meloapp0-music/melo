@@ -31,6 +31,7 @@ function fromRow(row) {
     photos: row.photos || [],
     festival: row.festival || '',
     venueUrl: row.venue_url || '',
+    battleWins: row.battle_wins ?? 0,
     status,
     wishlist: status === 'wishlist',
     visibility: row.visibility || null,
@@ -67,6 +68,8 @@ function toRow(show, userId) {
   // existing — this gate is purely about not naming a column we
   // don't need to set.
   if (show.venueUrl) row.venue_url = show.venueUrl;
+  // Same defense for `battle_wins` (migration 0007).
+  if (show.battleWins) row.battle_wins = show.battleWins;
   return row;
 }
 
@@ -111,6 +114,7 @@ export async function updateShow(id, updates, userId) {
     photos: 'photos',
     festival: 'festival',
     venueUrl: 'venue_url',
+    battleWins: 'battle_wins',
     status: 'status',
     wishlist: 'wishlist',
     visibility: 'visibility',

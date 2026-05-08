@@ -130,6 +130,26 @@ Each phase ships to `main` independently so progress is visible.
   refactored: archetype renders kinetic, suffix renders as italic
   subtitle, "You're" as a small prefix. `generatePersonality`
   refactored to return `{archetype, suffix, sentence}`.
+- 2026-05-07: **Phase 3 — Compare-battle tiebreaker.** User asked
+  "when you compare shows, it should automatically take the battles
+  into consideration and rank shows... it's hard to know which show
+  is the top ranked show when 5 shows are 10/10." Implemented:
+  - Migration `0007_battle_wins.sql` adds `battle_wins int not null
+    default 0` to `shows`. db/shows.js maps battleWins ↔ battle_wins.
+    toRow gates inclusion (defense against missing migration).
+  - ShowComparison auto-records the winner via updateShow when the
+    user picks a second show. One increment per (showA, showB) pair
+    per Compare session (recordedRef dedupe). Ties don't increment.
+    The auto-computed category winner (already shown in the UI) IS
+    the recorded winner — no extra UI needed.
+  - Wrapped's `highestRated` ranking changed from `score DESC` to
+    `score DESC, battleWins DESC, date DESC` — so a 10/10 show
+    that's won 3 battles ranks above a 10/10 show that's never
+    been compared.
+  - Wrapped's `topArtist` ranking changed from `count DESC` to
+    `count DESC, sum(artist's battleWins) DESC` — when two artists
+    are tied on show count, the artist whose shows have won more
+    head-to-heads wins.
 - 2026-05-07: **Phase 2 shipped to main.** Map chapter + polish:
   - `lib/geo.js` — extended CITY_DATA (50 curated cities with
     state/country) + `resolveCity` Nominatim fallback (1 req/sec

@@ -166,10 +166,34 @@ export default function Wrapped({ year, onClose }) {
       (s) => s.venue === topVenue && s.city === topVenueCity,
     )?.artist;
 
-    const topArtistEntry = Object.entries(artistCounts).sort((a, b) => b[1] - a[1])[0];
+    // Top artist: primary signal is show count, but when two artists
+    // are tied (e.g., 3 shows each), the user's Compare-battle wins
+    // for those artists' shows break the tie. More-battled-and-won
+    // = "this is the artist they care about most." Migration 0007.
+    const artistBattleWins = {};
+    yearShows.forEach((s) => {
+      artistBattleWins[s.artist] = (artistBattleWins[s.artist] || 0) + (s.battleWins || 0);
+    });
+    const topArtistEntry = Object.entries(artistCounts).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return (artistBattleWins[b[0]] || 0) - (artistBattleWins[a[0]] || 0);
+    })[0];
     const topVibes = Object.entries(vibeCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0];
-    const highestRated = [...yearShows].filter((s) => s.score != null).sort((a, b) => b.score - a.score)[0];
+    // Highest-rated show: primary signal is numeric score, then battle
+    // wins as a tiebreaker (so when 5 shows are 10/10, the one the
+    // user has actually picked-as-better in Compare wins), then date
+    // descending so a more recent 10/10 wins over an older 10/10
+    // when neither has been battled.
+    const highestRated = [...yearShows]
+      .filter((s) => s.score != null)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if ((b.battleWins || 0) !== (a.battleWins || 0)) {
+          return (b.battleWins || 0) - (a.battleWins || 0);
+        }
+        return new Date(b.date) - new Date(a.date);
+      })[0];
     const avgScore = yearShows.reduce((s, x) => s + (x.score || 0), 0) / yearShows.length;
     const totalSongs = yearShows.reduce((s, x) => s + (x.setlist?.length || 0), 0);
 

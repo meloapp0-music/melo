@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 
 export default function ShowComparison({ showA, onClose }) {
-  const { shows, getArtistImage } = useApp();
+  const { shows, getArtistImage, updateShow } = useApp();
   const [showB, setShowB] = useState(null);
   const [picking, setPicking] = useState(true);
+  // One battle increment per (showA, showB) pair, ever — opening
+  // Compare and going back to pick a different opponent shouldn't
+  // double-count. The set is per-component-mount; if the user
+  // navigates away and reopens, that's intentional fresh state.
+  const recordedRef = useRef(new Set());
 
   const others = shows.filter((s) => isAttended(s) && s.id !== showA.id);
 
@@ -27,6 +32,26 @@ export default function ShowComparison({ showA, onClose }) {
   const aWins = categories.filter((c) => c.a > c.b).length;
   const bWins = categories.filter((c) => c.b > c.a).length;
   const overallWinner = aWins > bWins ? 'A' : bWins > aWins ? 'B' : 'Tie';
+
+  // Auto-record the battle winner once per (showA, showB) pair per
+  // Compare session. Used by Wrapped as a tiebreaker between shows
+  // tied on numeric score. Ties don't increment. The recordedRef
+  // dedupes if the user toggles back to picking + reselects the
+  // same opponent within this same Compare session. Failures are
+  // swallowed — the visible Compare result is the source of truth
+  // even if the persisted counter misses.
+  useEffect(() => {
+    if (!showB || overallWinner === 'Tie') return;
+    const pairKey = [showA.id, showB.id].sort().join('|');
+    if (recordedRef.current.has(pairKey)) return;
+    recordedRef.current.add(pairKey);
+    const winnerShow = overallWinner === 'A' ? showA : showB;
+    const newWins = (winnerShow.battleWins || 0) + 1;
+    try { updateShow(winnerShow.id, { battleWins: newWins }); } catch {}
+    // overallWinner is derived purely from showA/showB, so listing
+    // those two is sufficient — eslint-disable for the derived value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showA?.id, showB?.id]);
 
   return (
     <div className="compare-overlay">
