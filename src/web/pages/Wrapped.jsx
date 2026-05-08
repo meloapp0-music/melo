@@ -402,7 +402,7 @@ export default function Wrapped({ year, onClose }) {
 
         {/* Slide 7 — Venue depth */}
         <div className={`wrapped-slide ${slide === 6 ? 'is-active' : ''}`}>
-          <SlideBg image={topVenueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
+          <SlideBg image={venueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>VENUE DEPTH</p>
             <div className="wrapped-count-big wrapped-stagger" style={{ animationDelay: '0.25s' }}>
@@ -475,7 +475,7 @@ export default function Wrapped({ year, onClose }) {
 
         {/* Slide 10 — Most-visited venue (only if a venue was visited 2+ times) */}
         <div className={`wrapped-slide ${slide === 9 ? 'is-active' : ''}`}>
-          <SlideBg image={topVenueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
+          <SlideBg image={venueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR HOME BASE</p>
             {mapData?.topVenueRepeat ? (
