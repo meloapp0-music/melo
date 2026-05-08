@@ -93,16 +93,33 @@ export function getArtistGradient(name) {
   return `linear-gradient(135deg, hsl(${h1}, ${s1}%, ${l1}%), hsl(${h2}, ${s1 + 10}%, ${l1 - 5}%))`;
 }
 
-// Build a Ticketmaster search URL for a logged show (Wishlist or Going)
-// so the user can either buy tickets they don't have yet, or find their
-// confirmed event details. We can't deep-link to a specific event without
-// storing its TM event id, so we just compose the strongest search query
-// the show data supports: artist + venue + city + year. Ticketmaster's
-// search is fuzzy enough that this lands the right page in 90%+ of cases.
+// Build a Ticketmaster search URL for a logged show (Wishlist or Going).
+// We can't deep-link to a specific event without storing its TM event
+// id, so we compose the search query that's most likely to surface the
+// right show on Ticketmaster.
+//
+// Earlier cuts joined [artist, venue, city, year] which produced
+// over-specified queries like "Goose Red Rocks Amphitheater Morrison
+// 2026" — Ticketmaster's search treats that as 5 required tokens and
+// returns nothing. The right shape is what a human would type:
+//   - artist + venue (with bloat suffixes like "Amphitheater" stripped)
+//   - or artist + city if venue isn't recorded
+//   - or just artist as a last resort
 export function ticketmasterSearchUrl(show) {
   if (!show || !show.artist) return 'https://www.ticketmaster.com/';
-  const yr = show.date ? String(getYear(show.date)) : '';
-  const parts = [show.artist, show.venue, show.city, yr].filter(Boolean);
+
+  // Strip the parts of a venue name that aren't search keywords on TM.
+  // "Red Rocks Amphitheater" → "Red Rocks", "MGM Grand Garden Arena" →
+  // "MGM Grand Garden", "United Center" → "United". TM's fuzzy match
+  // does the rest.
+  const cleanedVenue = (show.venue || '')
+    .replace(/\s+(amphitheat(re|er)|arena|cent(re|er)|theat(re|er)|hall|stadium|coliseum|pavilion|garden(s)?)\s*$/i, '')
+    .trim();
+
+  const parts = cleanedVenue
+    ? [show.artist, cleanedVenue]
+    : [show.artist, show.city].filter(Boolean);
+
   const q = parts.join(' ');
   return `https://www.ticketmaster.com/search?q=${encodeURIComponent(q)}`;
 }
