@@ -75,11 +75,10 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         zoomSnap: 0.25, // smooth flyTo zoom changes
       });
 
-      // Carto Voyager — dark-toned but with much more visible state +
-      // country borders than `dark_all`. Reads as "this is a real
-      // map, you traveled across these regions" instead of feeling
-      // featureless.
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      // Dark Carto tiles — matches the rest of Wrapped's dark theme
+      // and lets the orange trail pop. State borders are subtle but
+      // visible at zoom >= 5.
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 18,
       }).addTo(map);
 
@@ -88,7 +87,7 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
       staticOnly.forEach(({ g }) => {
         const icon = L.divIcon({
           className: '',
-          html: `<div style="width:10px;height:10px;background:rgba(255,138,76,0.55);border-radius:50%;border:1.5px solid rgba(255,255,255,0.85);box-shadow:0 0 6px rgba(255,138,76,0.5);"></div>`,
+          html: `<div style="width:10px;height:10px;background:rgba(255,138,76,0.55);border-radius:50%;border:1.5px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(255,138,76,0.5);"></div>`,
           iconSize: [10, 10],
           iconAnchor: [5, 5],
         });
@@ -96,9 +95,7 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
       });
 
       // Open at a regional zoom on the FIRST animated city — gives
-      // an immediate sense of place before the journey starts. We'll
-      // fly to each subsequent city in turn, then pull back to the
-      // full overview at the end.
+      // an immediate sense of place before the journey starts.
       const first = animated[0]?.g;
       if (first) {
         map.setView([first.lat, first.lng], 5.5, { animate: false });
@@ -110,61 +107,62 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
       mapInstance.current = map;
       playedRef.current = true;
 
+      // ONE persistent polyline. Earlier cut destroyed + recreated
+      // the trail every pin, which caused a visible flicker as the
+      // line briefly disappeared between frames. Now we grow a
+      // single layer via setLatLngs — no flicker, smooth draw.
       const trailLatLngs = [];
-      let trail;
+      let polyline = null;
       let runningMiles = 0;
-
-      const enableInteraction = () => {
-        // Allow the user to explore the finished map. Pinch-zoom +
-        // drag stay; double-tap zoom stays off so a stray double-tap
-        // on the slide doesn't mistakenly zoom.
-        map.dragging.enable();
-        map.touchZoom.enable();
-        map.scrollWheelZoom.enable();
+      const trailStyle = {
+        color: '#FF8A4C',
+        weight: 3.5,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
       };
 
-      const dropPin = (idx) => {
-        if (cancelled) return;
-        if (idx >= animated.length) {
-          setMilesShown(totalMiles);
-          // After the last pin, pull back to show the whole journey,
-          // then unlock interactions so the user can zoom in.
-          const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-          if (allLatLngs.length >= 2) {
-            map.flyToBounds(L.latLngBounds(allLatLngs), {
-              padding: [60, 60],
-              duration: 1.2,
-              maxZoom: 7,
-            });
-            setTimeout(enableInteraction, 1300);
-          } else {
-            enableInteraction();
+      const ensurePolyline = () => {
+        if (!polyline) polyline = L.polyline([], trailStyle).addTo(map);
+        return polyline;
+      };
+
+      // Animate a new line segment from `from` to `to` over `duration`
+      // ms, by interpolating the endpoint via requestAnimationFrame
+      // and updating the polyline in place. Resolves when the segment
+      // reaches `to`.
+      const drawSegment = (from, to, duration) => new Promise((resolve) => {
+        const startTs = performance.now();
+        const line = ensurePolyline();
+        const tick = (now) => {
+          if (cancelled) return resolve();
+          const elapsed = now - startTs;
+          const t = Math.min(elapsed / duration, 1);
+          // ease-out cubic — fast start, settles into the destination
+          const eased = 1 - Math.pow(1 - t, 3);
+          const lat = from.lat + (to.lat - from.lat) * eased;
+          const lng = from.lng + (to.lng - from.lng) * eased;
+          line.setLatLngs([...trailLatLngs, [lat, lng]]);
+          if (t < 1) requestAnimationFrame(tick);
+          else {
+            // Settle the final point cleanly into trailLatLngs so
+            // subsequent draws extend, not replace.
+            trailLatLngs.push([to.lat, to.lng]);
+            line.setLatLngs(trailLatLngs);
+            resolve();
           }
-          return;
-        }
-        const { g } = animated[idx];
+        };
+        requestAnimationFrame(tick);
+      });
 
-        // Fly the camera to the next city BEFORE dropping its pin —
-        // this is the moment the journey "happens" visually. Zoom
-        // level 6 keeps state borders + neighbor cities visible, so
-        // the cross-country leg actually reads as a cross-country
-        // leg, not just two pins on a static frame.
-        const isFirst = idx === 0;
-        const flyDuration = isFirst ? 0.4 : 0.65; // first one is instant-ish since we already setView'd
+      const flyToCity = (g, duration) => new Promise((resolve) => {
+        map.flyTo([g.lat, g.lng], 6, { duration, easeLinearity: 0.35 });
+        // Leaflet's `moveend` fires when flyTo completes.
+        const onEnd = () => { map.off('moveend', onEnd); resolve(); };
+        map.on('moveend', onEnd);
+      });
 
-        if (isFirst) {
-          // Already at the right view; just drop the pin
-          dropPinNow(idx);
-        } else {
-          map.flyTo([g.lat, g.lng], 6, { duration: flyDuration, easeLinearity: 0.4 });
-          setTimeout(() => dropPinNow(idx), flyDuration * 1000);
-        }
-      };
-
-      const dropPinNow = (idx) => {
-        if (cancelled) return;
-        const { g } = animated[idx];
-
+      const dropPinMarker = (g) => {
         const icon = L.divIcon({
           className: '',
           html: '<div class="wms-pin"></div>',
@@ -172,32 +170,72 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
           iconAnchor: [11, 11],
         });
         L.marker([g.lat, g.lng], { icon }).addTo(map);
-
-        trailLatLngs.push([g.lat, g.lng]);
-        if (trailLatLngs.length >= 2) {
-          if (trail) trail.remove();
-          trail = L.polyline(trailLatLngs, {
-            color: '#FF8A4C',
-            weight: 3,
-            opacity: 0.95,
-            dashArray: '4 6',
-            lineCap: 'round',
-          }).addTo(map);
-        }
-
-        if (idx > 0) {
-          const prev = animated[idx - 1].g;
-          runningMiles += haversineMiles(prev, g);
-          setMilesShown(Math.round(runningMiles));
-        }
-
-        // Pause briefly on this city before flying to the next so
-        // the eye registers the pin + trail before the camera moves.
-        setTimeout(() => dropPin(idx + 1), 280);
       };
 
-      // Slight delay so the map has tiles before pins start.
-      setTimeout(() => dropPin(0), 400);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      const enableInteraction = () => {
+        map.dragging.enable();
+        map.touchZoom.enable();
+        map.scrollWheelZoom.enable();
+      };
+
+      // === Main animation loop ===
+      // Pacing tuned for "feel the journey" — deliberately slow
+      // enough that you watch the trail extend across state lines.
+      // Per city: ~1.7s. For 20 cities: ~34s. Long, but the user
+      // can swipe past at any time and most will let it play
+      // because it's the centerpiece moment.
+      const FLY_DURATION = 1.0;     // seconds — Leaflet `duration` arg
+      const SEGMENT_DURATION = 800; // ms — line-draw between cities
+      const SETTLE_PAUSE = 220;     // ms — beat after pin drop
+
+      const playJourney = async () => {
+        // Pre-place pin 0 (no line to draw to it; it's the origin).
+        if (animated[0]) {
+          trailLatLngs.push([animated[0].g.lat, animated[0].g.lng]);
+          ensurePolyline().setLatLngs(trailLatLngs);
+          dropPinMarker(animated[0].g);
+          await sleep(500);
+        }
+
+        for (let i = 1; i < animated.length; i++) {
+          if (cancelled) return;
+          const from = animated[i - 1].g;
+          const to = animated[i].g;
+
+          // Fly camera + draw line in parallel. The camera follows
+          // the line as it extends — feels like "tracking a flight."
+          await Promise.all([
+            flyToCity(to, FLY_DURATION),
+            drawSegment(from, to, SEGMENT_DURATION),
+          ]);
+
+          dropPinMarker(to);
+          runningMiles += haversineMiles(from, to);
+          setMilesShown(Math.round(runningMiles));
+          await sleep(SETTLE_PAUSE);
+        }
+
+        if (cancelled) return;
+
+        // Final pull-back: show the whole journey. Then unlock pinch
+        // + drag so the user can explore.
+        setMilesShown(totalMiles);
+        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+        if (allLatLngs.length >= 2) {
+          map.flyToBounds(L.latLngBounds(allLatLngs), {
+            padding: [60, 60],
+            duration: 1.4,
+            maxZoom: 7,
+          });
+          await sleep(1500);
+        }
+        if (!cancelled) enableInteraction();
+      };
+
+      // Slight delay so tiles are loaded before the journey starts.
+      setTimeout(() => playJourney(), 450);
     });
 
     return () => {
