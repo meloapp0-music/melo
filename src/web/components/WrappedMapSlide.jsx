@@ -94,14 +94,24 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       });
 
-      // Open at a regional zoom on the FIRST animated city — gives
-      // an immediate sense of place before the journey starts.
+      // Compute the journey-wide bounds once. The camera holds at this
+      // wide regional view for the entire animation — no per-pin camera
+      // moves. Earlier cuts flew the camera to each new city in parallel
+      // with the line draw, which caused visible desync (the polyline
+      // re-projects every frame as the viewport moves while we're also
+      // animating its endpoint, so the line "jumped" around the pins).
+      // Static camera = the line stays glued to the pins.
+      const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+      const fullBounds = L.latLngBounds(allLatLngs);
+
+      // Cinematic open: start tight on the first city, then zoom out
+      // smoothly to reveal the full year. Gives the slide a "discovery"
+      // moment before the journey starts drawing.
       const first = animated[0]?.g;
       if (first) {
         map.setView([first.lat, first.lng], 5.5, { animate: false });
       } else {
-        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [56, 56], animate: false, maxZoom: 7 });
+        map.fitBounds(fullBounds, { padding: [56, 56], animate: false, maxZoom: 7 });
       }
 
       mapInstance.current = map;
@@ -155,11 +165,14 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         requestAnimationFrame(tick);
       });
 
-      const flyToCity = (g, duration) => new Promise((resolve) => {
-        map.flyTo([g.lat, g.lng], 6, { duration, easeLinearity: 0.35 });
-        // Leaflet's `moveend` fires when flyTo completes.
+      // Smooth Leaflet camera move that resolves on `moveend`. Used
+      // ONLY at the cinematic open and the final pull-back — never
+      // mid-journey, because mid-journey camera moves desync the
+      // polyline endpoint animation.
+      const flyToBoundsAsync = (bounds, opts) => new Promise((resolve) => {
         const onEnd = () => { map.off('moveend', onEnd); resolve(); };
         map.on('moveend', onEnd);
+        map.flyToBounds(bounds, opts);
       });
 
       const dropPinMarker = (g) => {
@@ -180,37 +193,56 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         map.scrollWheelZoom.enable();
       };
 
-      // === Main animation loop ===
-      // Pacing tuned for "feel the journey" — deliberately slow
-      // enough that you watch the trail extend across state lines.
-      // Per city: ~1.7s. For 20 cities: ~34s. Long, but the user
-      // can swipe past at any time and most will let it play
-      // because it's the centerpiece moment.
-      const FLY_DURATION = 1.0;     // seconds — Leaflet `duration` arg
-      const SEGMENT_DURATION = 800; // ms — line-draw between cities
-      const SETTLE_PAUSE = 220;     // ms — beat after pin drop
+      // === Main animation ===
+      //
+      // Sequence:
+      //   0. Cinematic open: zoom out from first city → full bounds
+      //   1. Drop first pin
+      //   2. For each subsequent city: animate line draw, then drop pin
+      //   3. Enable pinch+drag so user can explore the finished map
+      //
+      // Static camera through the whole journey — no flickering, no
+      // line/pin desync. Pacing is slow enough that the eye follows
+      // the line drawing across state borders.
+      const SEGMENT_DURATION = 850; // ms — line draw between cities
+      const SETTLE_PAUSE = 300;     // ms — pause after each pin
 
       const playJourney = async () => {
-        // Pre-place pin 0 (no line to draw to it; it's the origin).
+        // 0. Slow zoom-out reveal: tight on first city → wide-angle
+        // of the full journey. ~1.4s, looks like the camera "lifting
+        // off" before the trip starts.
+        if (animated.length >= 2) {
+          await sleep(450); // tiles settle in
+          await flyToBoundsAsync(fullBounds, {
+            padding: [60, 60],
+            duration: 1.4,
+            maxZoom: 7,
+          });
+          await sleep(250);
+        } else {
+          // Single-city case: just rest at the city zoom.
+          await sleep(450);
+        }
+
+        if (cancelled) return;
+
+        // 1. Drop the origin pin. No line to draw — this is the start.
         if (animated[0]) {
           trailLatLngs.push([animated[0].g.lat, animated[0].g.lng]);
           ensurePolyline().setLatLngs(trailLatLngs);
           dropPinMarker(animated[0].g);
-          await sleep(500);
+          await sleep(SETTLE_PAUSE);
         }
 
+        // 2. Sequential journey: draw line → drop pin → repeat. No
+        // camera moves mid-journey (intentional — the line stays
+        // glued to the pins).
         for (let i = 1; i < animated.length; i++) {
           if (cancelled) return;
           const from = animated[i - 1].g;
           const to = animated[i].g;
 
-          // Fly camera + draw line in parallel. The camera follows
-          // the line as it extends — feels like "tracking a flight."
-          await Promise.all([
-            flyToCity(to, FLY_DURATION),
-            drawSegment(from, to, SEGMENT_DURATION),
-          ]);
-
+          await drawSegment(from, to, SEGMENT_DURATION);
           dropPinMarker(to);
           runningMiles += haversineMiles(from, to);
           setMilesShown(Math.round(runningMiles));
@@ -218,24 +250,14 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         }
 
         if (cancelled) return;
-
-        // Final pull-back: show the whole journey. Then unlock pinch
-        // + drag so the user can explore.
         setMilesShown(totalMiles);
-        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-        if (allLatLngs.length >= 2) {
-          map.flyToBounds(L.latLngBounds(allLatLngs), {
-            padding: [60, 60],
-            duration: 1.4,
-            maxZoom: 7,
-          });
-          await sleep(1500);
-        }
-        if (!cancelled) enableInteraction();
+
+        // 3. Unlock interactions so the user can pinch in for state
+        // borders + venue cities.
+        enableInteraction();
       };
 
-      // Slight delay so tiles are loaded before the journey starts.
-      setTimeout(() => playJourney(), 450);
+      playJourney();
     });
 
     return () => {
