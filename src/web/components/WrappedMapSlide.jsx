@@ -62,51 +62,107 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
       map = L.map(mapEl.current, {
         zoomControl: false,
         attributionControl: false,
+        // All interactions disabled DURING the cinematic auto-play.
+        // We re-enable dragging + touchZoom in `enableInteraction()`
+        // after the animation finishes so the user can explore the
+        // finished map (zoom in to see state borders / venue cities).
         dragging: false,
         scrollWheelZoom: false,
         doubleClickZoom: false,
         touchZoom: false,
         keyboard: false,
         tap: false,
+        zoomSnap: 0.25, // smooth flyTo zoom changes
       });
 
-      // Dark-toned tile layer to match Wrapped's gradient overlays.
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      // Carto Voyager — dark-toned but with much more visible state +
+      // country borders than `dark_all`. Reads as "this is a real
+      // map, you traveled across these regions" instead of feeling
+      // featureless.
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 18,
       }).addTo(map);
 
-      // Static dots first (the un-animated middle stretch).
+      // Static dots first (the un-animated middle stretch — only when
+      // the user has 20+ shows and we capped the animated list).
       staticOnly.forEach(({ g }) => {
         const icon = L.divIcon({
           className: '',
-          html: `<div style="width:10px;height:10px;background:rgba(255,138,76,0.55);border-radius:50%;border:1.5px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(255,138,76,0.5);"></div>`,
+          html: `<div style="width:10px;height:10px;background:rgba(255,138,76,0.55);border-radius:50%;border:1.5px solid rgba(255,255,255,0.85);box-shadow:0 0 6px rgba(255,138,76,0.5);"></div>`,
           iconSize: [10, 10],
           iconAnchor: [5, 5],
         });
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       });
 
-      // Compute a bounds box that fits all points, then fit it.
-      const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-      const bounds = L.latLngBounds(allLatLngs);
-      map.fitBounds(bounds, { padding: [56, 56], animate: false, maxZoom: 7 });
+      // Open at a regional zoom on the FIRST animated city — gives
+      // an immediate sense of place before the journey starts. We'll
+      // fly to each subsequent city in turn, then pull back to the
+      // full overview at the end.
+      const first = animated[0]?.g;
+      if (first) {
+        map.setView([first.lat, first.lng], 5.5, { animate: false });
+      } else {
+        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [56, 56], animate: false, maxZoom: 7 });
+      }
 
       mapInstance.current = map;
       playedRef.current = true;
 
-      // Animation: drop animated pins one at a time, drawing a
-      // trail polyline between them. Schedule with timers so the
-      // browser can repaint between drops.
       const trailLatLngs = [];
       let trail;
       let runningMiles = 0;
+
+      const enableInteraction = () => {
+        // Allow the user to explore the finished map. Pinch-zoom +
+        // drag stay; double-tap zoom stays off so a stray double-tap
+        // on the slide doesn't mistakenly zoom.
+        map.dragging.enable();
+        map.touchZoom.enable();
+        map.scrollWheelZoom.enable();
+      };
 
       const dropPin = (idx) => {
         if (cancelled) return;
         if (idx >= animated.length) {
           setMilesShown(totalMiles);
+          // After the last pin, pull back to show the whole journey,
+          // then unlock interactions so the user can zoom in.
+          const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+          if (allLatLngs.length >= 2) {
+            map.flyToBounds(L.latLngBounds(allLatLngs), {
+              padding: [60, 60],
+              duration: 1.2,
+              maxZoom: 7,
+            });
+            setTimeout(enableInteraction, 1300);
+          } else {
+            enableInteraction();
+          }
           return;
         }
+        const { g } = animated[idx];
+
+        // Fly the camera to the next city BEFORE dropping its pin —
+        // this is the moment the journey "happens" visually. Zoom
+        // level 6 keeps state borders + neighbor cities visible, so
+        // the cross-country leg actually reads as a cross-country
+        // leg, not just two pins on a static frame.
+        const isFirst = idx === 0;
+        const flyDuration = isFirst ? 0.4 : 0.65; // first one is instant-ish since we already setView'd
+
+        if (isFirst) {
+          // Already at the right view; just drop the pin
+          dropPinNow(idx);
+        } else {
+          map.flyTo([g.lat, g.lng], 6, { duration: flyDuration, easeLinearity: 0.4 });
+          setTimeout(() => dropPinNow(idx), flyDuration * 1000);
+        }
+      };
+
+      const dropPinNow = (idx) => {
+        if (cancelled) return;
         const { g } = animated[idx];
 
         const icon = L.divIcon({
@@ -122,8 +178,8 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
           if (trail) trail.remove();
           trail = L.polyline(trailLatLngs, {
             color: '#FF8A4C',
-            weight: 2.5,
-            opacity: 0.9,
+            weight: 3,
+            opacity: 0.95,
             dashArray: '4 6',
             lineCap: 'round',
           }).addTo(map);
@@ -135,11 +191,13 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
           setMilesShown(Math.round(runningMiles));
         }
 
-        setTimeout(() => dropPin(idx + 1), 320);
+        // Pause briefly on this city before flying to the next so
+        // the eye registers the pin + trail before the camera moves.
+        setTimeout(() => dropPin(idx + 1), 280);
       };
 
       // Slight delay so the map has tiles before pins start.
-      setTimeout(() => dropPin(0), 350);
+      setTimeout(() => dropPin(0), 400);
     });
 
     return () => {

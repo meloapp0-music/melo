@@ -6536,13 +6536,17 @@ h4 { font-size: 17px; }
   z-index: 2;
   pointer-events: none;
   text-align: center;
-  padding: 0 24px;
+  padding: 28px 24px;
 }
 .wms-overlay-top {
-  top: max(env(safe-area-inset-top, 16px), 24px);
+  top: 0;
+  background: linear-gradient(180deg, rgba(10,15,28,0.6) 0%, rgba(10,15,28,0) 100%);
+  padding-top: max(env(safe-area-inset-top, 24px), 28px);
 }
 .wms-overlay-bottom {
-  bottom: max(env(safe-area-inset-bottom, 24px), 32px);
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(10,15,28,0.65) 0%, rgba(10,15,28,0) 100%);
+  padding-bottom: max(env(safe-area-inset-bottom, 32px), 36px);
 }
 .wms-miles {
   font-family: var(--font-heading);
