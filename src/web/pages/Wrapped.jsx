@@ -3,6 +3,14 @@ import { useApp } from '../App';
 import { getArtistGradient, formatDate, VIBES, isAttended } from '../store';
 import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
 import KineticVibe from '../components/KineticVibe';
+import WrappedMapSlide from '../components/WrappedMapSlide';
+import {
+  resolveCities,
+  totalMilesTraveled,
+  venueDepth,
+  geoSpread,
+  mostVisitedVenue,
+} from '../lib/geo';
 
 // Each slide picks a tonal overlay so the artist photo behind it stays
 // readable but the slide still has its own personality.
@@ -105,6 +113,28 @@ export default function Wrapped({ year, onClose }) {
     [shows, year]
   );
 
+  // Prior-year attended shows — used for the venue depth slide to
+  // distinguish "new this year" venues from "return visits."
+  const priorYearsShows = useMemo(() =>
+    shows.filter((s) => isAttended(s) && new Date(s.date + 'T00:00:00').getFullYear() < year),
+    [shows, year]
+  );
+
+  // Resolve city → {lat, lng, state, country} for every unique city
+  // in the year. CITY_DATA covers ~50 common cities synchronously;
+  // anything else hits Nominatim once + caches in localStorage. We
+  // do this in an effect (not useMemo) because it's async.
+  const [geo, setGeo] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    const cities = [...new Set(yearShows.map((s) => s.city).filter(Boolean))];
+    if (cities.length === 0) return;
+    resolveCities(cities).then((resolved) => {
+      if (!cancelled) setGeo(resolved);
+    });
+    return () => { cancelled = true; };
+  }, [yearShows]);
+
   const data = useMemo(() => {
     if (yearShows.length === 0) return null;
     const artistCounts = {};
@@ -185,7 +215,22 @@ export default function Wrapped({ year, onClose }) {
     };
   }, [yearShows]);
 
-  const totalSlides = 8;
+  // Map-chapter stats. Recomputed when geo resolves so the slide
+  // numbers update once Nominatim fills in any non-CITY_DATA cities.
+  const mapData = useMemo(() => {
+    if (!yearShows.length) return null;
+    const depth = venueDepth(yearShows, priorYearsShows);
+    const spread = geoSpread(yearShows, geo);
+    const miles = totalMilesTraveled(yearShows, geo);
+    const topVenueRepeat = mostVisitedVenue(yearShows);
+    return { depth, spread, miles, topVenueRepeat };
+  }, [yearShows, priorYearsShows, geo]);
+
+  // 8 original slides + 5 new map-chapter slides = 13.
+  // Order: Year, TopArtist, TopVenue, HighestRated, Cities,
+  //        [TravelIntro, VenueDepth, GeoSpread, AnimatedMap, MostVisited],
+  //        Vibes, Personality, Summary.
+  const totalSlides = 13;
 
   const handleTouchStart = (e) => {
     touchRef.current.startX = e.touches[0].clientX;
@@ -234,9 +279,16 @@ export default function Wrapped({ year, onClose }) {
         onClick={handleClick}
         style={{ transform: `translateX(-${slide * 100}%)` }}
       >
-        {/* Slide 1 — Year Intro */}
+        {/* Slide 1 — Year Intro (with confetti burst, v1.0.4 polish) */}
         <div className={`wrapped-slide ${slide === 0 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[0]} fallbackArtist={data.topArtist} />
+          {slide === 0 && (
+            <div className="wrapped-confetti" aria-hidden="true">
+              {Array.from({ length: 28 }).map((_, i) => (
+                <span key={i} className={`wc-piece wc-p${i % 7}`} style={{ '--wc-x': `${(i / 27) * 100}%`, '--wc-d': `${(i % 5) * 0.08}s` }} />
+              ))}
+            </div>
+          )}
           <div className="wrapped-slide-content">
             <div className="wrapped-year-big wrapped-stagger" style={{ animationDelay: '0.05s' }}>{year}</div>
             <h1 className="wrapped-title wrapped-stagger" style={{ animationDelay: '0.2s' }}>Your Year in Music</h1>
@@ -288,7 +340,7 @@ export default function Wrapped({ year, onClose }) {
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>HIGHEST RATED SHOW</p>
             {data.highestRated && (
               <>
-                <div className="wrapped-score-huge wrapped-stagger" style={{ animationDelay: '0.25s' }}>
+                <div className="wrapped-score-huge wrapped-score-shimmer wrapped-stagger" style={{ animationDelay: '0.25s' }}>
                   {slide === 3 && (
                     <CountUp
                       end={data.highestRated.score}
@@ -334,10 +386,136 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 6 — Vibes (kinetic typography per vibe). Top vibe is
+        {/* === MAP CHAPTER (v1.0.4, 5 slides) — between Cities and Vibes. === */}
+
+        {/* Slide 6 — Travel intro */}
+        <div className={`wrapped-slide ${slide === 5 ? 'is-active' : ''}`}>
+          <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[5]} fallbackArtist={data.topArtist} />
+          <div className="wrapped-slide-content">
+            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>NEXT CHAPTER</p>
+            <div className="wrapped-travel-intro-stack">
+              <KineticVibe name="You traveled" size="large" delay={0.3} />
+              <KineticVibe name="for music" size="hero" delay={0.7} />
+            </div>
+          </div>
+        </div>
+
+        {/* Slide 7 — Venue depth */}
+        <div className={`wrapped-slide ${slide === 6 ? 'is-active' : ''}`}>
+          <SlideBg image={topVenueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
+          <div className="wrapped-slide-content">
+            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>VENUE DEPTH</p>
+            <div className="wrapped-count-big wrapped-stagger" style={{ animationDelay: '0.25s' }}>
+              {slide === 6 && mapData && <CountUp end={mapData.depth.total} duration={1100} />}
+            </div>
+            <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.55s' }}>
+              unique venues
+            </p>
+            {mapData && (mapData.depth.newCount > 0 || mapData.depth.returnCount > 0) && (
+              <div className="wrapped-venue-split">
+                <div className="wrapped-venue-split-item wrapped-stagger" style={{ animationDelay: '0.85s' }}>
+                  <div className="wrapped-venue-split-num">{mapData.depth.newCount}</div>
+                  <div className="wrapped-venue-split-label">new this year</div>
+                </div>
+                <div className="wrapped-venue-split-divider" />
+                <div className="wrapped-venue-split-item wrapped-stagger" style={{ animationDelay: '1.05s' }}>
+                  <div className="wrapped-venue-split-num">{mapData.depth.returnCount}</div>
+                  <div className="wrapped-venue-split-label">return visits</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Slide 8 — Geographic spread */}
+        <div className={`wrapped-slide ${slide === 7 ? 'is-active' : ''}`}>
+          <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[4]} fallbackArtist={data.topArtist} />
+          <div className="wrapped-slide-content">
+            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR REACH</p>
+            {mapData && (
+              <div className="wrapped-spread-grid">
+                <div className="wrapped-spread-item wrapped-stagger" style={{ animationDelay: '0.25s' }}>
+                  <div className="wrapped-spread-num">
+                    {slide === 7 && <CountUp end={mapData.spread.cities} duration={1100} />}
+                  </div>
+                  <div className="wrapped-spread-label">{mapData.spread.cities === 1 ? 'city' : 'cities'}</div>
+                </div>
+                {mapData.spread.states > 0 && (
+                  <div className="wrapped-spread-item wrapped-stagger" style={{ animationDelay: '0.45s' }}>
+                    <div className="wrapped-spread-num">
+                      {slide === 7 && <CountUp end={mapData.spread.states} duration={1100} />}
+                    </div>
+                    <div className="wrapped-spread-label">{mapData.spread.states === 1 ? 'state' : 'states'}</div>
+                  </div>
+                )}
+                {mapData.spread.countries > 0 && (
+                  <div className="wrapped-spread-item wrapped-stagger" style={{ animationDelay: '0.65s' }}>
+                    <div className="wrapped-spread-num">
+                      {slide === 7 && <CountUp end={mapData.spread.countries} duration={1100} />}
+                    </div>
+                    <div className="wrapped-spread-label">{mapData.spread.countries === 1 ? 'country' : 'countries'}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Slide 9 — Animated map. Auto-plays once when active. */}
+        <div className={`wrapped-slide wrapped-slide-map ${slide === 8 ? 'is-active' : ''}`}>
+          {mapData && (
+            <WrappedMapSlide
+              shows={yearShows}
+              geo={geo}
+              active={slide === 8}
+              totalMiles={mapData.miles}
+            />
+          )}
+        </div>
+
+        {/* Slide 10 — Most-visited venue (only if a venue was visited 2+ times) */}
+        <div className={`wrapped-slide ${slide === 9 ? 'is-active' : ''}`}>
+          <SlideBg image={topVenueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
+          <div className="wrapped-slide-content">
+            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR HOME BASE</p>
+            {mapData?.topVenueRepeat ? (
+              <>
+                <h1 className="wrapped-title wrapped-stagger" style={{ animationDelay: '0.3s' }}>
+                  {mapData.topVenueRepeat.name}
+                </h1>
+                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.5s' }}>
+                  {mapData.topVenueRepeat.city}
+                </p>
+                <div className="wrapped-count-big wrapped-stagger" style={{ animationDelay: '0.75s', fontSize: 84 }}>
+                  {slide === 9 && <CountUp end={mapData.topVenueRepeat.count} duration={1100} />}
+                </div>
+                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '1.0s' }}>
+                  shows here this year
+                </p>
+              </>
+            ) : (
+              // Fallback when no venue was visited 2+ times — celebrate the top venue instead.
+              <>
+                <h1 className="wrapped-title wrapped-stagger" style={{ animationDelay: '0.3s' }}>
+                  {data.topVenue}
+                </h1>
+                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.5s' }}>
+                  {data.topVenueCity}
+                </p>
+                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.85s' }}>
+                  one of {mapData?.depth.total || data.cities.length} venues you graced this year
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* === END MAP CHAPTER === */}
+
+        {/* Slide 11 — Vibes (kinetic typography per vibe). Top vibe is
             the hero moment with full motion treatment; runners-up
             stack below at smaller scale. v1.0.4. */}
-        <div className={`wrapped-slide ${slide === 5 ? 'is-active' : ''}`}>
+        <div className={`wrapped-slide ${slide === 10 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[5]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR VIBE</p>
@@ -367,12 +545,12 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 7 — Personality. Archetype name renders as a kinetic
+        {/* Slide 12 — Personality. Archetype name renders as a kinetic
             typography moment with archetype-specific motion (e.g.
             INDIE NIGHT OWL gets midnight purple + dual-eye-glow
             pulse). Suffix renders as a subtitle below for the prose
             half of the personality. v1.0.4. */}
-        <div className={`wrapped-slide ${slide === 6 ? 'is-active' : ''}`}>
+        <div className={`wrapped-slide ${slide === 11 ? 'is-active' : ''}`}>
           <div className="wrapped-bg-collage">
             {collageImgs.length > 0
               ? collageImgs.slice(0, 6).map((img, i) => (
@@ -395,8 +573,8 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 8 — Summary */}
-        <div className={`wrapped-slide ${slide === 7 ? 'is-active' : ''}`}>
+        {/* Slide 13 — Summary */}
+        <div className={`wrapped-slide ${slide === 12 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[7]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content wrapped-summary">
             <div className="wrapped-summary-logo wrapped-stagger" style={{ animationDelay: '0.05s' }}>

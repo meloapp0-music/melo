@@ -3,6 +3,15 @@
 Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
+- `2026-05-07-v1-0-4-wrapped-juice.md` — in-progress · v1.0.4 ·
+  Wrapped polish + travel chapter. Replaces system emojis on the
+  Vibes + Personality slides with kinetic typography (each vibe /
+  archetype gets its own gradient + motion language). Adds 5-slide
+  Map chapter between Cities and Vibes (travel intro, venue depth
+  new-vs-return, geographic spread, animated Leaflet map with
+  miles counter, most-visited venue). Polish: confetti on year
+  intro, shimmer on highest-rated score. Built while v1.0.3 was
+  in App Review.
 - `2026-05-06-v1-0-3-venue-links.md` — in-progress · v1.0.3 release
   tracker. Now bundles BOTH venue links (Phase 1 of
   `2026-05-05-venue-and-merch-links.md`) AND email confirmation

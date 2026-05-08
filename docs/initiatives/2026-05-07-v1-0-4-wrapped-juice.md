@@ -120,7 +120,57 @@ Each phase ships to `main` independently so progress is visible.
 
 ## Changes made
 
-_Pending — work starting 2026-05-07._
+- 2026-05-07: Initiative created. Scope: kill emojis on Vibes +
+  Personality slides, add map chapter, add polish moments.
+- 2026-05-07: **Phase 1 shipped to main (`7c0a901`).** Kinetic
+  typography component (`KineticVibe.jsx`) + ~480 lines of CSS for
+  15 vibe motion treatments and 14 archetype treatments. Vibes slide
+  refactored to render top vibe at hero size with full motion;
+  runners-up stack below at smaller scales. Personality slide
+  refactored: archetype renders kinetic, suffix renders as italic
+  subtitle, "You're" as a small prefix. `generatePersonality`
+  refactored to return `{archetype, suffix, sentence}`.
+- 2026-05-07: **Phase 2 shipped to main.** Map chapter + polish:
+  - `lib/geo.js` — extended CITY_DATA (50 curated cities with
+    state/country) + `resolveCity` Nominatim fallback (1 req/sec
+    throttled, localStorage-cached forever) + helpers for haversine
+    distance, total miles, venue depth (new vs return), geo spread,
+    most-visited venue.
+  - `WrappedMapSlide.jsx` — animated Leaflet map. Drops pulsing
+    pins chronologically (CSS-pulse via `wms-pin`), draws dashed
+    polyline trail between consecutive cities, mileage counter
+    ticks up at the bottom. Caps animated cities at 20 (first 10
+    + last 10) for perf; middle cities render as quiet static dots.
+    Auto-plays once per slide-active transition.
+  - 5 new slides inserted between Cities (slide 4) and Vibes
+    (now slide 10). Indices 5–9: travel intro, venue depth,
+    geographic spread, animated map, most-visited venue (with
+    "X shows here this year" if count >= 2; falls back to a
+    different framing otherwise).
+  - `totalSlides` bumped 8 → 13. All downstream slide indices
+    re-numbered (Vibes 5→10, Personality 6→11, Summary 7→12).
+  - Polish: confetti burst on year-intro slide (28 pieces, 7
+    brand-aligned colors, 3.4s fall, staggered delays). Shimmer
+    sweep on the highest-rated score (white→gold→white moving
+    across the type, 2.4s loop).
+  - `prefers-reduced-motion` strips all continuous animations
+    (kinetic loops, pin pulse, confetti, shimmer) and keeps only
+    the entry motion.
+
+## Open questions / follow-ups
+
+- Test on iPhone 11 minimum before any production push — 5+
+  simultaneous motion keyframes + Ken-Burns photo + Leaflet map
+  could choke older hardware.
+- Consider deferring the animated-map slide if the user's
+  `yearShows.length < 4` (low-data case where one pin doesn't
+  earn the slide). Add this gate in a follow-up if real users
+  report the slide feels empty.
+- Mileage units (mi vs km) currently hardcoded to miles. Future:
+  detect via `Intl.NumberFormat`'s region or a Settings toggle.
+- Share-as-image for kinetic moments loses the motion. Future
+  v1.2+ idea: render a 3-second video clip per slide via Edge
+  Function for share-out.
 
 ## Open questions / follow-ups
 

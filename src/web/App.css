@@ -6428,3 +6428,238 @@ h4 { font-size: 17px; }
   }
   .kv::before { animation: none !important; }
 }
+
+/* ============================================================
+   Wrapped Map Chapter (v1.0.4)
+   Travel intro / venue depth / geographic spread / animated
+   map / most-visited venue. Sits between the existing Cities
+   slide and the Vibes slide.
+   ============================================================ */
+
+/* Travel intro stack */
+.wrapped-travel-intro-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+/* Venue depth — new vs return split */
+.wrapped-venue-split {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 24px;
+}
+.wrapped-venue-split-item {
+  text-align: center;
+  min-width: 110px;
+}
+.wrapped-venue-split-num {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 56px;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.wrapped-venue-split-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+}
+.wrapped-venue-split-divider {
+  width: 1px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Geographic spread — cities/states/countries grid */
+.wrapped-spread-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px 28px;
+  margin-top: 36px;
+}
+.wrapped-spread-item {
+  text-align: center;
+  min-width: 100px;
+}
+.wrapped-spread-num {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 76px;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFD0B0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.wrapped-spread-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Animated map slide — full-bleed Leaflet container with
+   overlaid label + miles counter */
+.wrapped-slide-map { padding: 0; }
+.wms-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.wms-map {
+  position: absolute;
+  inset: 0;
+  background: #0A0F1C;
+  z-index: 0;
+}
+.wms-overlay-top,
+.wms-overlay-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 24px;
+}
+.wms-overlay-top {
+  top: max(env(safe-area-inset-top, 16px), 24px);
+}
+.wms-overlay-bottom {
+  bottom: max(env(safe-area-inset-bottom, 24px), 32px);
+}
+.wms-miles {
+  font-family: var(--font-heading);
+  font-weight: 900;
+  font-size: clamp(56px, 14vw, 110px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: #fff;
+  text-shadow:
+    0 2px 18px rgba(0,0,0,0.55),
+    0 0 36px rgba(255, 138, 76, 0.45);
+}
+.wms-miles-unit {
+  font-size: 0.45em;
+  font-weight: 700;
+  opacity: 0.85;
+  margin-left: 0.15em;
+}
+.wms-caption {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+}
+
+/* Pulsing pin marker drawn via Leaflet divIcon. Two layered rings
+   so the pin glows + radiates outward. */
+.wms-pin {
+  position: relative;
+  width: 22px; height: 22px;
+}
+.wms-pin::before,
+.wms-pin::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #FFD060 0%, #FF6A00 60%, transparent 70%);
+  box-shadow: 0 0 18px rgba(255, 138, 76, 0.85);
+}
+.wms-pin::after {
+  animation: wms-pin-pulse 1.6s ease-out infinite;
+}
+@keyframes wms-pin-pulse {
+  0%   { transform: scale(0.4); opacity: 0.95; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wms-pin::after { animation: none; }
+}
+
+/* ============================================================
+   Polish moments (v1.0.4)
+   - Confetti burst on the year-intro slide
+   - Shimmer sweep on the Highest-Rated score
+   ============================================================ */
+
+/* Confetti ------------------------------------------------- */
+.wrapped-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.wc-piece {
+  position: absolute;
+  top: -20px;
+  left: var(--wc-x);
+  width: 8px; height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  transform: translateY(-30px) rotate(0deg);
+  animation: wc-fall 3.4s cubic-bezier(0.25, 0.7, 0.4, 1) forwards;
+  animation-delay: var(--wc-d);
+}
+/* 7 brand-aligned colors so the confetti reads as Melo, not random rainbow */
+.wc-p0 { background: #E8573A; } /* melo orange */
+.wc-p1 { background: #FFD93D; } /* gold */
+.wc-p2 { background: #FF8A4C; } /* peach */
+.wc-p3 { background: #845EC2; } /* purple */
+.wc-p4 { background: #4B7BE5; } /* deep blue */
+.wc-p5 { background: #00C9A7; } /* teal */
+.wc-p6 { background: #FFFFFF; } /* white */
+@keyframes wc-fall {
+  0%   { transform: translateY(-30px) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wrapped-confetti { display: none; }
+}
+
+/* Shimmer sweep across the highest-rated score ------------ */
+.wrapped-score-shimmer {
+  position: relative;
+  background: linear-gradient(
+    100deg,
+    #FFFFFF 0%,
+    #FFFFFF 35%,
+    #FFE48A 50%,
+    #FFFFFF 65%,
+    #FFFFFF 100%
+  );
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: wrapped-shimmer 2.4s ease-in-out 0.7s infinite;
+}
+@keyframes wrapped-shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: -180% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wrapped-score-shimmer { animation: none; background: #fff; -webkit-text-fill-color: #fff; color: #fff; }
+}
