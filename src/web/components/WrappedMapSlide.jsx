@@ -94,20 +94,39 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       });
 
-      // The camera starts tight on the first city and EXPANDS as the
-      // journey reaches places outside the current view. So a year of
-      // West Coast shows + one Australia trip plays as: tight on LA
-      // → all the LA-area pins drop without zoom changes → big
-      // smooth zoom-out to reveal the Pacific just before the
-      // Australia pin lands. That's the dramatic reveal — without
-      // it, the whole map shrinks to fit Australia upfront and you
-      // can barely read the home-base cluster.
+      // Compute the journey-wide bounds once upfront. This is the
+      // reveal-everything view we MIGHT need — used as the target
+      // for the single zoom-out (if a zoom is needed at all).
+      const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+      const fullBounds = L.latLngBounds(allLatLngs);
+
+      // Decide the camera strategy ONCE, upfront:
+      //
+      //  - If the full journey fits at a comfortable regional zoom
+      //    (>= 4, roughly "continental US" scale or tighter), open
+      //    at full bounds and NEVER move the camera mid-journey.
+      //    A US tour stays at one stable view the whole time.
+      //
+      //  - If the journey requires a wider zoom (an outlier far
+      //    from the home cluster — Australia from a US year, etc.),
+      //    open tight on the first city and trigger exactly ONE
+      //    big zoom-out to full bounds the first time a pin lands
+      //    outside the current view. After that one zoom, the
+      //    camera holds. So the user gets at most one mid-journey
+      //    transition, never a parade of small adjustments.
+      //
+      // Earlier cuts expanded the bounds incrementally, which felt
+      // "the map keeps changing" — too many adjustments in a row.
+      const initialZoom = map.getBoundsZoom(fullBounds, false, [60, 60]);
+      const fitsInRegionalView = initialZoom >= 4;
+
       const first = animated[0]?.g;
-      if (first) {
+      if (fitsInRegionalView) {
+        // Whole journey at once — no mid-journey camera moves planned.
+        map.fitBounds(fullBounds, { padding: [60, 60], animate: false, maxZoom: 7 });
+      } else if (first) {
+        // Start tight; the journey loop will expand once if needed.
         map.setView([first.lat, first.lng], 5.5, { animate: false });
-      } else {
-        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [56, 56], animate: false, maxZoom: 7 });
       }
 
       mapInstance.current = map;
@@ -191,50 +210,33 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
 
       // === Main animation ===
       //
-      // Per-leg sequence:
-      //   1. If the next pin falls outside the current viewport, fly
-      //      the camera to a new bounds box that includes everything
-      //      seen so far + the new pin. ~1.4s smooth zoom-out.
-      //   2. Animate the line draw from prev → new pin (camera is
-      //      now static, so the line stays glued to the pins).
-      //   3. Drop the new pin, tick the miles counter, breath, next.
-      //
-      // The "current bounds" extends progressively. For most
-      // journeys this means: home cluster stays tight, the camera
-      // only widens when you've genuinely traveled somewhere new.
-      const SEGMENT_DURATION = 850; // ms — line draw between cities
-      const SETTLE_PAUSE = 300;     // ms — pause after each pin
-      const ZOOM_DURATION = 1.4;    // s — bounds-expansion zoom
+      // Pacing tightened from the prior cut: line draw + pause are
+      // shorter so the journey doesn't drag, and at most ONE camera
+      // move happens (if any) — no incremental "map keeps changing."
+      const SEGMENT_DURATION = 650; // ms — line draw between cities
+      const SETTLE_PAUSE = 200;     // ms — pause after each pin
+      const ZOOM_DURATION = 1.0;    // s — the single zoom-out
       const PADDING = [60, 60];
 
-      // Track the visible-region box. Starts as just the first city
-      // and grows as new pins land outside it.
-      let currentBounds = null;
+      // We may need exactly one zoom-out — to reveal an outlier pin
+      // that doesn't fit in the initial tight view. Tracked so we
+      // never fire a second zoom: once we've expanded, we hold.
+      let zoomedOutAlready = fitsInRegionalView; // already wide → no zoom planned
 
       const ensurePinVisible = async (latLng) => {
-        if (!currentBounds) {
-          currentBounds = L.latLngBounds([latLng]);
-          return;
-        }
-        // Allow a small inset before triggering a zoom-out — pins
-        // that land at the very edge of the view shouldn't strictly
-        // need a camera move. `pad(-0.08)` shrinks the test box by
-        // 8% on each side, so a pin in the outer 8% margin counts
-        // as "outside" and triggers a zoom.
-        const safe = currentBounds.pad(-0.08);
-        if (safe.contains(latLng)) return;
+        if (zoomedOutAlready) return;
+        const bounds = map.getBounds();
+        // 8% inset so a pin right at the edge still counts as visible.
+        if (bounds.pad(-0.08).contains(latLng)) return;
 
-        // New pin is genuinely outside the current view — extend the
-        // bounds to include it and fly the camera. Sequential (await)
-        // means the line draw later happens against a stable map.
-        currentBounds.extend(latLng);
-        await flyToBoundsAsync(currentBounds, {
+        // Outlier detected — do the SINGLE big reveal to full bounds.
+        // After this, ride the wide view for the rest of the journey.
+        zoomedOutAlready = true;
+        await flyToBoundsAsync(fullBounds, {
           padding: PADDING,
           duration: ZOOM_DURATION,
           maxZoom: 7,
         });
-        // Small breath after the camera settles, so the eye has a
-        // moment to register the new region before the line draws.
         await sleep(180);
       };
 
