@@ -94,39 +94,53 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       });
 
-      // Compute the journey-wide bounds once upfront. This is the
-      // reveal-everything view we MIGHT need — used as the target
-      // for the single zoom-out (if a zoom is needed at all).
+      // Camera strategy decided once upfront:
+      //
+      //  - Compute the "home cluster" — the longest prefix of pins
+      //    (in chronological order) that still fits at a useful
+      //    regional zoom (>= 4). For a US tour + 1 Australia show,
+      //    that's all the US pins.
+      //  - Open the map at the home cluster's bounds (NOT just the
+      //    first city — that was too tight and forced an early
+      //    full-zoom-out to fit the second pin). This gives a
+      //    stable continental view for all the local pins.
+      //  - If every pin is in the home cluster: never move the
+      //    camera. Stable view through the whole journey.
+      //  - If outliers exist (Australia, Tokyo, etc.): the journey
+      //    loop fires EXACTLY ONE flyToBounds(fullBounds) right
+      //    before the first outlier pin draws. That's the
+      //    Australia-reveal moment. After that, camera holds.
+      //
+      // Earlier cuts went straight from "tight on first city" to
+      // "fit world" the moment any pin was off-screen, which made
+      // the world view appear way earlier than the actual outlier.
       const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
       const fullBounds = L.latLngBounds(allLatLngs);
+      const PADDING = [60, 60];
+      const MIN_REGIONAL_ZOOM = 4;
 
-      // Decide the camera strategy ONCE, upfront:
-      //
-      //  - If the full journey fits at a comfortable regional zoom
-      //    (>= 4, roughly "continental US" scale or tighter), open
-      //    at full bounds and NEVER move the camera mid-journey.
-      //    A US tour stays at one stable view the whole time.
-      //
-      //  - If the journey requires a wider zoom (an outlier far
-      //    from the home cluster — Australia from a US year, etc.),
-      //    open tight on the first city and trigger exactly ONE
-      //    big zoom-out to full bounds the first time a pin lands
-      //    outside the current view. After that one zoom, the
-      //    camera holds. So the user gets at most one mid-journey
-      //    transition, never a parade of small adjustments.
-      //
-      // Earlier cuts expanded the bounds incrementally, which felt
-      // "the map keeps changing" — too many adjustments in a row.
-      const initialZoom = map.getBoundsZoom(fullBounds, false, [60, 60]);
-      const fitsInRegionalView = initialZoom >= 4;
-
-      const first = animated[0]?.g;
-      if (fitsInRegionalView) {
-        // Whole journey at once — no mid-journey camera moves planned.
-        map.fitBounds(fullBounds, { padding: [60, 60], animate: false, maxZoom: 7 });
-      } else if (first) {
-        // Start tight; the journey loop will expand once if needed.
-        map.setView([first.lat, first.lng], 5.5, { animate: false });
+      // Greedy: extend the prefix as long as it still fits at zoom 4+.
+      let homeClusterCount = 1;
+      let homeClusterBounds = L.latLngBounds([[animated[0].g.lat, animated[0].g.lng]]);
+      for (let i = 1; i < animated.length; i++) {
+        const tentative = L.latLngBounds(
+          animated.slice(0, i + 1).map((p) => [p.g.lat, p.g.lng])
+        );
+        const z = map.getBoundsZoom(tentative, false, PADDING);
+        if (z >= MIN_REGIONAL_ZOOM) {
+          homeClusterBounds = tentative;
+          homeClusterCount = i + 1;
+        } else {
+          break;
+        }
+      }
+      // If home cluster has only 1 pin, zoom in to a sensible city
+      // view rather than a degenerate single-point fitBounds.
+      if (homeClusterCount === 1) {
+        const o = animated[0].g;
+        map.setView([o.lat, o.lng], 5.5, { animate: false });
+      } else {
+        map.fitBounds(homeClusterBounds, { padding: PADDING, animate: false, maxZoom: 7 });
       }
 
       mapInstance.current = map;
@@ -210,27 +224,22 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
 
       // === Main animation ===
       //
-      // Pacing tightened from the prior cut: line draw + pause are
-      // shorter so the journey doesn't drag, and at most ONE camera
-      // move happens (if any) — no incremental "map keeps changing."
+      // At most ONE camera move during the journey — fires only when
+      // we're about to draw to a pin OUTSIDE the home cluster. No
+      // per-pin adjustments, no parade of small zooms.
       const SEGMENT_DURATION = 650; // ms — line draw between cities
       const SETTLE_PAUSE = 200;     // ms — pause after each pin
       const ZOOM_DURATION = 1.0;    // s — the single zoom-out
-      const PADDING = [60, 60];
 
-      // We may need exactly one zoom-out — to reveal an outlier pin
-      // that doesn't fit in the initial tight view. Tracked so we
-      // never fire a second zoom: once we've expanded, we hold.
-      let zoomedOutAlready = fitsInRegionalView; // already wide → no zoom planned
+      // True once we've flown out to fullBounds. Latched — never resets.
+      let zoomedOutAlready = (homeClusterCount === animated.length);
 
-      const ensurePinVisible = async (latLng) => {
+      // Called before drawing the line into pin index `i`. If `i`
+      // is the first outlier (== homeClusterCount), this fires the
+      // single zoom-out reveal. Otherwise no-op.
+      const maybeRevealOutlier = async (idx) => {
         if (zoomedOutAlready) return;
-        const bounds = map.getBounds();
-        // 8% inset so a pin right at the edge still counts as visible.
-        if (bounds.pad(-0.08).contains(latLng)) return;
-
-        // Outlier detected — do the SINGLE big reveal to full bounds.
-        // After this, ride the wide view for the rest of the journey.
+        if (idx < homeClusterCount) return;
         zoomedOutAlready = true;
         await flyToBoundsAsync(fullBounds, {
           padding: PADDING,
@@ -248,20 +257,22 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         // 1. Drop the origin pin. No line yet — this is the start.
         if (animated[0]) {
           const origin = animated[0].g;
-          await ensurePinVisible([origin.lat, origin.lng]);
           trailLatLngs.push([origin.lat, origin.lng]);
           ensurePolyline().setLatLngs(trailLatLngs);
           dropPinMarker(origin);
           await sleep(SETTLE_PAUSE);
         }
 
-        // 2. Each subsequent city: maybe-zoom → draw line → drop pin.
+        // 2. Each subsequent city: maybe-reveal-outlier → draw → drop.
+        // The reveal fires exactly once, when we cross from the home
+        // cluster into the outlier zone. After that, no more camera
+        // moves for the rest of the journey.
         for (let i = 1; i < animated.length; i++) {
           if (cancelled) return;
           const from = animated[i - 1].g;
           const to = animated[i].g;
 
-          await ensurePinVisible([to.lat, to.lng]);
+          await maybeRevealOutlier(i);
           if (cancelled) return;
           await drawSegment(from, to, SEGMENT_DURATION);
           dropPinMarker(to);
