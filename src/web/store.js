@@ -96,30 +96,21 @@ export function getArtistGradient(name) {
 // Build a Ticketmaster search URL for a logged show (Wishlist or Going).
 // We can't deep-link to a specific event without storing its TM event
 // id, so we compose the search query that's most likely to surface the
-// right show on Ticketmaster.
+// right show.
 //
 // Earlier cuts joined [artist, venue, city, year] which produced
 // over-specified queries like "Goose Red Rocks Amphitheater Morrison
-// 2026" — Ticketmaster's search treats that as 5 required tokens and
-// returns nothing. The right shape is what a human would type:
-//   - artist + venue (with bloat suffixes like "Amphitheater" stripped)
+// 2026" — TM's search treats that as 5 required tokens and returns
+// nothing. The right shape is two tokens, what a human would type:
+//   - artist + venue (full venue name, no stripping — "United Center"
+//     stays "United Center" so we don't collapse to "United")
 //   - or artist + city if venue isn't recorded
-//   - or just artist as a last resort
+//   - or just artist as last resort
 export function ticketmasterSearchUrl(show) {
   if (!show || !show.artist) return 'https://www.ticketmaster.com/';
-
-  // Strip the parts of a venue name that aren't search keywords on TM.
-  // "Red Rocks Amphitheater" → "Red Rocks", "MGM Grand Garden Arena" →
-  // "MGM Grand Garden", "United Center" → "United". TM's fuzzy match
-  // does the rest.
-  const cleanedVenue = (show.venue || '')
-    .replace(/\s+(amphitheat(re|er)|arena|cent(re|er)|theat(re|er)|hall|stadium|coliseum|pavilion|garden(s)?)\s*$/i, '')
-    .trim();
-
-  const parts = cleanedVenue
-    ? [show.artist, cleanedVenue]
+  const parts = show.venue
+    ? [show.artist, show.venue]
     : [show.artist, show.city].filter(Boolean);
-
   const q = parts.join(' ');
   return `https://www.ticketmaster.com/search?q=${encodeURIComponent(q)}`;
 }
