@@ -3,6 +3,48 @@
 Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
+## Release sequence (as of 2026-05-08)
+
+| Version | Theme | Initiatives | ETA |
+|---|---|---|---|
+| **v1.0.3** ✅ shipped | venue links + email confirm | venue-and-merch-links P1, email-mfa P1 | live |
+| **v1.0.4** ⏳ in review | Wrapped juice | wrapped-juice (kinetic + map + battles) | this week |
+| **v1.0.5** | quick polish wins | pre-show-toolkit P1 (last-time, openers), email-template fixes | next week |
+| **v1.1** | the social pivot begins | buddies-phase-2 P2a+2b, notifications-system P1 (inbox + lineup) | ~3 weeks |
+| **v1.2** | discovery + recommendations | recommendations Tier 1, contacts-buddy-discovery, venue-and-merch P2, notifications price-poller, email-mfa P2 (TOTP) | ~6-8 weeks |
+| **v1.3** | financial + collection | concert-economics P1+2, merch-collection P1, recommendations Tier 2 (festival fit), commemorative-tickets P1, buddies-phase-2 P2c-d (going + seats) | ~3 months |
+| **v1.4** | gamification + music | predictions-game P1+2, music-integration P1+2 (Spotify), notifications buddy events | ~4 months |
+| **v1.5+** | polish + premium | concert-economics P3+4 (itemized + worth-it), merch-collection P3+4 (rarity + impact), commemorative-tickets P2+ (rarity, share), music-integration P3 (Apple Music) | ~5-6 months |
+| **v2.0+** | social layer | social-layer (DMs + plans + discoverability + moderation), pre-show-toolkit P2 (presale codes), predictions-game P3 (group leaderboards) | ~6-9 months |
+
+The order above respects dependencies: nothing social ships before
+buddies + moderation infra. Cost analysis (concert-economics P4) waits
+on itemized cost capture (P3). Etc.
+
+- `2026-05-08-pre-show-toolkit.md` — planned · v1.0.5 (P1) → v1.2 (P2)
+  · Cluster of pre-show features. P1 = "last time you saw them" + opener
+  bio cards (cheap derived-data wins, ~3-4 hrs). P2 = presale code
+  sharing (depends on buddies + moderation). P3 (parking/transit) deferred
+  until Melo has user density.
+- `2026-05-08-merch-collection.md` — planned · v1.3 · Digital merch
+  cabinet — photo log per show, Collection grid in Profile grouped by
+  artist or year. Phase 2 surfaces spending totals once concert-economics
+  ships cost-itemization. Phase 3 user-marked rarity. Trading marketplace
+  intentionally NOT scoped (Splitwise-style scope explosion).
+- `2026-05-08-predictions-game.md` — planned · v1.4 · Pre-show rating /
+  setlist / over-under / encore predictions. Locked at showtime, accuracy
+  computed post-log. "Predictor" stat card on Profile + Wrapped tie-in
+  ("you called the encore right 14 of 18 times"). Phase 3 group
+  leaderboards depend on social-layer.
+- `2026-05-08-concert-economics.md` — planned · v1.3 → v1.5 · Optional
+  cost-per-show capture, annual budget tracker, "worth it" analysis ($/
+  rating). Phased so the cheap parts ship first; itemized breakdown is
+  Phase 3. Friend split tracking deliberately skipped (Splitwise wins).
+- `2026-05-08-music-integration.md` — planned · v1.4 · Spotify OAuth
+  first (better API + bigger US share), Apple Music as Phase 3 if user
+  demand justifies. Setlist playback (auto-create Spotify playlist of
+  the actual setlist) + pre-show hype playlists + listening-stats
+  overlay on shows. Builds on the existing PlayableSetlist initiative.
 - `2026-05-07-v1-0-4-wrapped-juice.md` — in-progress · v1.0.4 ·
   Wrapped polish + travel chapter. Replaces system emojis on the
   Vibes + Personality slides with kinetic typography (each vibe /
