@@ -291,10 +291,25 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         if (cancelled) return;
         setMilesShown(totalMiles);
 
-        // 3. No final fitBounds zoom-out — that gave a microscopic
-        // "fit everything" world view on phones with outliers.
-        // Camera holds at the last leg's view; user can pinch out
-        // freely with the unlocked interactions.
+        // 3. Final beat: slow pull-back to show the entire journey.
+        // Different context from a mid-journey "fit everything"
+        // (which made active drawing microscopic) — by now every
+        // pin is placed and the trail is fully painted, so the
+        // wide view reads as a triumphant overview, not as
+        // compression. This is also the screenshot moment for
+        // share-out.
+        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+        if (allLatLngs.length >= 2) {
+          await sleep(550); // beat after last pin before pulling back
+          await flyToBoundsAsync(L.latLngBounds(allLatLngs), {
+            padding: [80, 80],
+            duration: 1.6,
+            maxZoom: 5,
+          });
+          await sleep(600);
+        }
+
+        if (cancelled) return;
         enableInteraction();
       };
 
