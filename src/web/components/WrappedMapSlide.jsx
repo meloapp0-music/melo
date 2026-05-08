@@ -94,30 +94,32 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       });
 
-      // Camera strategy decided once upfront:
+      // Camera model — per-leg "follow the journey":
       //
-      //  - Compute the "home cluster" — the longest prefix of pins
-      //    (in chronological order) that still fits at a useful
-      //    regional zoom (>= 4). For a US tour + 1 Australia show,
-      //    that's all the US pins.
-      //  - Open the map at the home cluster's bounds (NOT just the
-      //    first city — that was too tight and forced an early
-      //    full-zoom-out to fit the second pin). This gives a
-      //    stable continental view for all the local pins.
-      //  - If every pin is in the home cluster: never move the
-      //    camera. Stable view through the whole journey.
-      //  - If outliers exist (Australia, Tokyo, etc.): the journey
-      //    loop fires EXACTLY ONE flyToBounds(fullBounds) right
-      //    before the first outlier pin draws. That's the
-      //    Australia-reveal moment. After that, camera holds.
+      //   1. Open at the "home cluster" — longest prefix of pins
+      //      that fits at zoom >= 4. For most users this is their
+      //      whole continental tour. Stable wide-but-useful view.
       //
-      // Earlier cuts went straight from "tight on first city" to
-      // "fit world" the moment any pin was off-screen, which made
-      // the world view appear way earlier than the actual outlier.
-      const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-      const fullBounds = L.latLngBounds(allLatLngs);
+      //   2. For each subsequent leg: if the destination is already
+      //      visible (within the current viewport), no camera move
+      //      — just draw the line. If it's outside, fly to a view
+      //      that fits THIS LEG ONLY (prev + to), with maxZoom=6
+      //      so close-together cities don't zoom in too tight.
+      //      Camera tracks the journey one leg at a time, never
+      //      zooming all the way out to "fit everything."
+      //
+      //   3. No final zoom-out. Camera ends wherever the last leg
+      //      put it. (Earlier cuts ended at fitBounds(everything)
+      //      which made the journey look microscopic on phone for
+      //      users with an Australia outlier.)
+      //
+      // Trade-off vs the prior "one big zoom" cut: a journey with
+      // multiple far-apart outliers has multiple camera moves
+      // instead of one. But each move is small + tied to a real
+      // moment in the trip. Users with no outliers see zero moves.
       const PADDING = [60, 60];
       const MIN_REGIONAL_ZOOM = 4;
+      const LEG_MAX_ZOOM = 6;
 
       // Greedy: extend the prefix as long as it still fits at zoom 4+.
       let homeClusterCount = 1;
@@ -224,27 +226,30 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
 
       // === Main animation ===
       //
-      // At most ONE camera move during the journey — fires only when
-      // we're about to draw to a pin OUTSIDE the home cluster. No
-      // per-pin adjustments, no parade of small zooms.
+      // Per-leg camera. Stay still while drawing pins inside the
+      // current view; fly to fit the active leg only when a pin
+      // lands outside. Each fly is sized to the leg (prev + to),
+      // not the whole journey — so an LA → Sydney leg shows a
+      // Pacific-spanning view, not a microscopic world view.
       const SEGMENT_DURATION = 650; // ms — line draw between cities
       const SETTLE_PAUSE = 200;     // ms — pause after each pin
-      const ZOOM_DURATION = 1.0;    // s — the single zoom-out
+      const ZOOM_DURATION = 1.0;    // s — leg-specific camera fly
 
-      // True once we've flown out to fullBounds. Latched — never resets.
-      let zoomedOutAlready = (homeClusterCount === animated.length);
+      const isInView = (latLng) =>
+        map.getBounds().pad(-0.08).contains(latLng);
 
-      // Called before drawing the line into pin index `i`. If `i`
-      // is the first outlier (== homeClusterCount), this fires the
-      // single zoom-out reveal. Otherwise no-op.
-      const maybeRevealOutlier = async (idx) => {
-        if (zoomedOutAlready) return;
-        if (idx < homeClusterCount) return;
-        zoomedOutAlready = true;
-        await flyToBoundsAsync(fullBounds, {
+      // Fly the camera so this single leg is comfortably framed.
+      // maxZoom caps the zoom for close-together legs (e.g., two
+      // cities in the same metro shouldn't zoom in to street level
+      // mid-journey). Bounds are JUST prev + to, never the full set.
+      const flyToFitLeg = async (from, to) => {
+        const legBounds = L.latLngBounds(
+          [[from.lat, from.lng], [to.lat, to.lng]]
+        );
+        await flyToBoundsAsync(legBounds, {
           padding: PADDING,
           duration: ZOOM_DURATION,
-          maxZoom: 7,
+          maxZoom: LEG_MAX_ZOOM,
         });
         await sleep(180);
       };
@@ -263,17 +268,19 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
           await sleep(SETTLE_PAUSE);
         }
 
-        // 2. Each subsequent city: maybe-reveal-outlier → draw → drop.
-        // The reveal fires exactly once, when we cross from the home
-        // cluster into the outlier zone. After that, no more camera
-        // moves for the rest of the journey.
+        // 2. Each subsequent leg.
         for (let i = 1; i < animated.length; i++) {
           if (cancelled) return;
           const from = animated[i - 1].g;
           const to = animated[i].g;
 
-          await maybeRevealOutlier(i);
-          if (cancelled) return;
+          // If destination is outside the current view, fly to fit
+          // just this leg before drawing. Inside the view = no move.
+          if (!isInView([to.lat, to.lng])) {
+            await flyToFitLeg(from, to);
+            if (cancelled) return;
+          }
+
           await drawSegment(from, to, SEGMENT_DURATION);
           dropPinMarker(to);
           runningMiles += haversineMiles(from, to);
@@ -284,8 +291,10 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         if (cancelled) return;
         setMilesShown(totalMiles);
 
-        // 3. Unlock interactions so the user can pinch in for state
-        // borders + venue cities.
+        // 3. No final fitBounds zoom-out — that gave a microscopic
+        // "fit everything" world view on phones with outliers.
+        // Camera holds at the last leg's view; user can pinch out
+        // freely with the unlocked interactions.
         enableInteraction();
       };
 
