@@ -94,24 +94,20 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       });
 
-      // Compute the journey-wide bounds once. The camera holds at this
-      // wide regional view for the entire animation — no per-pin camera
-      // moves. Earlier cuts flew the camera to each new city in parallel
-      // with the line draw, which caused visible desync (the polyline
-      // re-projects every frame as the viewport moves while we're also
-      // animating its endpoint, so the line "jumped" around the pins).
-      // Static camera = the line stays glued to the pins.
-      const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
-      const fullBounds = L.latLngBounds(allLatLngs);
-
-      // Cinematic open: start tight on the first city, then zoom out
-      // smoothly to reveal the full year. Gives the slide a "discovery"
-      // moment before the journey starts drawing.
+      // The camera starts tight on the first city and EXPANDS as the
+      // journey reaches places outside the current view. So a year of
+      // West Coast shows + one Australia trip plays as: tight on LA
+      // → all the LA-area pins drop without zoom changes → big
+      // smooth zoom-out to reveal the Pacific just before the
+      // Australia pin lands. That's the dramatic reveal — without
+      // it, the whole map shrinks to fit Australia upfront and you
+      // can barely read the home-base cluster.
       const first = animated[0]?.g;
       if (first) {
         map.setView([first.lat, first.lng], 5.5, { animate: false });
       } else {
-        map.fitBounds(fullBounds, { padding: [56, 56], animate: false, maxZoom: 7 });
+        const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
+        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [56, 56], animate: false, maxZoom: 7 });
       }
 
       mapInstance.current = map;
@@ -195,53 +191,76 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
 
       // === Main animation ===
       //
-      // Sequence:
-      //   0. Cinematic open: zoom out from first city → full bounds
-      //   1. Drop first pin
-      //   2. For each subsequent city: animate line draw, then drop pin
-      //   3. Enable pinch+drag so user can explore the finished map
+      // Per-leg sequence:
+      //   1. If the next pin falls outside the current viewport, fly
+      //      the camera to a new bounds box that includes everything
+      //      seen so far + the new pin. ~1.4s smooth zoom-out.
+      //   2. Animate the line draw from prev → new pin (camera is
+      //      now static, so the line stays glued to the pins).
+      //   3. Drop the new pin, tick the miles counter, breath, next.
       //
-      // Static camera through the whole journey — no flickering, no
-      // line/pin desync. Pacing is slow enough that the eye follows
-      // the line drawing across state borders.
+      // The "current bounds" extends progressively. For most
+      // journeys this means: home cluster stays tight, the camera
+      // only widens when you've genuinely traveled somewhere new.
       const SEGMENT_DURATION = 850; // ms — line draw between cities
       const SETTLE_PAUSE = 300;     // ms — pause after each pin
+      const ZOOM_DURATION = 1.4;    // s — bounds-expansion zoom
+      const PADDING = [60, 60];
+
+      // Track the visible-region box. Starts as just the first city
+      // and grows as new pins land outside it.
+      let currentBounds = null;
+
+      const ensurePinVisible = async (latLng) => {
+        if (!currentBounds) {
+          currentBounds = L.latLngBounds([latLng]);
+          return;
+        }
+        // Allow a small inset before triggering a zoom-out — pins
+        // that land at the very edge of the view shouldn't strictly
+        // need a camera move. `pad(-0.08)` shrinks the test box by
+        // 8% on each side, so a pin in the outer 8% margin counts
+        // as "outside" and triggers a zoom.
+        const safe = currentBounds.pad(-0.08);
+        if (safe.contains(latLng)) return;
+
+        // New pin is genuinely outside the current view — extend the
+        // bounds to include it and fly the camera. Sequential (await)
+        // means the line draw later happens against a stable map.
+        currentBounds.extend(latLng);
+        await flyToBoundsAsync(currentBounds, {
+          padding: PADDING,
+          duration: ZOOM_DURATION,
+          maxZoom: 7,
+        });
+        // Small breath after the camera settles, so the eye has a
+        // moment to register the new region before the line draws.
+        await sleep(180);
+      };
 
       const playJourney = async () => {
-        // 0. Slow zoom-out reveal: tight on first city → wide-angle
-        // of the full journey. ~1.4s, looks like the camera "lifting
-        // off" before the trip starts.
-        if (animated.length >= 2) {
-          await sleep(450); // tiles settle in
-          await flyToBoundsAsync(fullBounds, {
-            padding: [60, 60],
-            duration: 1.4,
-            maxZoom: 7,
-          });
-          await sleep(250);
-        } else {
-          // Single-city case: just rest at the city zoom.
-          await sleep(450);
-        }
+        await sleep(450); // tiles settle in
 
         if (cancelled) return;
 
-        // 1. Drop the origin pin. No line to draw — this is the start.
+        // 1. Drop the origin pin. No line yet — this is the start.
         if (animated[0]) {
-          trailLatLngs.push([animated[0].g.lat, animated[0].g.lng]);
+          const origin = animated[0].g;
+          await ensurePinVisible([origin.lat, origin.lng]);
+          trailLatLngs.push([origin.lat, origin.lng]);
           ensurePolyline().setLatLngs(trailLatLngs);
-          dropPinMarker(animated[0].g);
+          dropPinMarker(origin);
           await sleep(SETTLE_PAUSE);
         }
 
-        // 2. Sequential journey: draw line → drop pin → repeat. No
-        // camera moves mid-journey (intentional — the line stays
-        // glued to the pins).
+        // 2. Each subsequent city: maybe-zoom → draw line → drop pin.
         for (let i = 1; i < animated.length; i++) {
           if (cancelled) return;
           const from = animated[i - 1].g;
           const to = animated[i].g;
 
+          await ensurePinVisible([to.lat, to.lng]);
+          if (cancelled) return;
           await drawSegment(from, to, SEGMENT_DURATION);
           dropPinMarker(to);
           runningMiles += haversineMiles(from, to);
