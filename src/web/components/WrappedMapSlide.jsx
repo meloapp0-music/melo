@@ -157,7 +157,7 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
       let runningMiles = 0;
       const trailStyle = {
         color: '#FF8A4C',
-        weight: 3.5,
+        weight: 5,
         opacity: 0.95,
         lineCap: 'round',
         lineJoin: 'round',
@@ -210,8 +210,8 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         const icon = L.divIcon({
           className: '',
           html: '<div class="wms-pin"></div>',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
         });
         L.marker([g.lat, g.lng], { icon }).addTo(map);
       };
@@ -302,7 +302,7 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         if (allLatLngs.length >= 2) {
           await sleep(550); // beat after last pin before pulling back
           await flyToBoundsAsync(L.latLngBounds(allLatLngs), {
-            padding: [80, 80],
+            padding: [40, 40],
             duration: 1.6,
             maxZoom: 5,
           });

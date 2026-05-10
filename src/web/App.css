@@ -6575,10 +6575,12 @@ h4 { font-size: 17px; }
 }
 
 /* Pulsing pin marker drawn via Leaflet divIcon. Two layered rings
-   so the pin glows + radiates outward. */
+   so the pin glows + radiates outward. Sized at 32px so pins are
+   readable on a phone screen even when the map is zoomed out wide
+   enough to fit transcontinental journeys (USA + Australia, etc). */
 .wms-pin {
   position: relative;
-  width: 22px; height: 22px;
+  width: 32px; height: 32px;
 }
 .wms-pin::before,
 .wms-pin::after {
@@ -6586,8 +6588,8 @@ h4 { font-size: 17px; }
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at center, #FFD060 0%, #FF6A00 60%, transparent 70%);
-  box-shadow: 0 0 18px rgba(255, 138, 76, 0.85);
+  background: radial-gradient(circle at center, #FFD060 0%, #FF6A00 55%, transparent 70%);
+  box-shadow: 0 0 24px rgba(255, 138, 76, 0.95);
 }
 .wms-pin::after {
   animation: wms-pin-pulse 1.6s ease-out infinite;
