@@ -250,11 +250,20 @@ export default function Wrapped({ year, onClose }) {
     return { depth, spread, miles, topVenueRepeat };
   }, [yearShows, priorYearsShows, geo]);
 
-  // 8 original slides + 5 new map-chapter slides = 13.
-  // Order: Year, TopArtist, TopVenue, HighestRated, Cities,
-  //        [TravelIntro, VenueDepth, GeoSpread, AnimatedMap, MostVisited],
-  //        Vibes, Personality, Summary.
-  const totalSlides = 13;
+  // 12 slides as of v1.0.4 late-cut.
+  //   0: Year intro
+  //   1: Top artist
+  //   2: Top venue        (this is the venue moment — Home Base was a duplicate)
+  //   3: Highest rated
+  //   4: Travel intro     (was 5; Cities slide retired)
+  //   5: Venue depth
+  //   6: Geographic spread
+  //   7: Animated map
+  //   8: Route recap      (NEW; replaced flat Cities tag-grid)
+  //   9: Vibes            (was 10)
+  //  10: Personality      (was 11)
+  //  11: Summary          (was 12)
+  const totalSlides = 12;
 
   const handleTouchStart = (e) => {
     touchRef.current.startX = e.touches[0].clientX;
@@ -536,49 +545,17 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 9 — Most-visited venue (only if a venue was visited 2+ times) */}
-        <div className={`wrapped-slide ${slide === 9 ? 'is-active' : ''}`}>
-          <SlideBg image={venueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
-          <div className="wrapped-slide-content">
-            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR HOME BASE</p>
-            {mapData?.topVenueRepeat ? (
-              <>
-                <h1 className="wrapped-title wrapped-stagger" style={{ animationDelay: '0.3s' }}>
-                  {mapData.topVenueRepeat.name}
-                </h1>
-                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.5s' }}>
-                  {mapData.topVenueRepeat.city}
-                </p>
-                <div className="wrapped-count-big wrapped-stagger" style={{ animationDelay: '0.75s', fontSize: 84 }}>
-                  {slide === 9 && <CountUp end={mapData.topVenueRepeat.count} duration={1100} />}
-                </div>
-                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '1.0s' }}>
-                  shows here this year
-                </p>
-              </>
-            ) : (
-              // Fallback when no venue was visited 2+ times — celebrate the top venue instead.
-              <>
-                <h1 className="wrapped-title wrapped-stagger" style={{ animationDelay: '0.3s' }}>
-                  {data.topVenue}
-                </h1>
-                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.5s' }}>
-                  {data.topVenueCity}
-                </p>
-                <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.85s' }}>
-                  one of {mapData?.depth.total || data.cities.length} venues you graced this year
-                </p>
-              </>
-            )}
-          </div>
-        </div>
+        {/* (Slide 9 "Your Home Base" removed in v1.0.4 late-cut —
+            redundant with Slide 2's "Top Venue" which already shows
+            the same most-visited venue with its show count. Travel
+            chapter ends on the Route Recap.) */}
 
-        {/* === END MAP CHAPTER === */}
+        {/* === END TRAVEL CHAPTER === */}
 
-        {/* Slide 11 — Vibes (kinetic typography per vibe). Top vibe is
+        {/* Slide 9 — Vibes (kinetic typography per vibe). Top vibe is
             the hero moment with full motion treatment; runners-up
             stack below at smaller scale. v1.0.4. */}
-        <div className={`wrapped-slide ${slide === 10 ? 'is-active' : ''}`}>
+        <div className={`wrapped-slide ${slide === 9 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[5]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR VIBE</p>
@@ -608,12 +585,12 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 12 — Personality. Archetype name renders as a kinetic
+        {/* Slide 10 — Personality. Archetype name renders as a kinetic
             typography moment with archetype-specific motion (e.g.
             INDIE NIGHT OWL gets midnight purple + dual-eye-glow
             pulse). Suffix renders as a subtitle below for the prose
             half of the personality. v1.0.4. */}
-        <div className={`wrapped-slide ${slide === 11 ? 'is-active' : ''}`}>
+        <div className={`wrapped-slide ${slide === 10 ? 'is-active' : ''}`}>
           <div className="wrapped-bg-collage">
             {collageImgs.length > 0
               ? collageImgs.slice(0, 6).map((img, i) => (
@@ -636,8 +613,8 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 13 — Summary */}
-        <div className={`wrapped-slide ${slide === 12 ? 'is-active' : ''}`}>
+        {/* Slide 11 — Summary */}
+        <div className={`wrapped-slide ${slide === 11 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[7]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content wrapped-summary">
             <div className="wrapped-summary-logo wrapped-stagger" style={{ animationDelay: '0.05s' }}>
