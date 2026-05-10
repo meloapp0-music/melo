@@ -388,32 +388,15 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 5 — Cities */}
+        {/* (Slide 5 "Cities Visited" with city-tag chips removed in v1.0.4
+            late-cut — redundant with the Geographic Spread slide and the
+            new Route Recap slide. Each city's chronological position is
+            now expressed via the route, not a flat tag grid.) */}
+
+        {/* === TRAVEL CHAPTER (v1.0.4) — between Highest Rated and Vibes. === */}
+
+        {/* Slide 4 — Travel intro */}
         <div className={`wrapped-slide ${slide === 4 ? 'is-active' : ''}`}>
-          <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[4]} fallbackArtist={data.topArtist} />
-          <div className="wrapped-slide-content">
-            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>CITIES VISITED</p>
-            <div className="wrapped-count-big wrapped-stagger" style={{ animationDelay: '0.25s' }}>
-              {slide === 4 && <CountUp end={data.cities.length} duration={1100} />}
-            </div>
-            <div className="wrapped-cities-list">
-              {data.cities.map((c, i) => (
-                <span
-                  key={c}
-                  className="wrapped-city-tag wrapped-stagger"
-                  style={{ animationDelay: `${0.5 + i * 0.05}s` }}
-                >
-                  {c}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* === MAP CHAPTER (v1.0.4, 5 slides) — between Cities and Vibes. === */}
-
-        {/* Slide 6 — Travel intro */}
-        <div className={`wrapped-slide ${slide === 5 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[5]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>NEXT CHAPTER</p>
@@ -424,13 +407,13 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 7 — Venue depth */}
-        <div className={`wrapped-slide ${slide === 6 ? 'is-active' : ''}`}>
+        {/* Slide 5 — Venue depth */}
+        <div className={`wrapped-slide ${slide === 5 ? 'is-active' : ''}`}>
           <SlideBg image={venueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>VENUE DEPTH</p>
             <div className="wrapped-count-big wrapped-stagger" style={{ animationDelay: '0.25s' }}>
-              {slide === 6 && mapData && <CountUp end={mapData.depth.total} duration={1100} />}
+              {slide === 5 && mapData && <CountUp end={mapData.depth.total} duration={1100} />}
             </div>
             <p className="wrapped-subtitle wrapped-stagger" style={{ animationDelay: '0.55s' }}>
               unique venues
@@ -451,8 +434,8 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 8 — Geographic spread */}
-        <div className={`wrapped-slide ${slide === 7 ? 'is-active' : ''}`}>
+        {/* Slide 6 — Geographic spread */}
+        <div className={`wrapped-slide ${slide === 6 ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[4]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content">
             <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR REACH</p>
@@ -460,14 +443,14 @@ export default function Wrapped({ year, onClose }) {
               <div className="wrapped-spread-grid">
                 <div className="wrapped-spread-item wrapped-stagger" style={{ animationDelay: '0.25s' }}>
                   <div className="wrapped-spread-num">
-                    {slide === 7 && <CountUp end={mapData.spread.cities} duration={1100} />}
+                    {slide === 6 && <CountUp end={mapData.spread.cities} duration={1100} />}
                   </div>
                   <div className="wrapped-spread-label">{mapData.spread.cities === 1 ? 'city' : 'cities'}</div>
                 </div>
                 {mapData.spread.states > 0 && (
                   <div className="wrapped-spread-item wrapped-stagger" style={{ animationDelay: '0.45s' }}>
                     <div className="wrapped-spread-num">
-                      {slide === 7 && <CountUp end={mapData.spread.states} duration={1100} />}
+                      {slide === 6 && <CountUp end={mapData.spread.states} duration={1100} />}
                     </div>
                     <div className="wrapped-spread-label">{mapData.spread.states === 1 ? 'state' : 'states'}</div>
                   </div>
@@ -475,7 +458,7 @@ export default function Wrapped({ year, onClose }) {
                 {mapData.spread.countries > 0 && (
                   <div className="wrapped-spread-item wrapped-stagger" style={{ animationDelay: '0.65s' }}>
                     <div className="wrapped-spread-num">
-                      {slide === 7 && <CountUp end={mapData.spread.countries} duration={1100} />}
+                      {slide === 6 && <CountUp end={mapData.spread.countries} duration={1100} />}
                     </div>
                     <div className="wrapped-spread-label">{mapData.spread.countries === 1 ? 'country' : 'countries'}</div>
                   </div>
@@ -485,19 +468,81 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 9 — Animated map. Auto-plays once when active. */}
-        <div className={`wrapped-slide wrapped-slide-map ${slide === 8 ? 'is-active' : ''}`}>
+        {/* Slide 7 — Animated map. Auto-plays once when active. */}
+        <div className={`wrapped-slide wrapped-slide-map ${slide === 7 ? 'is-active' : ''}`}>
           {mapData && (
             <WrappedMapSlide
               shows={yearShows}
               geo={geo}
-              active={slide === 8}
+              active={slide === 7}
               totalMiles={mapData.miles}
             />
           )}
         </div>
 
-        {/* Slide 10 — Most-visited venue (only if a venue was visited 2+ times) */}
+        {/* Slide 8 — Route recap (NEW v1.0.4 late-cut). Static "itinerary"
+            view of the journey: cities in chronological order with orange
+            arrows + leg distances. Replaces the former flat-grid Cities
+            slide and complements the animated map (the map is for video
+            sharing, this is for screenshots). */}
+        <div className={`wrapped-slide ${slide === 8 ? 'is-active' : ''}`}>
+          <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[1]} fallbackArtist={data.topArtist} />
+          <div className="wrapped-slide-content">
+            <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>YOUR ROUTE</p>
+            {(() => {
+              // Chronological list of unique cities the user visited, in
+              // the order they first appeared. yearShows is already sorted
+              // by date ascending in the parent useMemo.
+              const seen = new Set();
+              const route = [];
+              yearShows.forEach((s) => {
+                if (s.city && !seen.has(s.city)) {
+                  seen.add(s.city);
+                  route.push(s.city);
+                }
+              });
+              // For very long journeys (>8 cities), compress the middle
+              // so the slide stays one viewport tall.
+              const MAX_VISIBLE = 8;
+              let display = route;
+              let hiddenCount = 0;
+              if (route.length > MAX_VISIBLE) {
+                const head = route.slice(0, 4);
+                const tail = route.slice(-4);
+                hiddenCount = route.length - head.length - tail.length;
+                display = [...head, '__ELLIPSIS__', ...tail];
+              }
+              return (
+                <div className="wrapped-route">
+                  {display.map((city, i) => (
+                    <div key={`${city}-${i}`} className="wrapped-route-item wrapped-stagger" style={{ animationDelay: `${0.25 + i * 0.05}s` }}>
+                      {city === '__ELLIPSIS__' ? (
+                        <div className="wrapped-route-ellipsis">+ {hiddenCount} more cities</div>
+                      ) : (
+                        <>
+                          <span className="wrapped-route-pin" aria-hidden="true">●</span>
+                          <span className="wrapped-route-city">{city}</span>
+                        </>
+                      )}
+                      {i < display.length - 1 && city !== '__ELLIPSIS__' && (
+                        <span className="wrapped-route-arrow" aria-hidden="true">↓</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            {mapData && (
+              <p className="wrapped-route-total wrapped-stagger" style={{ animationDelay: `${0.6 + Math.min(yearShows.length, 8) * 0.05}s` }}>
+                {mapData.miles > 0 ? `${mapData.miles.toLocaleString()} mi · ` : ''}
+                {mapData.spread.cities} {mapData.spread.cities === 1 ? 'city' : 'cities'}
+                {mapData.spread.countries > 1 ? ` · ${mapData.spread.countries} countries` : ''}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Slide 9 — Most-visited venue (only if a venue was visited 2+ times) */}
         <div className={`wrapped-slide ${slide === 9 ? 'is-active' : ''}`}>
           <SlideBg image={venueImg} overlay={SLIDE_OVERLAYS[2]} fallbackArtist={data.topVenueArtist || data.topArtist} />
           <div className="wrapped-slide-content">

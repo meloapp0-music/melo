@@ -231,9 +231,12 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
       // lands outside. Each fly is sized to the leg (prev + to),
       // not the whole journey — so an LA → Sydney leg shows a
       // Pacific-spanning view, not a microscopic world view.
-      const SEGMENT_DURATION = 650; // ms — line draw between cities
-      const SETTLE_PAUSE = 200;     // ms — pause after each pin
-      const ZOOM_DURATION = 1.0;    // s — leg-specific camera fly
+      // Pacing tuned for ~5-7s total — most people swipe past Wrapped
+      // slides in that window. Slower than this loses them; the static
+      // route-recap slide that follows is where the eye gets to dwell.
+      const SEGMENT_DURATION = 380; // ms — line draw between cities
+      const SETTLE_PAUSE = 100;     // ms — pause after each pin
+      const ZOOM_DURATION = 0.7;    // s — leg-specific camera fly
 
       const isInView = (latLng) =>
         map.getBounds().pad(-0.08).contains(latLng);
@@ -300,13 +303,13 @@ export default function WrappedMapSlide({ shows, geo, active, totalMiles }) {
         // share-out.
         const allLatLngs = points.map((p) => [p.g.lat, p.g.lng]);
         if (allLatLngs.length >= 2) {
-          await sleep(550); // beat after last pin before pulling back
+          await sleep(350); // beat after last pin before pulling back
           await flyToBoundsAsync(L.latLngBounds(allLatLngs), {
             padding: [40, 40],
-            duration: 1.6,
+            duration: 1.2,
             maxZoom: 5,
           });
-          await sleep(600);
+          await sleep(400);
         }
 
         if (cancelled) return;
