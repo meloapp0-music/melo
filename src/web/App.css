@@ -3741,6 +3741,38 @@ h4 { font-size: 17px; }
   fill: none;
 }
 
+/* Back button — mirrors the close button on the opposite top corner.
+   Hidden on slide 0 (no back from there). Higher z-index than the
+   Leaflet map so taps register even after the map slide enables
+   dragging. v1.0.4. */
+.wrapped-back {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 16px;
+  z-index: 210;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrapped-back svg {
+  width: 18px;
+  height: 18px;
+  stroke: #fff;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .wrapped-slides {
   display: flex;
   width: 100%;

@@ -300,6 +300,16 @@ export default function Wrapped({ year, onClose }) {
 
   return (
     <div className={`wrapped-overlay ${entered ? 'entered' : ''}`}>
+      {slide > 0 && (
+        <button
+          className="wrapped-back"
+          onClick={() => setSlide(slide - 1)}
+          aria-label="Previous slide"
+        >
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+      )}
+
       <button className="wrapped-close" onClick={onClose}>
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
