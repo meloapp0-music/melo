@@ -489,10 +489,17 @@ export async function fetchAllUpcomingEvents(artistNames) {
 
 // ===== TICKETMASTER — Festivals =====
 // Same Discovery API as `fetchUpcomingEvents`, but scoped to the
-// Festival classification. The `attractions` array becomes the
-// festival lineup — we map it into `lineup: string[]` so the Festivals
-// page can intersect it with the user's top artists for a
-// "3 of your artists playing" badge.
+// Festival classification AND the Music segment. Earlier cuts only
+// filtered by `classificationName=Festival`, which surfaced ballroom
+// dance festivals, food festivals, Renaissance fairs, kids' fests,
+// religious gatherings — everything Ticketmaster files under
+// "Festival" regardless of whether music is involved. Adding
+// `segmentName=Music` constrains it to actual music festivals.
+//
+// Belt-and-suspenders: also filter results client-side to drop any
+// event whose segment / genre / sub-genre obviously isn't music
+// (Ticketmaster's data is messy enough that some non-music events
+// still slip through the segment filter).
 //
 // Params (all optional): `{ city, stateCode, size }`.
 // Degrades gracefully without VITE_TICKETMASTER_KEY (returns []),
@@ -511,10 +518,20 @@ export async function fetchFestivals(opts = {}) {
     return [];
   }
 
+  // Non-music genre keywords that occasionally leak through even with
+  // segmentName=Music. Drop them in post-processing. Lowercase match
+  // against TM's classifications.genre.name + classifications.subGenre.name.
+  const NON_MUSIC_HINTS = [
+    'ballroom', 'ballet', 'dance', 'theatre', 'theater', 'comedy',
+    'fair', 'cuisine', 'food', 'wine', 'beer festival', 'craft',
+    'family', 'religious', 'cultural', 'arts', 'film',
+  ];
+
   try {
     const params = new URLSearchParams({
       apikey: key,
       classificationName: 'Festival',
+      segmentName: 'Music',          // Music segment only
       sort: 'date,asc',
       size: String(opts.size || 50),
     });
@@ -528,30 +545,46 @@ export async function fetchFestivals(opts = {}) {
 
     const events = data?._embedded?.events || [];
 
-    return events.map((ev) => {
-      const venue = ev?._embedded?.venues?.[0] || {};
-      const attractions = ev?._embedded?.attractions || [];
-      const priceRange = ev?.priceRanges?.[0] || null;
-      return {
-        id: ev.id || '',
-        name: ev.name || '',
-        venue: venue.name || '',
-        city: venue.city?.name || '',
-        state: venue.state?.stateCode || venue.state?.name || '',
-        country: venue.country?.countryCode || venue.country?.name || '',
-        date: ev?.dates?.start?.localDate || '',
-        endDate: ev?.dates?.end?.localDate || '',
-        ticketUrl: ev.url || '',
-        image:
-          (ev.images || []).find((i) => i.ratio === '16_9' && i.width >= 640)?.url ||
-          (ev.images || [])[0]?.url ||
-          '',
-        priceMin: priceRange?.min ?? null,
-        priceMax: priceRange?.max ?? null,
-        priceCurrency: priceRange?.currency || '',
-        lineup: attractions.map((a) => a.name).filter(Boolean),
-      };
-    });
+    return events
+      // Defense-in-depth: drop anything whose top classification
+      // segment isn't Music, OR whose genre/subgenre name screams
+      // non-music. Belt + suspenders for TM's untrustworthy taxonomy.
+      .filter((ev) => {
+        const cls = ev?.classifications?.[0];
+        if (!cls) return true; // unknown — keep, don't over-filter
+        const segment = (cls.segment?.name || '').toLowerCase();
+        if (segment && segment !== 'music') return false;
+        const genre = (cls.genre?.name || '').toLowerCase();
+        const sub = (cls.subGenre?.name || '').toLowerCase();
+        if (NON_MUSIC_HINTS.some((h) => genre.includes(h) || sub.includes(h))) {
+          return false;
+        }
+        return true;
+      })
+      .map((ev) => {
+        const venue = ev?._embedded?.venues?.[0] || {};
+        const attractions = ev?._embedded?.attractions || [];
+        const priceRange = ev?.priceRanges?.[0] || null;
+        return {
+          id: ev.id || '',
+          name: ev.name || '',
+          venue: venue.name || '',
+          city: venue.city?.name || '',
+          state: venue.state?.stateCode || venue.state?.name || '',
+          country: venue.country?.countryCode || venue.country?.name || '',
+          date: ev?.dates?.start?.localDate || '',
+          endDate: ev?.dates?.end?.localDate || '',
+          ticketUrl: ev.url || '',
+          image:
+            (ev.images || []).find((i) => i.ratio === '16_9' && i.width >= 640)?.url ||
+            (ev.images || [])[0]?.url ||
+            '',
+          priceMin: priceRange?.min ?? null,
+          priceMax: priceRange?.max ?? null,
+          priceCurrency: priceRange?.currency || '',
+          lineup: attractions.map((a) => a.name).filter(Boolean),
+        };
+      });
   } catch (err) {
     console.warn('[Melo] Ticketmaster festivals fetch failed', err.message);
     return [];
