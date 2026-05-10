@@ -492,7 +492,11 @@ export default function Wrapped({ year, onClose }) {
             {(() => {
               // Chronological list of unique cities the user visited, in
               // the order they first appeared. yearShows is already sorted
-              // by date ascending in the parent useMemo.
+              // by date ascending in the parent useMemo. ALL cities are
+              // rendered — earlier "+ N more cities" compression was
+              // removed because hiding cities defeats the slide's
+              // entire point. The CSS uses a count-aware var so the
+              // layout tightens automatically as the route grows.
               const seen = new Set();
               const route = [];
               yearShows.forEach((s) => {
@@ -501,30 +505,20 @@ export default function Wrapped({ year, onClose }) {
                   route.push(s.city);
                 }
               });
-              // For very long journeys (>8 cities), compress the middle
-              // so the slide stays one viewport tall.
-              const MAX_VISIBLE = 8;
-              let display = route;
-              let hiddenCount = 0;
-              if (route.length > MAX_VISIBLE) {
-                const head = route.slice(0, 4);
-                const tail = route.slice(-4);
-                hiddenCount = route.length - head.length - tail.length;
-                display = [...head, '__ELLIPSIS__', ...tail];
-              }
               return (
-                <div className="wrapped-route">
-                  {display.map((city, i) => (
-                    <div key={`${city}-${i}`} className="wrapped-route-item wrapped-stagger" style={{ animationDelay: `${0.25 + i * 0.05}s` }}>
-                      {city === '__ELLIPSIS__' ? (
-                        <div className="wrapped-route-ellipsis">+ {hiddenCount} more cities</div>
-                      ) : (
-                        <>
-                          <span className="wrapped-route-pin" aria-hidden="true">●</span>
-                          <span className="wrapped-route-city">{city}</span>
-                        </>
-                      )}
-                      {i < display.length - 1 && city !== '__ELLIPSIS__' && (
+                <div
+                  className="wrapped-route"
+                  style={{ '--route-count': route.length }}
+                >
+                  {route.map((city, i) => (
+                    <div
+                      key={`${city}-${i}`}
+                      className="wrapped-route-item wrapped-stagger"
+                      style={{ animationDelay: `${0.25 + Math.min(i, 12) * 0.04}s` }}
+                    >
+                      <span className="wrapped-route-pin" aria-hidden="true">●</span>
+                      <span className="wrapped-route-city">{city}</span>
+                      {i < route.length - 1 && (
                         <span className="wrapped-route-arrow" aria-hidden="true">↓</span>
                       )}
                     </div>

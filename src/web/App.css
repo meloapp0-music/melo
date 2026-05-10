@@ -6563,24 +6563,34 @@ h4 { font-size: 17px; }
 /* Route recap — static "itinerary" view that follows the animated
    map. Vertical stack of cities with orange pins + downward arrows.
    Designed to be screenshottable (no motion) and complementary to
-   the map (which is for video shares). v1.0.4 late-cut. */
+   the map (which is for video shares). v1.0.4.
+   Sizing uses --route-count to tighten the layout as the journey
+   gets longer — a 4-city year reads big and dramatic, a 15-city
+   year still fits in one viewport without clipping. */
 .wrapped-route {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin-top: 24px;
-  margin-bottom: 18px;
+  gap: 0;
+  margin-top: 18px;
+  margin-bottom: 12px;
+  /* Each item's vertical footprint = pin + city + arrow + gaps.
+     We need ~22px per city for 6 cities (big), ~14px per city for
+     15+. Ramp linearly via clamp(). */
+  --route-city-fs: clamp(15px, calc(28px - var(--route-count, 5) * 0.9px), 22px);
+  --route-arrow-fs: clamp(11px, calc(20px - var(--route-count, 5) * 0.6px), 18px);
+  --route-pin-fs: clamp(9px, calc(15px - var(--route-count, 5) * 0.4px), 13px);
+  --route-stack-gap: clamp(0px, calc(5px - var(--route-count, 5) * 0.3px), 4px);
 }
 .wrapped-route-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--route-stack-gap);
 }
 .wrapped-route-pin {
   display: inline-block;
-  font-size: 13px;
+  font-size: var(--route-pin-fs);
   color: #FF8A4C;
   line-height: 1;
   filter: drop-shadow(0 0 6px rgba(255, 138, 76, 0.8));
@@ -6588,25 +6598,18 @@ h4 { font-size: 17px; }
 .wrapped-route-city {
   font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--route-city-fs);
   color: #fff;
   letter-spacing: -0.01em;
-  line-height: 1.15;
+  line-height: 1.1;
   text-align: center;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 .wrapped-route-arrow {
-  font-size: 18px;
+  font-size: var(--route-arrow-fs);
   color: rgba(255, 138, 76, 0.85);
   line-height: 1;
-  margin: 2px 0;
-}
-.wrapped-route-ellipsis {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.65);
-  letter-spacing: 0.02em;
-  margin: 8px 0;
+  margin: 0;
 }
 .wrapped-route-total {
   font-size: 14px;
@@ -6615,10 +6618,6 @@ h4 { font-size: 17px; }
   margin-top: 12px;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
-}
-@media (max-width: 380px) {
-  .wrapped-route-city { font-size: 19px; }
-  .wrapped-route { gap: 2px; }
 }
 
 /* Pulsing pin marker drawn via Leaflet divIcon. Two layered rings
