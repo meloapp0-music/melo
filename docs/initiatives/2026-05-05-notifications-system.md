@@ -21,7 +21,8 @@ This initiative is the full notification matrix:
 
 | Trigger | Source | Cadence |
 |---|---|---|
-| New tour announced for liked artist | Ticketmaster + Bandsintown | Daily (existing) |
+| **Wishlist Watch fulfilled** (user wanted "Goose in Chicago" → Goose announces a Chicago show) | Ticketmaster watch poll | Daily — **P1** |
+| New tour announced for liked artist (rating ≥7) | Ticketmaster + Bandsintown | Daily (existing) |
 | Ticket price dropped on a Going show | Ticketmaster Listing API or SeatGeek | 4× per day |
 | Artist you like added to a festival lineup | Festival lineup polling | Daily |
 | Festival lineup announced (initial drop) | Festival data feed | Daily |
@@ -29,6 +30,12 @@ This initiative is the full notification matrix:
 | Buddy is going to a show you're going to | `show_attendees` join | Real-time |
 | Friend request | `friendship_requests` insert | Real-time |
 | Buddy logged a show you also attended | `show_attendees` join | Real-time |
+
+**P1 = Wishlist Watching ships as the headline feature of v1.1.** Full
+plan lives in `2026-05-11-wishlist-watching.md` — schema, UX, polling
+strategy, gotchas (rate limits, fuzzy city matching, notification
+fatigue dedupe). This initiative covers the broader notification
+inbox + the rest of the matrix.
 
 Cross-links: half of these (the social ones) come from
 `2026-05-05-buddies-phase-2.md`. The "best value" surface bridges to

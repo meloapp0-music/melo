@@ -1,7 +1,7 @@
 # Buddies Phase 2 — Real User-Linked Buddies
 
 - Started: 2026-05-05
-- Status: planned (Phase 2a + 2b targeted for v1.1, ~2-3 weeks)
+- Status: planned (Phase 2a + 2b targeted for v1.2, ~2-3 weeks — shifted from v1.1 to make room for Wishlist Watching as the v1.1 headline)
 - Last updated: 2026-05-06
 
 ## Context
