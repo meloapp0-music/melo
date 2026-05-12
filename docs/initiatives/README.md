@@ -10,10 +10,11 @@ initiative. See `CLAUDE.md` in the repo root for the full process.
 | **v1.0.3** ✅ shipped | venue links + email confirm | venue-and-merch-links P1, email-mfa P1 | live |
 | **v1.0.4** ⏳ in review | Wrapped juice | wrapped-juice (kinetic + map + battles) | this week |
 | **v1.0.5** | quick polish wins | pre-show-toolkit P1 (last-time, openers), email-template fixes, ★ Favorite toggle + trimmed vibes (15 → 9) | next week |
-| **v1.1** | **Wishlist Watching** | wishlist-watching (headline) — "notify me when Goose announces Chicago" + notifications-system P1 (inbox + lineup) | ~2-3 weeks |
-| **v1.2** | the social pivot begins | buddies-phase-2 P2a+2b, contacts-buddy-discovery, recommendations Tier 1, venue-and-merch P2, notifications price-poller, email-mfa P2 (TOTP) | ~6-8 weeks |
-| **v1.3** | financial + collection | concert-economics P1+2, merch-collection P1, recommendations Tier 2 (festival fit), commemorative-tickets P1, buddies-phase-2 P2c-d (going + seats) | ~3 months |
-| **v1.4** | gamification + music | predictions-game P1+2, music-integration P1+2 (Spotify), notifications buddy events | ~4 months |
+| **v1.1** | **Dark Mode** | dark-mode (headline) — CSS variable refactor + dark palette + theme toggle + persistence. Closes the marketing-vs-product gap (carousel + single-image posts already show dark UI). | ~1-1.5 weeks |
+| **v1.2** | **Wishlist Watching** | wishlist-watching (headline) — "notify me when Goose announces Chicago" + notifications-system P1 (inbox + lineup) | ~2-3 weeks |
+| **v1.3** | the social pivot begins | buddies-phase-2 P2a+2b, contacts-buddy-discovery, recommendations Tier 1, venue-and-merch P2, notifications price-poller, email-mfa P2 (TOTP) | ~6-8 weeks |
+| **v1.4** | financial + collection | concert-economics P1+2, merch-collection P1, recommendations Tier 2 (festival fit), commemorative-tickets P1, buddies-phase-2 P2c-d (going + seats) | ~3 months |
+| **v1.5** | gamification + music | predictions-game P1+2, music-integration P1+2 (Spotify), notifications buddy events | ~4 months |
 | **v1.5+** | polish + premium | concert-economics P3+4 (itemized + worth-it), merch-collection P3+4 (rarity + impact), commemorative-tickets P2+ (rarity, share), music-integration P3 (Apple Music) | ~5-6 months |
 | **v2.0+** | social layer | social-layer (DMs + plans + discoverability + moderation), pre-show-toolkit P2 (presale codes), predictions-game P3 (group leaderboards) | ~6-9 months |
 
@@ -92,14 +93,20 @@ on itemized cost capture (P3). Etc.
   specific merch. Re-cut 2026-05-06: Phase 1 (venue links via
   Ticketmaster) pulled into v1.0.3 — the cheapest user-facing win in
   the whole roadmap. Implementation starting today.
-- `2026-05-11-wishlist-watching.md` — planned · v1.1 (headline) ·
+- `2026-05-12-dark-mode.md` — planned · v1.1 (headline) · CSS variable
+  refactor + dark palette + Settings theme toggle (Light / Dark /
+  System) + per-device persistence via localStorage and a new
+  `user_settings.theme_preference` column for cross-device sync.
+  Closes the marketing-vs-product gap (the carousel + single-image
+  posts already show dark UI; this makes them accurate). ~1-1.5 weeks.
+- `2026-05-11-wishlist-watching.md` — planned · v1.2 (headline) ·
   "Notify me when Goose announces Chicago." Sibling concept to
   Wishlist (different tab, different intent — announced shows vs
   future-announce alerts). Extends existing tour-alerts cron with
   per-artist aggregation, fuzzy city match within radius, multi-city
   dedupe. Schema: new `wishlist_watches` table. ~2 weeks of focused
   work; reuses APNs + Edge Function infrastructure already shipped.
-- `2026-05-05-buddies-phase-2.md` — planned · v1.2 · Bridge from
+- `2026-05-05-buddies-phase-2.md` — planned · v1.3 · Bridge from
   free-text buddy labels → real Melo accounts. Friendships table,
   username search + autocomplete, `show_attendees` for shared shows,
   buddy profile view, see-buddies-going on upcoming shows. Re-cut

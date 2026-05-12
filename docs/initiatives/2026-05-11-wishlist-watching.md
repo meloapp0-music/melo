@@ -1,7 +1,7 @@
 # Wishlist Watching — "Notify me when [artist] announces [city]"
 
 - Started: 2026-05-11
-- Status: planned (v1.1 headline feature, ~2 weeks)
+- Status: planned (v1.2 headline feature, ~2 weeks — shifted from v1.1 to make room for Dark Mode as v1.1 headline)
 - Last updated: 2026-05-11
 
 ## Context
