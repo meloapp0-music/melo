@@ -125,13 +125,13 @@ The goal: **post 3x/week minimum, spend ≤ 1.5 hrs/week total.**
   on other people's stories. Let them check your profile.
 
 #### Fri (Reel)
-- **Idea:** Compare battle moment
-- **Source:** Two show cards with scores + ⚔️ Compare graphic
+- **Idea:** Setlist.fm auto-import — the "you don't have to type setlists" moment
+- **Source:** LogShow autocomplete picking an artist + date → setlist
+  populating itself in the form. Screen recording 8-12 seconds.
 - **Caption:**
-  > How do you decide which 10/10 show was actually better?
+  > Don't type your setlists. We grab them automatically.
   >
-  > In Melo you tap Compare and it picks. Settled my Goose vs
-  > Phish argument 👊
+  > 25 songs, every show, zero work 🎶
 
 ### Week 4 — "Sustain + iterate"
 
