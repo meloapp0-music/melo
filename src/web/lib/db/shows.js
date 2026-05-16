@@ -32,6 +32,7 @@ function fromRow(row) {
     festival: row.festival || '',
     venueUrl: row.venue_url || '',
     battleWins: row.battle_wins ?? 0,
+    isFavorite: row.is_favorite ?? false,
     status,
     wishlist: status === 'wishlist',
     visibility: row.visibility || null,
@@ -70,6 +71,8 @@ function toRow(show, userId) {
   if (show.venueUrl) row.venue_url = show.venueUrl;
   // Same defense for `battle_wins` (migration 0007).
   if (show.battleWins) row.battle_wins = show.battleWins;
+  // Same defense for `is_favorite` (migration 0008).
+  if (show.isFavorite) row.is_favorite = show.isFavorite;
   return row;
 }
 
@@ -115,6 +118,7 @@ export async function updateShow(id, updates, userId) {
     festival: 'festival',
     venueUrl: 'venue_url',
     battleWins: 'battle_wins',
+    isFavorite: 'is_favorite',
     status: 'status',
     wishlist: 'wishlist',
     visibility: 'visibility',

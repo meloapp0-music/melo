@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { deleteMyAccount } from '../lib/db/account';
 import { checkUsernameAvailable } from '../lib/db/profiles';
+import { showsToCsv, showsToJson, deliverFile } from '../lib/exportShows';
+import { track } from '../lib/analytics';
 
 export default function Settings() {
-  const { navigate, settings, updateSettings, signOut, profile, updateProfile } = useApp();
+  const { navigate, settings, updateSettings, signOut, profile, updateProfile, shows } = useApp();
   // The Setlist.fm key is encrypted at rest as of migration 0003. The
   // client never sees plaintext after the initial save round-trip.
   // Only show the input when the user explicitly wants to set/replace
@@ -16,6 +18,8 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  // 'csv' | 'json' | false — which export is in flight (drives button labels).
+  const [exporting, setExporting] = useState(false);
 
   // ----- Profile (display name + username) edit state -----
   // Inline-edit affordance in the Account row. Backend (updateMyProfile +
@@ -130,6 +134,27 @@ export default function Settings() {
       setSaveError(err?.message || 'Could not disconnect');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Export the full show history as a portable file. Pure client-side
+  // transform (see lib/exportShows.js) — no backend call.
+  const handleExport = async (format) => {
+    if (exporting || shows.length === 0) return;
+    setExporting(format);
+    try {
+      const stamp = new Date().toISOString().split('T')[0];
+      if (format === 'csv') {
+        await deliverFile(`melo-shows-${stamp}.csv`, showsToCsv(shows), 'text/csv');
+      } else {
+        await deliverFile(`melo-shows-${stamp}.json`, showsToJson(shows), 'application/json');
+      }
+      track('data_exported', { format, show_count: shows.length });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Melo] export failed', err);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -354,6 +379,39 @@ export default function Settings() {
             <span>Legal & Attributions</span>
             <span className="settings-link-row-chevron">›</span>
           </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">Your Data</div>
+        <div className="settings-card">
+          <div className="settings-label">Export your show history</div>
+          <p className="settings-desc">
+            You own your show history. Export every show you've logged —
+            artists, dates, venues, scores, vibes, setlists and more — as
+            a file you can keep, open in a spreadsheet, or move elsewhere.
+            No questions asked.
+          </p>
+          <button
+            className="settings-save-btn"
+            onClick={() => handleExport('csv')}
+            disabled={!!exporting || shows.length === 0}
+          >
+            {exporting === 'csv' ? 'Preparing…' : 'Export as CSV'}
+          </button>
+          <button
+            className="settings-save-btn"
+            onClick={() => handleExport('json')}
+            disabled={!!exporting || shows.length === 0}
+            style={{ background: 'rgba(61,44,30,0.06)', color: '#3D2C1E', marginTop: 8 }}
+          >
+            {exporting === 'json' ? 'Preparing…' : 'Export as JSON'}
+          </button>
+          {shows.length === 0 && (
+            <p className="settings-desc" style={{ marginTop: 8, textAlign: 'center' }}>
+              Log a show first — then you'll have something to export.
+            </p>
+          )}
         </div>
       </div>
 

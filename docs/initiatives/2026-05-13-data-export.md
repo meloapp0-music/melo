@@ -77,7 +77,19 @@ You own your show history. Export it any time.
 
 ## Changes made
 
-_Pending — bundling into v1.0.5 alongside ★ Favorite + trimmed vibes._
+- 2026-05-15: Implemented for v1.0.5.
+  - New `src/web/lib/exportShows.js` — `showsToCsv` (RFC-4180 quoting,
+    pipe-joined array cells), `showsToJson` (camelCase app shape),
+    and `deliverFile` — Web Share API with a `File` on iOS 15+
+    (native share sheet), anchor-download fallback elsewhere.
+  - `Settings.jsx` — new "Your Data" card above Account with
+    "Export as CSV" / "Export as JSON" buttons + a `handleExport`
+    handler. Disabled when the user has zero shows.
+  - Fires a `data_exported` analytics event (format + show_count).
+  - `npm run build` passes. No backend work — pure client-side.
+  - CSV columns: artist, date, venue, city, score, status, vibes,
+    genre, festival, notes, setlist, buddies, is_favorite,
+    created_at, photo_urls.
 
 ## Open questions / follow-ups
 

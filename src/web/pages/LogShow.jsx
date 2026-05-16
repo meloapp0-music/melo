@@ -5,6 +5,7 @@ import {
   SHOW_STATUS, getShowStatus,
 } from '../store';
 import { fetchSetlists, fetchUpcomingEvents, getCachedImage, fetchArtistImage, searchArtists } from '../api';
+import { track } from '../lib/analytics';
 import PhotoPicker from '../components/PhotoPicker';
 
 // Title-case an arbitrary user input ("luke combs" → "Luke Combs"). Used as a
@@ -65,6 +66,21 @@ export default function LogShow({ onClose, editingShow = null }) {
   // checks the FIRST folder segment = userId; the photos column stores
   // full URLs so they resolve regardless of path).
   const photoShowIdRef = useRef(editingShow?.id || generateId());
+
+  // ---- Logging funnel ----
+  // `show_log_started` on open; `show_log_abandoned` on close-without-save
+  // (the unmount cleanup, gated by submittedRef). `show_logged` fires from
+  // handleSubmit. See docs/initiatives/2026-05-15-product-analytics.md.
+  const submittedRef = useRef(false);
+  useEffect(() => {
+    track('show_log_started', { is_edit: !!editingShow });
+    return () => {
+      if (!submittedRef.current) {
+        track('show_log_abandoned', { is_edit: !!editingShow });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Convenience flags — keep the JSX guards readable.
   const isAttendedTab = status === SHOW_STATUS.ATTENDED;
@@ -263,6 +279,16 @@ export default function LogShow({ onClose, editingShow = null }) {
       // "false" bucket (visible bug if any helper miss; intentional).
       wishlist: status === SHOW_STATUS.WISHLIST,
     };
+    // The core action. Properties are shape/metadata only — never the
+    // artist/venue/notes the user typed.
+    submittedRef.current = true;
+    track('show_logged', {
+      status: payload.status,
+      is_edit: !!editingShow,
+      has_setlist: payload.setlist.length > 0,
+      has_photos: payload.photos.length > 0,
+      score_set: payload.score > 0,
+    });
     // We close the sheet first so the toast doesn't appear behind the
     // dimmed backdrop. Then fire-and-forget the save + show toast.
     onClose();

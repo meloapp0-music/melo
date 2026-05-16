@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { verifyEmailOtp, resendSignupOtp } from '../lib/auth';
+import { track } from '../lib/analytics';
 import { MeloLockup } from './MeloLogo';
 
 // Single-digit input boxes for an email OTP code.
@@ -104,6 +105,8 @@ export default function OtpEntry({ email, length = 8, onVerified, onChangeEmail 
     setBusy(true);
     try {
       await verifyEmailOtp({ email, token });
+      // Email confirmed — the activation funnel cleared the MFA step.
+      track('otp_verified');
       // onAuthStateChange in App.jsx fires; parent can also react.
       onVerified?.();
     } catch (err) {

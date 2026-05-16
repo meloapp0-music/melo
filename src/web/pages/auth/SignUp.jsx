@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signUp } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { MeloLockup } from '../../components/MeloLogo';
 import OtpEntry from '../../components/OtpEntry';
 
@@ -10,6 +11,9 @@ export default function SignUp({ onToggle }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [needsConfirm, setNeedsConfirm] = useState(false);
+
+  // Top of the activation funnel.
+  useEffect(() => { track('signup_started'); }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -25,6 +29,9 @@ export default function SignUp({ onToggle }) {
     setBusy(true);
     try {
       const { session } = await signUp({ email: email.trim(), password });
+      // Account created. `email_confirmation_required` distinguishes the
+      // OTP path (Confirm Email ON) from the dev path (session returned).
+      track('signup_completed', { email_confirmation_required: !session });
       if (!session) {
         // Email confirmation required (Supabase project has "Confirm
         // email" turned on). Show the 6-digit OTP entry; on success

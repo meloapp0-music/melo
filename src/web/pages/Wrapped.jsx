@@ -4,6 +4,7 @@ import { getArtistGradient, formatDate, VIBES, isAttended } from '../store';
 import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
 import KineticVibe from '../components/KineticVibe';
 import WrappedMapSlide from '../components/WrappedMapSlide';
+import { track } from '../lib/analytics';
 import {
   resolveCities,
   totalMilesTraveled,
@@ -112,6 +113,12 @@ export default function Wrapped({ year, onClose }) {
       .sort((a, b) => new Date(a.date) - new Date(b.date)),
     [shows, year]
   );
+
+  // Annual-anchor reach — does the user actually open Wrapped?
+  useEffect(() => {
+    track('wrapped_opened', { year, show_count: yearShows.length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year]);
 
   // Prior-year attended shows — used for the venue depth slide to
   // distinguish "new this year" venues from "return visits."

@@ -5,6 +5,7 @@ import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
 import { registerForPush } from './lib/push';
+import { identify, resetAnalytics } from './lib/analytics';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
 import ShowComparison from './components/ShowComparison';
@@ -114,6 +115,19 @@ export default function App() {
       // eslint-disable-next-line no-console
       console.warn('[Melo] registerForPush threw', err);
     });
+  }, [session.status, userId]);
+
+  // ---- Tie analytics events to the signed-in user ----
+  // identify() on sign-in so events attribute to a stable Supabase
+  // user_id; resetAnalytics() on sign-out so the next user's events
+  // don't merge into the previous profile. user_id only — never email
+  // or name. See docs/initiatives/2026-05-15-product-analytics.md.
+  useEffect(() => {
+    if (session.status === 'signedIn' && userId) {
+      identify(userId);
+    } else if (session.status === 'signedOut') {
+      resetAnalytics();
+    }
   }, [session.status, userId]);
 
   // ---- Prefetch artist images (Deezer) ----

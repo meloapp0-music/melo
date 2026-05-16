@@ -1,12 +1,41 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, VIBES, isAttended, ticketmasterSearchUrl } from '../store';
+import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl } from '../api';
+import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 
+// Rough "how long ago" label for the pre-show card. Years once it's
+// been 12+ months, otherwise months. Good enough for "you last saw
+// them 2 years ago" — no need for day precision.
+function timeAgoLabel(dateStr) {
+  const then = new Date(dateStr + 'T00:00:00');
+  if (Number.isNaN(then.getTime())) return '';
+  const now = new Date();
+  let months = (now.getFullYear() - then.getFullYear()) * 12 + (now.getMonth() - then.getMonth());
+  if (months < 1) return 'less than a month ago';
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? '' : 's'} ago`;
+}
+
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows } = useApp();
+
+  // Pre-show intel — for an upcoming (Going / Wishlist) show, find the
+  // user's most recent past show for the same artist. Per
+  // docs/initiatives/2026-05-08-pre-show-toolkit.md (Phase 1).
+  const lastSeen = (() => {
+    if (isAttended(show)) return null;
+    const name = (show.artist || '').trim().toLowerCase();
+    if (!name) return null;
+    const prior = shows
+      .filter((s) => s.id !== show.id && isAttended(s) && s.date &&
+        (s.artist || '').trim().toLowerCase() === name)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    return prior[0] || null;
+  })();
 
   // Auto-resolve the official venue website on open. We keep a local
   // mirror so the pill flips from "Loading…" → live link without forcing
@@ -28,6 +57,16 @@ export default function ShowDetail({ show, onClose }) {
   const [venueLookupState, setVenueLookupState] = useState('idle');
   const updateShowRef = useRef(updateShow);
   useEffect(() => { updateShowRef.current = updateShow; }, [updateShow]);
+
+  // ★ Favorite. Local mirror so the star flips instantly — the parent
+  // holds `selectedShow` as a separate object that updateShow() doesn't
+  // re-push into this component. Per the v1.0.5 favorite initiative.
+  const [isFavorite, setIsFavorite] = useState(!!show.isFavorite);
+  const toggleFavorite = () => {
+    const next = !isFavorite;
+    setIsFavorite(next);
+    try { updateShow(show.id, { isFavorite: next }); } catch { /* optimistic */ }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -91,8 +130,8 @@ export default function ShowDetail({ show, onClose }) {
     : { background: gradient };
 
   const getVibeStyle = (name) => {
-    const v = VIBES.find((vb) => vb.name === name);
-    return v ? { background: v.bg, color: v.color } : {};
+    const v = vibeStyle(name);
+    return v.bg ? { background: v.bg, color: v.color } : {};
   };
 
   const getBuddyColor = (name) => {
@@ -124,6 +163,16 @@ export default function ShowDetail({ show, onClose }) {
               {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
             </div>
           )}
+          <button
+            className={`detail-fav ${isFavorite ? 'active' : ''}`}
+            onClick={toggleFavorite}
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-pressed={isFavorite}
+          >
+            <svg viewBox="0 0 24 24">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </button>
           <button className="detail-close" onClick={onClose}>
             <svg viewBox="0 0 24 24">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -146,6 +195,44 @@ export default function ShowDetail({ show, onClose }) {
               <span>Find tickets on Ticketmaster</span>
               <span className="detail-tickets-arrow" aria-hidden="true">↗</span>
             </a>
+          )}
+
+          {/* Pre-show card — only on upcoming (Going / Wishlist) shows.
+              Surfaces the user's last time seeing this artist. Per
+              docs/initiatives/2026-05-08-pre-show-toolkit.md. */}
+          {!isAttended(show) && (
+            <div className="preshow-card">
+              <div className="preshow-card-label">Pre-show</div>
+              {lastSeen ? (
+                <>
+                  <div className="preshow-title">
+                    You last saw {show.artist} {timeAgoLabel(lastSeen.date)}
+                  </div>
+                  <div className="preshow-detail">
+                    {[
+                      [lastSeen.venue, lastSeen.city].filter(Boolean).join(', '),
+                      formatDate(lastSeen.date),
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                  {lastSeen.score > 0 && (
+                    <div className="preshow-score-row">
+                      <span className="preshow-score">
+                        {Number.isInteger(lastSeen.score)
+                          ? lastSeen.score
+                          : lastSeen.score.toFixed(1)}
+                      </span>
+                      <span className="preshow-score-label">
+                        your rating that night
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="preshow-title">
+                  First time seeing {show.artist} ✨
+                </div>
+              )}
+            </div>
           )}
 
           {show.vibes && show.vibes.length > 0 && (
@@ -176,6 +263,7 @@ export default function ShowDetail({ show, onClose }) {
                 href={venueUrl || venueSearchUrl(show.venue, show.city)}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track('venue_link_tapped', { resolved: !!venueUrl })}
               >
                 <span aria-hidden="true">📍</span>
                 <span className="detail-link-pill-name">{show.venue}</span>

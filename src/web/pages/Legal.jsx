@@ -172,8 +172,20 @@ function Privacy() {
       <p>
         We don't sell your data. We don't run ad tracking. We don't ask
         for location, contacts, microphone, camera, or motion data. We
-        do not collect analytics about how you use the app beyond
-        anonymized error logs.
+        don't record your screen, and we don't track you across other
+        apps or websites.
+      </p>
+
+      <h3>Usage analytics</h3>
+      <p>
+        To understand how Melo is used — and where it can be better —
+        we record anonymous product events through PostHog, a
+        privacy-focused analytics service. These events are about
+        actions, not content: opening the app, starting to log a show,
+        finishing a show, viewing your Wrapped. We never send PostHog
+        the artists, venues, notes, photos, or any other content you
+        enter. Events are tied to your account's internal ID — never
+        your email or name.
       </p>
 
       <h3>Where it lives</h3>

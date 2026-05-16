@@ -94,7 +94,20 @@ create policy "presale_insert" on public.presale_codes
 
 ## Changes made
 
-_None yet — planning only._
+- 2026-05-15: Phase 1 — "last time you saw them" shipped in v1.0.5.
+  - `ShowDetail.jsx` — on any Going / Wishlist show, a "Pre-show"
+    card surfaces the user's most recent attended show for the same
+    artist: venue + city + date + that night's rating, with a rough
+    "N years/months ago" label (`timeAgoLabel` helper). When there's
+    no prior show: "First time seeing {artist} ✨".
+  - `App.css` — `.preshow-card` family (amber-tinted card, gradient
+    score chip).
+  - `npm run build` passes.
+  - **Opener research deferred.** The doc assumed lineup data was
+    "already" captured by LogShow autofill — it is not (no `lineup`
+    field on the show record, no DB column). Wiring that up is more
+    than the "pure UI" the doc claimed, so it moves to a later
+    release rather than blocking the v1.0.5 ship.
 
 ## Open questions / follow-ups
 

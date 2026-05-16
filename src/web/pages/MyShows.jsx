@@ -12,6 +12,7 @@ export default function MyShows() {
   const [view, setView] = useState('grid');
   const [activeTab, setActiveTab] = useState(SHOW_STATUS.ATTENDED);
   const [genreFilter, setGenreFilter] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const base = shows.filter((s) => getShowStatus(s) === activeTab);
 
@@ -34,8 +35,11 @@ export default function MyShows() {
     if (genreFilter) {
       list = list.filter((s) => s.genre === genreFilter);
     }
+    if (favoritesOnly) {
+      list = list.filter((s) => s.isFavorite);
+    }
     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [base, search, genreFilter]);
+  }, [base, search, genreFilter, favoritesOnly]);
 
   const bgStyle = (artist) => {
     const img = getArtistImage(artist);
@@ -85,6 +89,13 @@ export default function MyShows() {
 
       <div className="shows-toolbar">
         <div className="shows-filters" style={{ flex: 1, margin: 0, padding: 0 }}>
+          <button
+            className={`filter-chip filter-chip-fav ${favoritesOnly ? 'active' : ''}`}
+            onClick={() => setFavoritesOnly((v) => !v)}
+            aria-pressed={favoritesOnly}
+          >
+            <span aria-hidden="true">★</span> Favorites
+          </button>
           {genres.map((g) => (
             <button
               key={g}
@@ -145,6 +156,9 @@ export default function MyShows() {
             >
               <div className="show-poster-bg" style={bgStyle(show.artist)} />
               <div className="show-poster-overlay" />
+              {show.isFavorite && (
+                <div className="show-poster-fav" aria-hidden="true">★</div>
+              )}
               {isAttended(show) && show.score > 0 && (
                 <div className="show-poster-score">
                   {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
@@ -168,7 +182,12 @@ export default function MyShows() {
             >
               <div className="show-list-thumb" style={bgStyle(show.artist)} />
               <div className="show-list-info">
-                <div className="show-list-artist">{show.artist}</div>
+                <div className="show-list-artist">
+                  {show.isFavorite && (
+                    <span className="show-list-fav" aria-hidden="true">★</span>
+                  )}
+                  {show.artist}
+                </div>
                 <div className="show-list-meta">
                   {show.venue} &middot; {formatDate(show.date)}
                 </div>

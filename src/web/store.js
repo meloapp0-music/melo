@@ -2,23 +2,40 @@
 // src/web/lib/db/* after the Supabase migration. See
 // docs/initiatives/2026-04-17-backend-and-social.md.
 
+// Style data for every vibe, including the six retired in v1.0.5.
+// Kept so a show logged with an older vibe still renders with its
+// original colour — `vibeStyle()` resolves any name, current or
+// retired. The logging picker only offers the trimmed `VIBES`.
+const VIBE_STYLES = {
+  Euphoric: { color: '#FF6B6B', bg: '#FFF0F0' },
+  Intimate: { color: '#845EC2', bg: '#F3EEFF' },
+  'High Energy': { color: '#FF9671', bg: '#FFF3ED' },
+  Chill: { color: '#00C9A7', bg: '#E8FFF8' },
+  Emotional: { color: '#4B7BE5', bg: '#EDF2FF' },
+  'Mind-Blowing': { color: '#FFC75F', bg: '#FFF8E7' },
+  Rowdy: { color: '#C4E538', bg: '#F5FFDB' },
+  Transcendent: { color: '#D65DB1', bg: '#FCF0F8' },
+  Nostalgic: { color: '#FF8066', bg: '#FFF0ED' },
+  Groovy: { color: '#00D2FC', bg: '#E6FAFF' },
+  Raw: { color: '#C34A36', bg: '#FBEEED' },
+  Dreamy: { color: '#A98FE7', bg: '#F5F0FF' },
+  Chaotic: { color: '#FF4757', bg: '#FFEDED' },
+  Spiritual: { color: '#7EC8E3', bg: '#EFF8FC' },
+  Legendary: { color: '#E8573A', bg: '#FFF0EC' },
+};
+
+// The vibes offered when logging a show. Trimmed 15 → 9 in v1.0.5 to
+// cut redundancy (Euphoric/Transcendent/Mind-Blowing/Legendary all
+// meant "peak"; High Energy/Rowdy/Chaotic all "intense"). See
+// docs/initiatives/2026-05-15-v1-0-5-favorite-and-vibes.md.
 export const VIBES = [
-  { name: 'Euphoric', color: '#FF6B6B', bg: '#FFF0F0' },
-  { name: 'Intimate', color: '#845EC2', bg: '#F3EEFF' },
-  { name: 'High Energy', color: '#FF9671', bg: '#FFF3ED' },
-  { name: 'Chill', color: '#00C9A7', bg: '#E8FFF8' },
-  { name: 'Emotional', color: '#4B7BE5', bg: '#EDF2FF' },
-  { name: 'Mind-Blowing', color: '#FFC75F', bg: '#FFF8E7' },
-  { name: 'Rowdy', color: '#C4E538', bg: '#F5FFDB' },
-  { name: 'Transcendent', color: '#D65DB1', bg: '#FCF0F8' },
-  { name: 'Nostalgic', color: '#FF8066', bg: '#FFF0ED' },
-  { name: 'Groovy', color: '#00D2FC', bg: '#E6FAFF' },
-  { name: 'Raw', color: '#C34A36', bg: '#FBEEED' },
-  { name: 'Dreamy', color: '#A98FE7', bg: '#F5F0FF' },
-  { name: 'Chaotic', color: '#FF4757', bg: '#FFEDED' },
-  { name: 'Spiritual', color: '#7EC8E3', bg: '#EFF8FC' },
-  { name: 'Legendary', color: '#E8573A', bg: '#FFF0EC' },
-];
+  'Euphoric', 'Intimate', 'High Energy', 'Chill', 'Emotional',
+  'Rowdy', 'Transcendent', 'Nostalgic', 'Groovy',
+].map((name) => ({ name, ...VIBE_STYLES[name] }));
+
+// Style lookup for ANY vibe name — current or retired. Display
+// surfaces use this so legacy shows keep their colour.
+export const vibeStyle = (name) => VIBE_STYLES[name] || {};
 
 export const CITIES = [
   'New York', 'Los Angeles', 'Chicago', 'Nashville', 'Austin',

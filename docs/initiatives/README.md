@@ -9,7 +9,7 @@ initiative. See `CLAUDE.md` in the repo root for the full process.
 |---|---|---|---|
 | **v1.0.3** ✅ shipped | venue links + email confirm | venue-and-merch-links P1, email-mfa P1 | live |
 | **v1.0.4** ⏳ in review | Wrapped juice | wrapped-juice (kinetic + map + battles) | this week |
-| **v1.0.5** | quick polish wins | pre-show-toolkit P1 (last-time, openers), email-template fixes, ★ Favorite toggle + trimmed vibes (15 → 9) | next week |
+| **v1.0.5** | quick polish wins | pre-show-toolkit P1 (last-time, openers), email-template fixes, ★ Favorite toggle + trimmed vibes (15 → 9), product-analytics (PostHog instrumentation), data-export (CSV/JSON) | next week |
 | **v1.1** | **Dark Mode** | dark-mode (headline) — CSS variable refactor + dark palette + theme toggle + persistence. Closes the marketing-vs-product gap (carousel + single-image posts already show dark UI). | ~1-1.5 weeks |
 | **v1.2** | **Wishlist Watching** | wishlist-watching (headline) — "notify me when Goose announces Chicago" + notifications-system P1 (inbox + lineup) | ~2-3 weeks |
 | **v1.3** | the social pivot begins | buddies-phase-2 P2a+2b, contacts-buddy-discovery, recommendations Tier 1, venue-and-merch P2, notifications price-poller, email-mfa P2 (TOTP) | ~6-8 weeks |
@@ -22,6 +22,17 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-05-15-v1-0-5-favorite-and-vibes.md` — in-progress · v1.0.5 ·
+  ★ Favorite a show (migration 0008 `is_favorite`, ShowDetail star
+  toggle, My Shows Favorites filter + badges) + trim the vibe picker
+  15 → 9 (retired-vibe colours kept via a `vibeStyle` helper so old
+  shows still render right). Code on main; pending migration apply.
+- `2026-05-15-product-analytics.md` — in-progress · v1.0.5 · Instrument
+  Melo with PostHog — currently zero analytics, flying blind on usage.
+  Wrapper module `src/web/lib/analytics.js`, ~10 funnel events
+  (activation + logging + Wrapped reach), privacy-first (no autocapture,
+  no content, identify by user_id only). Prerequisite for all retention
+  work. ~1 day; bundles into v1.0.5.
 - `2026-05-08-pre-show-toolkit.md` — planned · v1.0.5 (P1) → v1.2 (P2)
   · Cluster of pre-show features. P1 = "last time you saw them" + opener
   bio cards (cheap derived-data wins, ~3-4 hrs). P2 = presale code
