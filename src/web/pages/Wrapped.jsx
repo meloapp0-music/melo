@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, VIBES, isAttended } from '../store';
+import { getArtistGradient, formatDate, VIBES, isAttended, wrappedLabel } from '../store';
 import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
 import KineticVibe from '../components/KineticVibe';
 import WrappedMapSlide from '../components/WrappedMapSlide';
@@ -639,7 +639,7 @@ export default function Wrapped({ year, onClose }) {
               <MeloWordmark size={32} color="#fff" />
             </div>
             <div className="wrapped-summary-year wrapped-stagger" style={{ animationDelay: '0.18s' }}>
-              {year} Wrapped
+              {year} {wrappedLabel(year)}
             </div>
             <div className="wrapped-summary-grid">
               {[

@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { useApp } from '../App';
 import {
   getArtistGradient, getGreeting, formatDate,
-  calculateStreak, getWrappedYears, DISCOVERY_ARTISTS,
+  calculateStreak, getWrappedYears, wrappedLabel, DISCOVERY_ARTISTS,
   isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl,
 } from '../store';
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
@@ -273,7 +273,7 @@ export default function Home() {
           onClick={() => setWrappedYear(latestWrappedYear)}
         >
           <div className="wrapped-banner-text">
-            <span className="wrapped-banner-title">Your {latestWrappedYear} Wrapped</span>
+            <span className="wrapped-banner-title">Your {latestWrappedYear} {wrappedLabel(latestWrappedYear)}</span>
             <span className="wrapped-banner-sub">See your year in music 🎶</span>
           </div>
           <span className="wrapped-banner-arrow">→</span>

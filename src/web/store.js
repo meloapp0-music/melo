@@ -214,6 +214,14 @@ export function getWrappedYears(shows) {
   return [...years].sort((a, b) => b - a);
 }
 
+// "Wrapped" is a full-year retrospective, so it only fits a finished
+// year. The current (in-progress) year is labelled "So Far" instead —
+// it keeps the mid-year stat surface engaging without pretending the
+// year is done. Per user request 2026-05-17.
+export function wrappedLabel(year) {
+  return year < new Date().getFullYear() ? 'Wrapped' : 'So Far';
+}
+
 // ===== Top artists (weighted) =====
 // Ranks the user's favorite artists across both attended and Going
 // shows. Powers the "N of your artists playing" badge on the
