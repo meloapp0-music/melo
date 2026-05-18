@@ -2851,6 +2851,60 @@ h4 { font-size: 17px; }
   color: var(--brown-muted);
 }
 
+/* "Your Wrapped" archive on the Profile page — a horizontal shelf of
+   year cards. Per docs/initiatives/2026-05-17-wrapped-year-archive.md. */
+.wrapped-archive {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.wrapped-archive::-webkit-scrollbar { display: none; }
+
+.wrapped-year-card {
+  flex: 0 0 auto;
+  width: 142px;
+  height: 168px;
+  border-radius: 18px;
+  border: none;
+  cursor: pointer;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  color: #fff;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+  box-shadow: 0 6px 18px rgba(61,44,30,0.16);
+}
+
+.wrapped-year-card:active { transform: scale(0.95); }
+
+.wrapped-year-card-year {
+  font-family: var(--font-heading);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wrapped-year-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-top: 5px;
+}
+
+.wrapped-year-card-count {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-top: 5px;
+}
+
 /* Favorite star badge on a My Shows grid poster (top-left — the
    score badge already owns top-right). */
 .show-poster-fav {

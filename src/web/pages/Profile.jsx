@@ -1,11 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, getYear, calculateStreak, isAttended } from '../store';
+import { getArtistGradient, formatDate, getYear, calculateStreak, isAttended, getWrappedYears, wrappedLabel } from '../store';
 import { MeloIcon } from '../components/MeloLogo';
 import { uploadAvatar } from '../lib/storage';
 
+// Each Wrapped year card gets its own gradient so the archive reads
+// like a shelf of distinct yearly keepsakes. Cycled by index.
+const WRAPPED_CARD_GRADIENTS = [
+  'linear-gradient(150deg, #E8573A, #F4A261)',
+  'linear-gradient(150deg, #845EC2, #D65DB1)',
+  'linear-gradient(150deg, #2563EB, #00C9A7)',
+  'linear-gradient(150deg, #1A1A2E, #E8573A)',
+  'linear-gradient(150deg, #0D8A56, #C4E538)',
+];
+
 export default function Profile() {
-  const { shows, navigate, setSelectedShow, getArtistImage, profile, session, updateProfile } = useApp();
+  const { shows, navigate, setSelectedShow, getArtistImage, profile, session, updateProfile, setWrappedYear } = useApp();
   const fileInputRef = useRef(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
@@ -35,6 +45,7 @@ export default function Profile() {
   };
   const attended = shows.filter(isAttended);
   const streak = useMemo(() => calculateStreak(shows), [shows]);
+  const wrappedYears = useMemo(() => getWrappedYears(shows), [shows]);
 
   const stats = useMemo(() => {
     const artists = new Set(attended.map((s) => s.artist));
@@ -170,6 +181,35 @@ export default function Profile() {
             <div className="profile-streak-card">
               <div className="profile-streak-num">⚡ {streak.longest}</div>
               <div className="profile-streak-label">Longest Streak</div>
+            </div>
+          </div>
+        )}
+
+        {/* Your Wrapped — browsable archive of every year */}
+        {wrappedYears.length > 0 && (
+          <div className="profile-section">
+            <h3>Your Wrapped</h3>
+            <div className="wrapped-archive">
+              {wrappedYears.map((year, i) => {
+                const count = attended.filter(
+                  (s) => new Date(s.date + 'T00:00:00').getFullYear() === year
+                ).length;
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    className="wrapped-year-card"
+                    style={{ background: WRAPPED_CARD_GRADIENTS[i % WRAPPED_CARD_GRADIENTS.length] }}
+                    onClick={() => setWrappedYear(year)}
+                  >
+                    <div className="wrapped-year-card-year">{year}</div>
+                    <div className="wrapped-year-card-label">{wrappedLabel(year)}</div>
+                    <div className="wrapped-year-card-count">
+                      {count} {count === 1 ? 'show' : 'shows'}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
