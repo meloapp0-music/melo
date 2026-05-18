@@ -22,6 +22,14 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-05-18-comparative-rating.md` — planned · slot TBD (headline-
+  worthy) · Beli-style comparative rating — replace the absolute typed
+  1–10 score with a positional model: a gut bucket + binary-search
+  head-to-head comparisons place each show in a total order, and the
+  decimal score is derived from rank position (so logging a new show
+  re-scores the library). Reframes "Compare" from competition to
+  calibration. Builds on existing elo.js / battle_wins / Rankings
+  groundwork.
 - `2026-05-15-v1-0-5-favorite-and-vibes.md` — in-progress · v1.0.5 ·
   ★ Favorite a show (migration 0008 `is_favorite`, ShowDetail star
   toggle, My Shows Favorites filter + badges) + trim the vibe picker
