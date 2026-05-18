@@ -323,8 +323,28 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
 // don't have Wikipedia entries — caller should hide the pill in that
 // case rather than fall back to a search-engine link the user didn't
 // ask for.
+// Hand-curated overrides for venues the Wikipedia/Wikidata heuristic
+// resolves incorrectly. Matched by normalized substring so "The Salt
+// Shed", "Salt Shed", and "The Fairgrounds at the Salt Shed" all hit
+// the same entry. Grows as users report wrong links.
+const VENUE_URL_OVERRIDES = [
+  { match: 'salt shed', url: 'https://saltshedchicago.com' },
+];
+
+// Returns the override URL for a venue name, or '' if none. Exported
+// so ShowDetail can apply it even over a previously-cached wrong URL.
+export function venueOverrideUrl(venueName) {
+  const n = (venueName || '').toLowerCase();
+  const hit = VENUE_URL_OVERRIDES.find((o) => n.includes(o.match));
+  return hit ? hit.url : '';
+}
+
 export async function lookupVenueUrl(venueName, city = '') {
   if (!venueName) return '';
+
+  // A curated override always wins — skip the heuristic entirely.
+  const override = venueOverrideUrl(venueName);
+  if (override) return override;
 
   // 5-second total timeout — Wikipedia/Wikidata is usually fast, but
   // we'd rather fall back to the Google search URL than hang the pill.

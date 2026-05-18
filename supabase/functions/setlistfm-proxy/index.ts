@@ -124,6 +124,16 @@ serve(async (req) => {
       },
     });
 
+    // Setlist.fm returns HTTP 404 when a search simply has no matches —
+    // that's "zero results", not an error. Passing the 404 through makes
+    // the browser log a phantom "Failed to load resource" and the client
+    // treat an empty search as a failure. Normalize it to a 200 with an
+    // empty list so a no-results search reads as exactly that.
+    if (upstream.status === 404) {
+      const emptyKey = path === 'search/artists' ? 'artist' : 'setlist';
+      return json({ [emptyKey]: [], total: 0, itemsPerPage: 0, page: 1 }, 200);
+    }
+
     const respBody = await upstream.arrayBuffer();
     const headers = new Headers(corsHeaders);
     const ct = upstream.headers.get('content-type');

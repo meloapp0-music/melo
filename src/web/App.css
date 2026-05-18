@@ -2905,6 +2905,32 @@ h4 { font-size: 17px; }
   margin-top: 5px;
 }
 
+/* Wishlist → Going upgrade button on ShowDetail. Green to read as a
+   confident "go" action, distinct from the orange tickets button. */
+.detail-upgrade-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: linear-gradient(135deg, #00C9A7, #00A88C);
+  color: #FBF6EE;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  border: none;
+  cursor: pointer;
+  padding: 14px 18px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(0, 168, 140, 0.22);
+  transition: transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detail-upgrade-btn:active { transform: scale(0.97); }
+
 /* Favorite star badge on a My Shows grid poster (top-left — the
    score badge already owns top-right). */
 .show-poster-fav {

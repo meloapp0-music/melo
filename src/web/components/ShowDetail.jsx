@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl } from '../store';
-import { fetchArtistBio, lookupVenueUrl, venueSearchUrl } from '../api';
+import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus } from '../store';
+import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
 import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
@@ -21,7 +21,18 @@ function timeAgoLabel(dateStr) {
 }
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast } = useApp();
+
+  // Status upgrade — local mirror so the button reflects the change
+  // instantly (the parent holds `selectedShow` as a separate object).
+  // Wishlist → Going when the user buys tickets.
+  const [statusOverride, setStatusOverride] = useState(null);
+  const effectiveStatus = statusOverride || getShowStatus(show);
+  const markGoing = () => {
+    setStatusOverride(SHOW_STATUS.GOING);
+    try { updateShow(show.id, { status: SHOW_STATUS.GOING }); } catch { /* optimistic */ }
+    if (showToast) showToast({ message: `🎟️ ${show.artist} moved to Going` });
+  };
 
   // Pre-show intel — for an upcoming (Going / Wishlist) show, find the
   // user's most recent past show for the same artist. Per
@@ -76,6 +87,19 @@ export default function ShowDetail({ show, onClose }) {
     if (!show.venue) {
       setVenueUrl('');
       setVenueLookupState('idle');
+      return;
+    }
+
+    // A curated override wins over everything — including a previously
+    // cached wrong URL — so a venue the heuristic got wrong heals on
+    // next open.
+    const override = venueOverrideUrl(show.venue);
+    if (override) {
+      setVenueUrl(override);
+      setVenueLookupState('idle');
+      if (show.venueUrl !== override) {
+        try { updateShowRef.current(show.id, { venueUrl: override }); } catch {}
+      }
       return;
     }
 
@@ -195,6 +219,15 @@ export default function ShowDetail({ show, onClose }) {
               <span>Find tickets on Ticketmaster</span>
               <span className="detail-tickets-arrow" aria-hidden="true">↗</span>
             </a>
+          )}
+
+          {/* Wishlist → Going upgrade — "I bought tickets". Only on a
+              Wishlist show; once moved, it becomes a Going show. */}
+          {effectiveStatus === SHOW_STATUS.WISHLIST && (
+            <button className="detail-upgrade-btn" onClick={markGoing}>
+              <span aria-hidden="true">🎟️</span>
+              <span>I got tickets — I'm Going</span>
+            </button>
           )}
 
           {/* Pre-show card — only on upcoming (Going / Wishlist) shows.
