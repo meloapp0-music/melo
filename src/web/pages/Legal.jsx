@@ -12,7 +12,7 @@ import { useApp } from '../App';
 // launch. Update `LEGAL_LAST_UPDATED` and `LEGAL_CONTACT_EMAIL` in
 // this file when you finalize them.
 const LEGAL_LAST_UPDATED = '2026-04-20';
-const LEGAL_CONTACT_EMAIL = 'support@melo.app';
+const LEGAL_CONTACT_EMAIL = 'support@melo.show';
 
 const TABS = [
   { id: 'attributions', label: 'Attributions' },

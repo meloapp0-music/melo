@@ -131,10 +131,10 @@ Tap Settings → Legal & Attributions to read the credits.
 
 ## Support / Marketing / Privacy URLs
 
-- **Support URL**: `https://melo.app/support` (route on the marketing
-  site — points to `mailto:hello@melo.app` until a help center exists)
-- **Marketing URL**: `https://melo.app/`
-- **Privacy Policy URL**: `https://melo.app/privacy.html`
+- **Support URL**: `https://melo.show/support` (route on the marketing
+  site — points to `mailto:hello@melo.show` until a help center exists)
+- **Marketing URL**: `https://melo.show/`
+- **Privacy Policy URL**: `https://melo.show/privacy.html`
 
 ## Required reviewer notes
 
@@ -196,7 +196,7 @@ features visible in the screenshots are accessible to all users.
       Data Linked to You: Account, User Content. Data Not Linked: usage
       diagnostics if you wire any in.)
 - [ ] Sign-in info filled in (test account credentials)
-- [ ] Marketing site live at `https://melo.app/`
+- [ ] Marketing site live at `https://melo.show/`
 - [ ] Privacy and Terms pages live at the URLs above
 - [ ] App Store badge link in marketing site updated to the live App
       Store URL once approved
