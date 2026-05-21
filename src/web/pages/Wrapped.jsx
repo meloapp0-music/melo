@@ -223,6 +223,12 @@ export default function Wrapped({ year, onClose }) {
     )?.photos?.[0] || null;
     const highestRatedPhoto = highestRated?.photos?.[0] || null;
 
+    // "Your Year in Photos" — a deduped, capped collection of every
+    // photo across this year's attended shows. Per v1.0.6 initiative.
+    const allPhotos = yearShows.flatMap((s) => s.photos || []).filter(Boolean);
+    const photoWall = [...new Set(allPhotos)].slice(0, 20);
+    const showsWithPhotos = yearShows.filter((s) => (s.photos || []).length > 0).length;
+
     return {
       total: yearShows.length,
       topArtist: topArtistEntry?.[0],
@@ -243,6 +249,9 @@ export default function Wrapped({ year, onClose }) {
       totalSongs,
       collageArtists,
       personality: generatePersonality(topGenre?.[0], topVibes[0]?.[0]),
+      photoWall,
+      photoCount: allPhotos.length,
+      showsWithPhotos,
     };
   }, [yearShows]);
 
@@ -257,7 +266,7 @@ export default function Wrapped({ year, onClose }) {
     return { depth, spread, miles, topVenueRepeat };
   }, [yearShows, priorYearsShows, geo]);
 
-  // 12 slides as of v1.0.4 late-cut.
+  // 12-13 slides as of v1.0.6 (photo wall is conditional).
   //   0: Year intro
   //   1: Top artist
   //   2: Top venue        (this is the venue moment — Home Base was a duplicate)
@@ -266,11 +275,14 @@ export default function Wrapped({ year, onClose }) {
   //   5: Venue depth
   //   6: Geographic spread
   //   7: Animated map
-  //   8: Route recap      (NEW; replaced flat Cities tag-grid)
-  //   9: Vibes            (was 10)
-  //  10: Personality      (was 11)
-  //  11: Summary          (was 12)
-  const totalSlides = 12;
+  //   8: Route recap      (replaced flat Cities tag-grid)
+  //   9: Vibes
+  //  10: Personality
+  //  11: Your Year in Photos  ← NEW v1.0.6, only when photos exist
+  //  12: Summary              (or 11 if no photos)
+  const hasPhotoWall = (data.photoWall || []).length > 0;
+  const summarySlide = hasPhotoWall ? 12 : 11;
+  const totalSlides = hasPhotoWall ? 13 : 12;
 
   const handleTouchStart = (e) => {
     touchRef.current.startX = e.touches[0].clientX;
@@ -630,8 +642,40 @@ export default function Wrapped({ year, onClose }) {
           </div>
         </div>
 
-        {/* Slide 11 — Summary */}
-        <div className={`wrapped-slide ${slide === 11 ? 'is-active' : ''}`}>
+        {/* Slide 11 — Your Year in Photos (only when photos exist).
+            Per docs/initiatives/2026-05-21-v1-0-6-photos-and-openers.md. */}
+        {hasPhotoWall && (
+          <div className={`wrapped-slide ${slide === 11 ? 'is-active' : ''}`}>
+            <div className="wrapped-photo-wall">
+              {data.photoWall.map((url, i) => (
+                <div
+                  key={`${url}-${i}`}
+                  className="wrapped-photo-tile"
+                  style={{
+                    backgroundImage: `url(${url})`,
+                    animationDelay: `${0.06 * i}s`,
+                  }}
+                />
+              ))}
+            </div>
+            <div className="wrapped-photo-overlay" />
+            <div className="wrapped-slide-content">
+              <p className="wrapped-label wrapped-stagger" style={{ animationDelay: '0.1s' }}>
+                YOUR YEAR
+              </p>
+              <KineticVibe name="in photos" size="hero" delay={0.3} />
+              <p
+                className="wrapped-photo-meta wrapped-stagger"
+                style={{ animationDelay: '0.85s' }}
+              >
+                {data.photoCount} {data.photoCount === 1 ? 'photo' : 'photos'} · {data.showsWithPhotos} {data.showsWithPhotos === 1 ? 'show' : 'shows'} · {year}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Summary slide — index depends on whether the photo wall rendered. */}
+        <div className={`wrapped-slide ${slide === summarySlide ? 'is-active' : ''}`}>
           <SlideBg image={artistImg} overlay={SLIDE_OVERLAYS[7]} fallbackArtist={data.topArtist} />
           <div className="wrapped-slide-content wrapped-summary">
             <div className="wrapped-summary-logo wrapped-stagger" style={{ animationDelay: '0.05s' }}>

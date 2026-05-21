@@ -175,6 +175,11 @@ export default function ShowDetail({ show, onClose }) {
             <div className="detail-meta">
               {formatDate(show.date)} &middot; {show.venue}, {show.city}
             </div>
+            {show.openers && show.openers.length > 0 && (
+              <div className="detail-openers">
+                with {show.openers.join(', ')}
+              </div>
+            )}
             {show.festival && (
               <div className="detail-festival-badge">
                 <span aria-hidden="true">🎪</span>

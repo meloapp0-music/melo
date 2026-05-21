@@ -4,7 +4,7 @@ import {
   VIBES, CITIES, VENUES_BY_CITY, GENRES, generateId, formatDate,
   SHOW_STATUS, getShowStatus,
 } from '../store';
-import { fetchSetlists, fetchUpcomingEvents, getCachedImage, fetchArtistImage, searchArtists } from '../api';
+import { fetchSetlists, fetchUpcomingEvents, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs } from '../api';
 import { track } from '../lib/analytics';
 import PhotoPicker from '../components/PhotoPicker';
 
@@ -54,6 +54,12 @@ export default function LogShow({ onClose, editingShow = null }) {
   );
   const [selBuddies, setSelBuddies] = useState(editingShow?.buddies || []);
   const [newBuddyName, setNewBuddyName] = useState('');
+  // Openers — opening acts on the bill. Auto-suggested from
+  // Ticketmaster's `lineup` (upcoming shows) or a Setlist.fm co-act
+  // lookup at the same venue+date (past shows). Per v1.0.6 initiative.
+  const [openers, setOpeners] = useState(editingShow?.openers || []);
+  const [openerSuggestions, setOpenerSuggestions] = useState([]);
+  const [newOpenerName, setNewOpenerName] = useState('');
   const [photos, setPhotos] = useState(editingShow?.photos || []);
   const [cityOpen, setCityOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
@@ -234,6 +240,24 @@ export default function LogShow({ onClose, editingShow = null }) {
     // hasn't already typed something. They can still edit after.
     if (show.festival && !festival.trim()) setFestival(show.festival);
     if (Array.isArray(show.songs) && show.songs.length > 0) setSetlist(show.songs);
+
+    // Suggest openers from upstream data.
+    //  - Ticketmaster's `lineup` is the full bill — skip [0] (headliner)
+    //  - Setlist.fm gives just one artist per row, so we re-query
+    //    co-acts at the same venue+date in a separate call.
+    if (Array.isArray(show.lineup) && show.lineup.length > 1) {
+      const headliner = (show.artist || '').toLowerCase();
+      setOpenerSuggestions(
+        show.lineup
+          .slice(1)
+          .filter((n) => n && n.toLowerCase() !== headliner)
+      );
+    } else if (show.venue && show.date && show.artist) {
+      fetchCoActs(show.venue, show.date, show.artist).then((coActs) => {
+        if (coActs && coActs.length > 0) setOpenerSuggestions(coActs);
+      });
+    }
+
     setArtistOpen(false);
     setShowResults([]);
     setArtistMatches([]);
@@ -271,6 +295,7 @@ export default function LogShow({ onClose, editingShow = null }) {
       notes: notes.trim(),
       setlist: setlist.filter((s) => s.trim()),
       buddies: selBuddies,
+      openers,
       photos,
       status,
       // Legacy boolean shadow — kept in sync with status so any stray
@@ -552,6 +577,102 @@ export default function LogShow({ onClose, editingShow = null }) {
               value={festival}
               onChange={(e) => setFestival(e.target.value)}
             />
+          </div>
+
+          {/* Openers — opening acts. Auto-suggested from
+              Ticketmaster's lineup (upcoming) or a Setlist.fm co-act
+              lookup (past). Per v1.0.6 initiative. */}
+          <div className="log-section">
+            <div className="log-section-title">
+              Openers <span className="log-section-hint">optional</span>
+            </div>
+            {(() => {
+              const remaining = openerSuggestions.filter((n) => !openers.includes(n));
+              if (remaining.length === 0) return null;
+              return (
+                <div className="log-opener-suggestions">
+                  <div className="log-opener-suggestions-label">
+                    Also on the bill — tap to add
+                  </div>
+                  <div className="log-opener-chip-row">
+                    {remaining.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className="opener-suggest-chip"
+                        onClick={() => setOpeners((cur) => [...cur, name])}
+                      >
+                        + {name}
+                      </button>
+                    ))}
+                    {remaining.length > 1 && (
+                      <button
+                        type="button"
+                        className="opener-suggest-chip opener-suggest-add-all"
+                        onClick={() =>
+                          setOpeners((cur) => {
+                            const next = [...cur];
+                            remaining.forEach((n) => {
+                              if (!next.includes(n)) next.push(n);
+                            });
+                            return next;
+                          })
+                        }
+                      >
+                        + Add all
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="log-buddy-add">
+              <input
+                className="log-input"
+                placeholder="Add an opener…"
+                value={newOpenerName}
+                onChange={(e) => setNewOpenerName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const name = newOpenerName.trim();
+                    if (name && !openers.includes(name)) {
+                      setOpeners((cur) => [...cur, name]);
+                    }
+                    setNewOpenerName('');
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="log-add-btn"
+                onClick={() => {
+                  const name = newOpenerName.trim();
+                  if (name && !openers.includes(name)) {
+                    setOpeners((cur) => [...cur, name]);
+                  }
+                  setNewOpenerName('');
+                }}
+              >
+                + Add
+              </button>
+            </div>
+            {openers.length > 0 && (
+              <div className="log-opener-chips">
+                {openers.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="opener-chip"
+                    onClick={() => setOpeners((cur) => cur.filter((n) => n !== name))}
+                    aria-label={`Remove opener ${name}`}
+                  >
+                    {name}
+                    <span className="opener-chip-x" aria-hidden="true">×</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Genre */}

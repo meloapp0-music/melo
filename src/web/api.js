@@ -219,6 +219,49 @@ export async function fetchSetlists(artistName, _apiKey, opts = {}) {
   }
 }
 
+// ===== SETLIST.FM — Co-act lookup =====
+// Given a venue + date + headliner, finds OTHER artists who played
+// that same venue on that same date — i.e. likely opening acts.
+// Setlist.fm doesn't expose a "lineup" per show; each setlist row is
+// a single artist. But searching by venue+date returns every artist
+// who had a setlist logged that night → subtract the headliner → the
+// rest are the openers.
+//
+// One extra proxied API call per dropdown pick — only fired when the
+// user deliberately selects a past show, not on every keystroke.
+//
+// Per docs/initiatives/2026-05-21-v1-0-6-photos-and-openers.md.
+export async function fetchCoActs(venueName, date, headliner) {
+  if (!venueName || !date) return [];
+
+  // Setlist.fm wants dd-MM-yyyy; we have YYYY-MM-DD.
+  const parts = String(date).split('-');
+  if (parts.length !== 3) return [];
+  const slfDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+
+  try {
+    const params = new URLSearchParams({
+      venueName,
+      date: slfDate,
+      p: '1',
+    });
+    const { data, error } = await supabase.functions.invoke('setlistfm-proxy', {
+      body: { path: 'search/setlists', query: params.toString() },
+    });
+    if (error) throw error;
+    if (!data) return [];
+    const lcHeadliner = (headliner || '').toLowerCase();
+    const names = (data.setlist || [])
+      .map((s) => s.artist?.name)
+      .filter(Boolean)
+      .filter((n) => n.toLowerCase() !== lcHeadliner);
+    return [...new Set(names)];
+  } catch (err) {
+    console.warn('[Melo] Co-act lookup failed for', venueName, date, err.message);
+    return [];
+  }
+}
+
 // ===== TICKETMASTER — Upcoming Tour Dates =====
 // Free Discovery API: signup at https://developer-acct.ticketmaster.com/
 // Consumer Key (no OAuth, no redirect URL) goes in .env.local as
