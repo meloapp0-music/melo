@@ -24,6 +24,14 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-05-21-trip-discovery.md` — planned · slot TBD (candidate
+  headline) · "Who's playing where I'm going?" Extends the Festivals
+  page into a Discover page: manual trips + near-me-now geolocation →
+  Ticketmaster events by city+dates, taste-matched shows first.
+  Schema: new `trips` table (migration 0010). Adds
+  `@capacitor/geolocation`. Calendar-sync auto-trips + trip
+  notifications deferred to later phases. Reuses existing Festivals /
+  geo / topArtists infra.
 - `2026-05-21-v1-0-7-wrapped-depth.md` — planned · v1.0.7 · Three new
   Wrapped slides that triple emotional density with zero new schema:
   Quotes from your notes (surface a memorable note line on a show
