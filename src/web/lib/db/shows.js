@@ -103,6 +103,24 @@ export async function createShow(show, userId) {
   return fromRow(data);
 }
 
+// Batch insert — used by the festival finder's multi-select "Log N
+// shows" action. One round-trip instead of N. Per
+// docs/initiatives/2026-05-21-festival-past-show-finder.md.
+export async function createShows(shows, userId) {
+  if (!Array.isArray(shows) || shows.length === 0) return [];
+  const rows = shows.map((s) => {
+    const row = toRow(s, userId);
+    delete row.id; // let Postgres assign uuids
+    return row;
+  });
+  const { data, error } = await supabase
+    .from('shows')
+    .insert(rows)
+    .select();
+  if (error) throw error;
+  return (data || []).map(fromRow);
+}
+
 export async function updateShow(id, updates, userId) {
   // Build a partial patch — only the fields actually supplied.
   const patch = {};

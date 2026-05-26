@@ -4,7 +4,7 @@ import {
   VIBES, CITIES, VENUES_BY_CITY, GENRES, generateId, formatDate,
   SHOW_STATUS, getShowStatus,
 } from '../store';
-import { fetchSetlists, fetchUpcomingEvents, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs } from '../api';
+import { fetchSetlists, fetchUpcomingEvents, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs, searchPastShows } from '../api';
 import { track } from '../lib/analytics';
 import PhotoPicker from '../components/PhotoPicker';
 
@@ -21,7 +21,7 @@ const titleCase = (s) =>
 // opened from the Home "How was X?" CTA — we hydrate all fields from
 // the existing record and call updateShow on save instead of addShow.
 export default function LogShow({ onClose, editingShow = null }) {
-  const { addShow, updateShow, buddies, settings, navigate, session, showToast, setSelectedShow } = useApp();
+  const { addShow, addShows, updateShow, buddies, settings, navigate, session, showToast, setSelectedShow } = useApp();
   const userId = session?.user?.id || null;
 
   // When editing a past Going show, default-pivot it to Attended so the
@@ -64,6 +64,18 @@ export default function LogShow({ onClose, editingShow = null }) {
   const [cityOpen, setCityOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
   const [status, setStatus] = useState(initialStatus);
+
+  // ----- "Find a past show" finder mode (Attended tab) -----
+  // Location-first search so festival-goers can find shows without
+  // typing each artist. Per v1.0.7 festival-past-show-finder initiative.
+  const [logMode, setLogMode] = useState('quick'); // 'quick' | 'finder'
+  const [finderCity, setFinderCity] = useState('');
+  const [finderYear, setFinderYear] = useState('');
+  const [finderVenue, setFinderVenue] = useState('');
+  const [finderResults, setFinderResults] = useState([]);
+  const [finderSelected, setFinderSelected] = useState({}); // key → result
+  const [finderLoading, setFinderLoading] = useState(false);
+  const [finderSearched, setFinderSearched] = useState(false);
 
   // Stable client-side id for new shows so photo uploads have a folder
   // to land in *before* the row exists. The DB ignores this id on
@@ -350,6 +362,93 @@ export default function LogShow({ onClose, editingShow = null }) {
         ? "I'm Going"
         : 'Log Show';
 
+  // ----- Finder handlers -----
+  const resultKey = (r) => `${r.artist}|${r.date}|${r.venue}`;
+
+  const runFinder = async () => {
+    if (!finderCity.trim() && !finderVenue.trim()) return;
+    setFinderLoading(true);
+    setFinderSearched(false);
+    try {
+      const results = await searchPastShows({
+        city: finderCity.trim() || undefined,
+        year: finderYear.trim() || undefined,
+        venue: finderVenue.trim() || undefined,
+      });
+      setFinderResults(results);
+    } catch {
+      setFinderResults([]);
+    } finally {
+      setFinderLoading(false);
+      setFinderSearched(true);
+    }
+  };
+
+  const toggleResult = (r) => {
+    const k = resultKey(r);
+    setFinderSelected((cur) => {
+      const next = { ...cur };
+      if (next[k]) delete next[k];
+      else next[k] = r;
+      return next;
+    });
+  };
+
+  const selectAllInGroup = (rows) => {
+    setFinderSelected((cur) => {
+      const next = { ...cur };
+      rows.forEach((r) => { next[resultKey(r)] = r; });
+      return next;
+    });
+  };
+
+  // Group finder results by festival → "Individual shows" for the rest.
+  const finderGroups = (() => {
+    const groups = {};
+    finderResults.forEach((r) => {
+      const key = r.festival || '__individual__';
+      (groups[key] = groups[key] || []).push(r);
+    });
+    return Object.entries(groups).sort((a, b) => {
+      if (a[0] === '__individual__') return 1;
+      if (b[0] === '__individual__') return -1;
+      return a[0].localeCompare(b[0]);
+    });
+  })();
+
+  const selectedCount = Object.keys(finderSelected).length;
+
+  const logSelected = async () => {
+    const picked = Object.values(finderSelected);
+    if (picked.length === 0) return;
+    const payloads = picked.map((r) => ({
+      id: generateId(),
+      artist: r.artist,
+      date: r.date || new Date().toISOString().split('T')[0],
+      city: r.city || '',
+      venue: r.venue || '',
+      venueUrl: '',
+      festival: r.festival || '',
+      genre: '',
+      score: 0,
+      vibes: [],
+      notes: '',
+      setlist: r.songs || [],
+      buddies: [],
+      openers: [],
+      photos: [],
+      status: SHOW_STATUS.ATTENDED,
+      wishlist: false,
+      createdAt: new Date().toISOString(),
+    }));
+    onClose();
+    const created = await addShows(payloads);
+    const n = (created && created.length) || payloads.length;
+    if (showToast) showToast({ message: `✓ Logged ${n} show${n === 1 ? '' : 's'}` });
+  };
+
+  const showFinder = isAttendedTab && logMode === 'finder';
+
   return (
     <div className="log-overlay">
       <div className="log-backdrop" onClick={onClose} />
@@ -387,6 +486,135 @@ export default function LogShow({ onClose, editingShow = null }) {
               Wishlist
             </button>
           </div>
+
+          {/* Mode toggle — Attended only: quick artist log vs. festival /
+              past-show finder. Per v1.0.7 festival-past-show-finder. */}
+          {isAttendedTab && (
+            <div className="log-mode-toggle">
+              <button
+                type="button"
+                className={`log-mode-btn ${logMode === 'quick' ? 'active' : ''}`}
+                onClick={() => setLogMode('quick')}
+              >
+                Quick log
+              </button>
+              <button
+                type="button"
+                className={`log-mode-btn ${logMode === 'finder' ? 'active' : ''}`}
+                onClick={() => setLogMode('finder')}
+              >
+                Find a past show
+              </button>
+            </div>
+          )}
+
+          {/* Finder mode — search by city/year, multi-select, log many at once */}
+          {showFinder && (
+            <div className="log-finder">
+              <div className="log-section">
+                <p className="log-finder-hint">
+                  Were you at a festival? Search by city and year — no need to
+                  remember every artist. Tap everyone you saw, then log them all
+                  at once.
+                </p>
+                <div className="log-input-wrap">
+                  <input
+                    className="log-input"
+                    placeholder="City (e.g. Tempe)"
+                    value={finderCity}
+                    onChange={(e) => setFinderCity(e.target.value)}
+                  />
+                </div>
+                <div className="log-row">
+                  <input
+                    className="log-input"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Year (e.g. 2023)"
+                    value={finderYear}
+                    onChange={(e) => setFinderYear(e.target.value)}
+                  />
+                </div>
+                <div className="log-input-wrap">
+                  <input
+                    className="log-input"
+                    placeholder="Venue (optional, e.g. Tempe Beach Park)"
+                    value={finderVenue}
+                    onChange={(e) => setFinderVenue(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="log-finder-search"
+                  onClick={runFinder}
+                  disabled={finderLoading || (!finderCity.trim() && !finderVenue.trim())}
+                >
+                  {finderLoading ? 'Searching…' : 'Search'}
+                </button>
+              </div>
+
+              {finderSearched && finderResults.length === 0 && !finderLoading && (
+                <div className="log-show-empty">
+                  No shows found. Try a nearby/bigger city, a different year, or
+                  the festival's venue name.
+                </div>
+              )}
+
+              {finderGroups.map(([festival, rows]) => (
+                <div key={festival} className="log-finder-group">
+                  <div className="log-finder-group-head">
+                    <span className="log-finder-group-name">
+                      {festival === '__individual__' ? 'Individual shows' : `🎪 ${festival}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="log-finder-selectall"
+                      onClick={() => selectAllInGroup(rows)}
+                    >
+                      Select all
+                    </button>
+                  </div>
+                  {rows.map((r) => {
+                    const k = resultKey(r);
+                    const sel = !!finderSelected[k];
+                    return (
+                      <div
+                        key={k}
+                        className={`log-finder-result ${sel ? 'selected' : ''}`}
+                        onClick={() => toggleResult(r)}
+                      >
+                        <div className="log-finder-check">{sel ? '✓' : ''}</div>
+                        <div className="log-finder-result-main">
+                          <div className="log-finder-result-artist">{r.artist}</div>
+                          <div className="log-finder-result-meta">
+                            {[r.venue, r.city].filter(Boolean).join(' · ')}
+                            {r.displayDate ? ` · ${r.displayDate}` : ''}
+                          </div>
+                        </div>
+                        {r.songCount > 0 && (
+                          <div className="log-finder-result-songs">{r.songCount} songs</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {finderResults.length > 0 && (
+                <div className="log-show-attr">Powered by Setlist.fm</div>
+              )}
+
+              {selectedCount > 0 && (
+                <button className="log-submit" onClick={logSelected}>
+                  Log {selectedCount} show{selectedCount === 1 ? '' : 's'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Quick-log form — default, and always for Going / Wishlist */}
+          {!showFinder && (
+          <>
 
           {/* Artist (with real-show autocomplete) & Date */}
           <div className="log-section">
@@ -848,6 +1076,9 @@ export default function LogShow({ onClose, editingShow = null }) {
           <button className="log-submit" onClick={handleSubmit}>
             {submitLabel}
           </button>
+
+          </>
+          )}
         </div>
       </div>
     </div>

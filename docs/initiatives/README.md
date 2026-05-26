@@ -11,7 +11,8 @@ initiative. See `CLAUDE.md` in the repo root for the full process.
 | **v1.0.4** ⏳ in review | Wrapped juice | wrapped-juice (kinetic + map + battles) | this week |
 | **v1.0.5** ✅ shipped | quick polish wins | pre-show-toolkit P1 (last-time), email-template fixes, ★ Favorite toggle + trimmed vibes (15 → 9), product-analytics (PostHog instrumentation), data-export (CSV/JSON), "So Far" Wrapped relabel + year archive, Wishlist→Going upgrade, setlistfm-proxy 404 fix, venue overrides | live |
 | **v1.0.6** | post-ship polish | photos-and-openers (Your Year in Photos slide + openers field with TM+SLF auto-suggest), time-capsule notifications, Music Explorer kv-fallback fix | this week |
-| **v1.0.7** | Wrapped depth | wrapped-depth — Quotes from your notes slide + Songs you heard most + Year-over-year delta. No new schema; reads existing notes/setlist/cross-year shows. Includes a dynamic-slide-index refactor (was overdue). | ~1 week |
+| **v1.0.7** | logging retention fix | festival-past-show-finder — "Find a past show" mode: location-first Setlist.fm search (city/year/venue, no artist) + festival grouping + multi-select batch log. Fixes the churn point (hard to log past/festival shows). Pulled ahead of Wrapped Depth. | this week |
+| **v1.0.8** | Wrapped depth | wrapped-depth — Quotes from your notes slide + Songs you heard most + Year-over-year delta. No new schema; reads existing notes/setlist/cross-year shows. Includes a dynamic-slide-index refactor (was overdue). | ~1 week |
 | **v1.1** | **Dark Mode** | dark-mode (headline) — CSS variable refactor + dark palette + theme toggle + persistence. Closes the marketing-vs-product gap (carousel + single-image posts already show dark UI). | ~1-1.5 weeks |
 | **v1.2** | **Wishlist Watching** | wishlist-watching (headline) — "notify me when Goose announces Chicago" + notifications-system P1 (inbox + lineup) | ~2-3 weeks |
 | **v1.3** | the social pivot begins | buddies-phase-2 P2a+2b, contacts-buddy-discovery, recommendations Tier 1, venue-and-merch P2, notifications price-poller, email-mfa P2 (TOTP) | ~6-8 weeks |
@@ -24,6 +25,14 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-05-21-festival-past-show-finder.md` — in-progress · v1.0.7 ·
+  Fixes the #1 churn point: logging past/festival shows was
+  100% artist-driven. Adds a "Find a past show" mode on the Attended
+  tab — location-first Setlist.fm search (city/year/venue, no artist
+  required), results grouped by festival, multi-select, batch "Log N
+  shows" with festival/setlist auto-filled. New `searchPastShows` API
+  + `createShows`/`addShows` batch helpers. No schema change. Pulled
+  ahead of Wrapped Depth.
 - `2026-05-21-trip-discovery.md` — planned · slot TBD (candidate
   headline) · "Who's playing where I'm going?" Extends the Festivals
   page into a Discover page: manual trips + near-me-now geolocation →
@@ -32,7 +41,8 @@ on itemized cost capture (P3). Etc.
   `@capacitor/geolocation`. Calendar-sync auto-trips + trip
   notifications deferred to later phases. Reuses existing Festivals /
   geo / topArtists infra.
-- `2026-05-21-v1-0-7-wrapped-depth.md` — planned · v1.0.7 · Three new
+- `2026-05-21-v1-0-7-wrapped-depth.md` — planned · v1.0.8 (bumped to
+  make room for the festival finder) · Three new
   Wrapped slides that triple emotional density with zero new schema:
   Quotes from your notes (surface a memorable note line on a show
   background), Songs you heard live the most (top 5 across all

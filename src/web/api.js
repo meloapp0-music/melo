@@ -157,6 +157,36 @@ function extractFestivalFromSetlist(s) {
 //
 // `opts` can include `city`, `year`, `venue` to filter results — same
 // contract as before.
+// Shared mapper: a Setlist.fm setlist object → Melo's show-result
+// shape. Used by both the artist search (fetchSetlists) and the
+// location-first finder (searchPastShows).
+function mapSetlistRow(s, fallbackArtist = '') {
+  const songs = [];
+  (s.sets?.set || []).forEach((set) => {
+    (set.song || []).forEach((song) => {
+      if (song.name) songs.push(song.name);
+    });
+  });
+  const eventDate = s.eventDate; // dd-MM-yyyy
+  const parts = eventDate ? eventDate.split('-') : [];
+  const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : '';
+  return {
+    artist: s.artist?.name || fallbackArtist,
+    venue: s.venue?.name || '',
+    // Note: Setlist.fm's venue.url is its own page, not the official
+    // site — ShowDetail resolves that via Wikipedia/Wikidata.
+    city: s.venue?.city?.name || '',
+    state: s.venue?.city?.stateCode || '',
+    country: s.venue?.city?.country?.code || '',
+    date: isoDate,
+    displayDate: eventDate,
+    songs,
+    songCount: songs.length,
+    tour: s.tour?.name || '',
+    festival: extractFestivalFromSetlist(s),
+  };
+}
+
 export async function fetchSetlists(artistName, _apiKey, opts = {}) {
   if (!artistName) return [];
 
@@ -182,41 +212,60 @@ export async function fetchSetlists(artistName, _apiKey, opts = {}) {
     // entries are still pickable when that's all Setlist.fm has.
     return (data.setlist || [])
       .slice(0, 30)
-      .map((s) => {
-        const songs = [];
-        (s.sets?.set || []).forEach((set) => {
-          (set.song || []).forEach((song) => {
-            if (song.name) songs.push(song.name);
-          });
-        });
-        const eventDate = s.eventDate; // dd-MM-yyyy
-        const parts = eventDate ? eventDate.split('-') : [];
-        const isoDate =
-          parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : '';
-        return {
-          artist: s.artist?.name || artistName,
-          venue: s.venue?.name || '',
-          // Note: Setlist.fm's `venue.url` points to setlist.fm's own
-          // venue page, NOT the official venue website. We deliberately
-          // don't capture it here. ShowDetail resolves the official URL
-          // on demand via Wikipedia/Wikidata in `lookupVenueUrl`.
-          city: s.venue?.city?.name || '',
-          state: s.venue?.city?.stateCode || '',
-          country: s.venue?.city?.country?.code || '',
-          date: isoDate,
-          displayDate: eventDate,
-          songs,
-          songCount: songs.length,
-          tour: s.tour?.name || '',
-          festival: extractFestivalFromSetlist(s),
-        };
-      })
+      .map((s) => mapSetlistRow(s, artistName))
       .sort((a, b) => b.songCount - a.songCount)
       .slice(0, 10);
   } catch (err) {
     console.warn('[Melo] Setlist.fm fetch failed for', artistName, err.message);
     return [];
   }
+}
+
+// Location-first past-show search — NO artist required. Powers the
+// "Find a past show" festival finder: search Setlist.fm by
+// city / year / venue and get back every act that played there, so a
+// festival-goer can find what they saw without typing each artist.
+// Pulls up to 3 pages (festivals span many acts; Setlist.fm = 20/page).
+// Per docs/initiatives/2026-05-21-festival-past-show-finder.md.
+export async function searchPastShows({ city, year, venue } = {}) {
+  const base = {};
+  if (city && city.trim()) base.cityName = city.trim();
+  if (venue && venue.trim()) base.venueName = venue.trim();
+  if (year && String(year).trim()) base.year = String(year).trim();
+  // Need at least a place to search — refuse a year-only query.
+  if (!base.cityName && !base.venueName) return [];
+
+  const all = [];
+  try {
+    for (let p = 1; p <= 3; p++) {
+      const params = new URLSearchParams({ ...base, p: String(p) });
+      const { data, error } = await supabase.functions.invoke('setlistfm-proxy', {
+        body: { path: 'search/setlists', query: params.toString() },
+      });
+      if (error) throw error;
+      const rows = data?.setlist || [];
+      rows.forEach((s) => all.push(mapSetlistRow(s)));
+      if (rows.length < 20) break; // last page reached
+    }
+  } catch (err) {
+    console.warn('[Melo] searchPastShows failed', err.message);
+    // fall through — return whatever we collected
+  }
+
+  // Dedupe by artist + date + venue.
+  const seen = new Set();
+  const deduped = [];
+  for (const r of all) {
+    const key = `${(r.artist || '').toLowerCase()}|${r.date}|${(r.venue || '').toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(r);
+  }
+  // Newest first, richer setlists first within a date.
+  deduped.sort(
+    (a, b) => (b.date || '').localeCompare(a.date || '') || b.songCount - a.songCount
+  );
+  return deduped;
 }
 
 // ===== SETLIST.FM — Co-act lookup =====

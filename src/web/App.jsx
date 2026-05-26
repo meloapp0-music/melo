@@ -179,6 +179,21 @@ export default function App() {
     }
   };
 
+  // Batch add — used by the festival finder's multi-select log. One
+  // DB round-trip; prepends all created shows to state.
+  const addShows = async (showsToAdd) => {
+    if (!userId || !Array.isArray(showsToAdd) || showsToAdd.length === 0) return [];
+    try {
+      const created = await showsDb.createShows(showsToAdd, userId);
+      setShows((prev) => [...created, ...prev]);
+      return created;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Melo] addShows failed', err);
+      return [];
+    }
+  };
+
   const updateShow = async (id, updates) => {
     if (!userId) return;
     // Optimistic patch
@@ -285,6 +300,7 @@ export default function App() {
     profile,
     session,
     addShow,
+    addShows,
     updateShow,
     deleteShow,
     setBuddies,
