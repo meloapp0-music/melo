@@ -69,6 +69,7 @@ export default function LogShow({ onClose, editingShow = null }) {
   // Location-first search so festival-goers can find shows without
   // typing each artist. Per v1.0.7 festival-past-show-finder initiative.
   const [logMode, setLogMode] = useState('quick'); // 'quick' | 'finder'
+  const [finderArtist, setFinderArtist] = useState('');
   const [finderCity, setFinderCity] = useState('');
   const [finderYear, setFinderYear] = useState('');
   const [finderVenue, setFinderVenue] = useState('');
@@ -366,11 +367,12 @@ export default function LogShow({ onClose, editingShow = null }) {
   const resultKey = (r) => `${r.artist}|${r.date}|${r.venue}`;
 
   const runFinder = async () => {
-    if (!finderCity.trim() && !finderVenue.trim()) return;
+    if (!finderArtist.trim() && !finderCity.trim() && !finderVenue.trim()) return;
     setFinderLoading(true);
     setFinderSearched(false);
     try {
       const results = await searchPastShows({
+        artist: finderArtist.trim() || undefined,
         city: finderCity.trim() || undefined,
         year: finderYear.trim() || undefined,
         venue: finderVenue.trim() || undefined,
@@ -513,14 +515,23 @@ export default function LogShow({ onClose, editingShow = null }) {
             <div className="log-finder">
               <div className="log-section">
                 <p className="log-finder-hint">
-                  Were you at a festival? Search by city and year — no need to
-                  remember every artist. Tap everyone you saw, then log them all
+                  Find any past show — search by artist, city, year, or venue
+                  (any combination; the more you add, the tighter the results).
+                  Saw a few acts at a festival? Tap each one, then log them all
                   at once.
                 </p>
                 <div className="log-input-wrap">
                   <input
                     className="log-input"
-                    placeholder="City (e.g. Tempe)"
+                    placeholder="Artist (optional)"
+                    value={finderArtist}
+                    onChange={(e) => setFinderArtist(e.target.value)}
+                  />
+                </div>
+                <div className="log-input-wrap">
+                  <input
+                    className="log-input"
+                    placeholder="City (e.g. Phoenix)"
                     value={finderCity}
                     onChange={(e) => setFinderCity(e.target.value)}
                   />
@@ -547,7 +558,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                   type="button"
                   className="log-finder-search"
                   onClick={runFinder}
-                  disabled={finderLoading || (!finderCity.trim() && !finderVenue.trim())}
+                  disabled={finderLoading || (!finderArtist.trim() && !finderCity.trim() && !finderVenue.trim())}
                 >
                   {finderLoading ? 'Searching…' : 'Search'}
                 </button>

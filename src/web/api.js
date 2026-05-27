@@ -227,13 +227,15 @@ export async function fetchSetlists(artistName, _apiKey, opts = {}) {
 // festival-goer can find what they saw without typing each artist.
 // Pulls up to 3 pages (festivals span many acts; Setlist.fm = 20/page).
 // Per docs/initiatives/2026-05-21-festival-past-show-finder.md.
-export async function searchPastShows({ city, year, venue } = {}) {
+export async function searchPastShows({ artist, city, year, venue } = {}) {
   const base = {};
+  if (artist && artist.trim()) base.artistName = artist.trim();
   if (city && city.trim()) base.cityName = city.trim();
   if (venue && venue.trim()) base.venueName = venue.trim();
   if (year && String(year).trim()) base.year = String(year).trim();
-  // Need at least a place to search — refuse a year-only query.
-  if (!base.cityName && !base.venueName) return [];
+  // Need at least one specific filter (artist, city, or venue) — a
+  // year-only query would return half the database.
+  if (!base.artistName && !base.cityName && !base.venueName) return [];
 
   const all = [];
   try {

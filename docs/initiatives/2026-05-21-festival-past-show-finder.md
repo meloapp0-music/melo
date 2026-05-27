@@ -62,6 +62,18 @@ None — reuses existing `shows.festival`.
 
 - 2026-05-21: Initiative created. Pulled ahead of Wrapped Depth per
   user (retention fix > polish).
+- 2026-05-21: Built — `searchPastShows` API, `createShows`/`addShows`
+  batch helpers, `mapSetlistRow` shared mapper, and the "Find a past
+  show" mode in LogShow (city/year/venue search, festival grouping,
+  multi-select, "Log N shows").
+- 2026-05-21: Enhanced per user feedback — city+year alone was too
+  broad ("Phoenix 2023" returns hundreds). Added an **Artist** field
+  to the finder (Setlist.fm `artistName` param in `searchPastShows`),
+  so any combination of artist / city / year / venue narrows results.
+  Reframed the finder from festival-specific to **any past show**
+  (copy + the artist field). Festival auto-fill confirmed working:
+  results group by festival and each logged show carries its festival
+  (both the finder payload and quick-log `pickShow` already set it).
 
 ## Open questions / follow-ups
 
