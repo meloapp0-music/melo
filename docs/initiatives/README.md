@@ -33,6 +33,14 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
+- `2026-05-22-cold-start-activation.md` — planned · v1.2 (build after
+  v1.1 ships, informed by the PostHog funnel) · Fixes the empty-new-user
+  churn. Activation onboarding funneling into the past-show finder +
+  reviving calendar import + "popular near you" cold-start content +
+  new-user reminders. Feasibility note: Ticketmaster order-history sync
+  is NOT possible (no consumer API); calendar sync is feasible (plugin +
+  hidden ImportFromCalendar already exist); email-confirmation parsing
+  is powerful but heavy (Gmail OAuth + verification) — deferred.
 - `2026-05-22-artist-in-your-city-alerts.md` — in-progress (code done,
   pending Edge Function redeploy) · The one part of Seated the user
   wanted, built natively: a push when an artist you care about is
