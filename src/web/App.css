@@ -5729,6 +5729,34 @@ h4 { font-size: 17px; }
   cursor: default;
 }
 
+/* Discover city-search row (Shows view). Per
+   docs/initiatives/2026-05-21-trip-discovery.md. */
+.discover-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.discover-search .log-input {
+  flex: 1;
+  margin: 0;
+}
+.discover-search-btn {
+  flex: 0 0 auto;
+  padding: 0 20px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.discover-search-btn:disabled { opacity: 0.5; }
+.discover-search-btn:active { transform: scale(0.97); }
+
 .festival-list {
   display: flex;
   flex-direction: column;

@@ -705,6 +705,74 @@ export async function fetchFestivals(opts = {}) {
   }
 }
 
+// ===== TICKETMASTER — All music events in a city =====
+// Powers the Discover page's "who's playing in [city]" search. Unlike
+// fetchFestivals (Festival classification only) this pulls ALL music
+// events in a city, sorted by date. Captures price ranges + ticket URL
+// so users see what tickets cost and how to get them.
+// Per docs/initiatives/2026-05-21-trip-discovery.md (instant-search v1).
+export async function fetchEventsByCity(city, opts = {}) {
+  if (!city || !city.trim()) return [];
+  const key = import.meta.env.VITE_TICKETMASTER_KEY;
+  if (!key) {
+    if (!_tmNoKeyWarned) {
+      console.warn(
+        '[Melo] VITE_TICKETMASTER_KEY not set — Discover city search will ' +
+          'be empty. Add a free key to .env.local.'
+      );
+      _tmNoKeyWarned = true;
+    }
+    return [];
+  }
+
+  try {
+    const params = new URLSearchParams({
+      apikey: key,
+      city: city.trim(),
+      classificationName: 'music',
+      sort: 'date,asc',
+      size: String(opts.size || 50),
+    });
+    if (opts.stateCode) params.set('stateCode', opts.stateCode);
+    if (opts.startDateTime) params.set('startDateTime', opts.startDateTime);
+    if (opts.endDateTime) params.set('endDateTime', opts.endDateTime);
+
+    const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`Ticketmaster ${res.status}`);
+    const data = await res.json();
+
+    const events = data?._embedded?.events || [];
+    return events.map((ev) => {
+      const venue = ev?._embedded?.venues?.[0] || {};
+      const attractions = ev?._embedded?.attractions || [];
+      const priceRange = ev?.priceRanges?.[0] || null;
+      return {
+        id: ev.id || '',
+        artist: attractions[0]?.name || ev.name || '',
+        name: ev.name || '',
+        venue: venue.name || '',
+        city: venue.city?.name || '',
+        state: venue.state?.stateCode || venue.state?.name || '',
+        country: venue.country?.countryCode || venue.country?.name || '',
+        date: ev?.dates?.start?.localDate || '',
+        ticketUrl: ev.url || '',
+        image:
+          (ev.images || []).find((i) => i.ratio === '16_9' && i.width >= 640)?.url ||
+          (ev.images || [])[0]?.url ||
+          '',
+        priceMin: priceRange?.min ?? null,
+        priceMax: priceRange?.max ?? null,
+        priceCurrency: priceRange?.currency || '',
+        lineup: attractions.map((a) => a.name).filter(Boolean),
+      };
+    });
+  } catch (err) {
+    console.warn('[Melo] Ticketmaster city events fetch failed', err.message);
+    return [];
+  }
+}
+
 // ===== MUSICBRAINZ — Artist Bio & Genres =====
 const MB_HEADERS = { 'User-Agent': 'Melo/1.0.0 (concert-tracker-app)' };
 

@@ -1,8 +1,34 @@
 # Trip Discovery — "Who's playing where I'm going?"
 
 - Started: 2026-05-21
-- Status: planned (candidate headline — slot TBD, likely pairs with v1.2 Wishlist Watching)
-- Last updated: 2026-05-21
+- Status: in-progress — Phase 1 narrowed to **instant city search** and built
+- Last updated: 2026-05-22
+
+## Changes made
+
+- 2026-05-22: **Phase 1 shipped as instant city search** (no `trips`
+  table, no geolocation — the fastest slice that solves the Austin
+  moment). User confirmed: instant search only, manual city entry
+  first, expand the Festivals page → "Discover".
+  - `src/web/api.js` — new `fetchEventsByCity(city, opts)`: all music
+    events in a city via Ticketmaster Discovery, sorted by date, with
+    price ranges (`priceMin/Max/Currency`) + ticket URL + lineup.
+    Mirrors `fetchFestivals` minus the festival filter, plus an
+    `artist` field from `attractions[0]`.
+  - `src/web/pages/Festivals.jsx` → **Discover page**: top-level
+    **Shows | Festivals** toggle. Shows = a city search box (prefilled
+    with `inferHomeCity`) → results sorted **taste-first** (artists in
+    `topArtists(shows,25)` rise to the top with a "🎤 An artist you
+    love" badge), each card showing artist · venue · date · price +
+    **+ Wishlist** and **Tickets →**. Festivals tab = the prior
+    near/anywhere behavior, unchanged.
+  - `src/web/pages/Home.jsx` — the CTA relabeled "Discover shows / See
+    who's playing in any city". Route key `festivals` unchanged.
+  - `src/web/App.css` — `.discover-search` row.
+  - No migration, no native dependency, no App Store privacy change.
+  - **Deferred** (still planned below): GPS "use my location"
+    (`@capacitor/geolocation`), saved `trips` table for advance
+    planning (migration 0010), calendar auto-trips, trip notifications.
 
 ## Context
 

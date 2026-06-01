@@ -33,14 +33,13 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
-- `2026-05-21-trip-discovery.md` — planned · slot TBD (candidate
-  headline) · "Who's playing where I'm going?" Extends the Festivals
-  page into a Discover page: manual trips + near-me-now geolocation →
-  Ticketmaster events by city+dates, taste-matched shows first.
-  Schema: new `trips` table (migration 0010). Adds
-  `@capacitor/geolocation`. Calendar-sync auto-trips + trip
-  notifications deferred to later phases. Reuses existing Festivals /
-  geo / topArtists infra.
+- `2026-05-21-trip-discovery.md` — in-progress · Phase 1 shipped ·
+  "Who's playing in [city]?" Festivals page → **Discover** page with a
+  Shows | Festivals toggle. Shows = instant city search (type Austin →
+  all concerts there, taste-matched first, with prices + Tickets links
+  + one-tap Wishlist). New `fetchEventsByCity` API. No migration, no
+  geolocation in v1. Deferred phases: GPS "near me," saved `trips`
+  table for advance planning, calendar auto-trips, trip notifications.
 - `2026-05-21-v1-0-7-wrapped-depth.md` — planned · v1.0.8 (bumped to
   make room for the festival finder) · Three new
   Wrapped slides that triple emotional density with zero new schema:

@@ -332,15 +332,15 @@ export default function Home() {
         </div>
       )}
 
-      {/* Festivals discovery CTA — opens the Festivals subpage */}
+      {/* Discover CTA — opens the Discover page (city shows + festivals) */}
       <div
         className="home-festival-cta"
         onClick={() => navigate('festivals')}
       >
         <div className="home-festival-cta-text">
-          <span className="home-festival-cta-title">Explore Festivals</span>
+          <span className="home-festival-cta-title">Discover shows</span>
           <span className="home-festival-cta-sub">
-            See which festivals your top artists are playing
+            See who's playing in any city — concerts, festivals, tickets
           </span>
         </div>
         <span className="home-festival-cta-arrow">→</span>
