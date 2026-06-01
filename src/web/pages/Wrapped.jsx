@@ -280,7 +280,9 @@ export default function Wrapped({ year, onClose }) {
   //  10: Personality
   //  11: Your Year in Photos  ← NEW v1.0.6, only when photos exist
   //  12: Summary              (or 11 if no photos)
-  const hasPhotoWall = (data.photoWall || []).length > 0;
+  // Only show the photo wall when there are enough photos to read as a
+  // collage — a 1-2 photo year looks sparse, so skip it then.
+  const hasPhotoWall = (data.photoWall || []).length >= 3;
   const summarySlide = hasPhotoWall ? 12 : 11;
   const totalSlides = hasPhotoWall ? 13 : 12;
 

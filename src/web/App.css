@@ -5598,16 +5598,21 @@ h4 { font-size: 17px; }
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 4px;
-  padding: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: min-content;
+  align-content: center;
+  gap: 6px;
+  padding: 6px;
   z-index: 0;
+  /* On-brand fill so uncovered cells/space read as gradient, never
+     black, when the year has few photos. */
+  background: linear-gradient(160deg, #F4A261 0%, #E8573A 100%);
 }
 .wrapped-photo-tile {
+  aspect-ratio: 1;
   background-size: cover;
   background-position: center;
-  border-radius: 8px;
+  border-radius: 10px;
   filter: saturate(1.05) brightness(0.82);
   opacity: 0;
   transform: scale(0.92);
