@@ -51,27 +51,53 @@ serve(async (_req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // ---- Pull every wishlist row (status='wishlist' OR legacy
-  //      `wishlist=true` for pre-0002 rows). One query, joined to
-  //      the user's device tokens so we know who to push.
+  // ---- Pull every user's shows once. We derive two things per user,
+  //      both purely from their logged history (no GPS, no location
+  //      permission — mirrors inferHomeCity + topArtists in store.js):
+  //        * home city = most-common city among ATTENDED shows
+  //        * watch set = "artists you care about": attended-and-loved
+  //                      (score >= 7), plus Going, plus Wishlist.
   const { data: rows, error: wlErr } = await admin
     .from('shows')
-    .select('user_id, artist, city')
-    // status column was added in 0002; OR with legacy boolean for safety.
-    .or('status.eq.wishlist,wishlist.eq.true');
+    .select('user_id, artist, city, score, status, wishlist');
   if (wlErr) {
-    console.error('[tour-alerts] wishlist query failed', wlErr);
+    console.error('[tour-alerts] shows query failed', wlErr);
     return err({ error: wlErr.message }, 500);
   }
 
-  // user_id -> { artists: Set<string>, city?: string }
-  // We pick "their" city as the most-common city across attended
-  // shows separately, but for the cron we just use a per-row hint.
-  const byUser = new Map<string, { artists: Map<string, string | null> }>();
+  const LOVED_MIN_SCORE = 7;
+  // user_id -> { cityCounts, watch }
+  const agg = new Map<string, {
+    cityCounts: Map<string, number>;
+    watch: Set<string>;
+  }>();
   for (const r of rows || []) {
-    const u = byUser.get(r.user_id) || { artists: new Map() };
-    if (!u.artists.has(r.artist)) u.artists.set(r.artist, r.city || null);
-    byUser.set(r.user_id, u);
+    if (!r.artist) continue;
+    const isWishlist = r.status === 'wishlist' || r.wishlist === true;
+    const isGoing = r.status === 'going';
+    const isAttended = !isWishlist && !isGoing;
+    const a = agg.get(r.user_id) || { cityCounts: new Map(), watch: new Set() };
+    if (isAttended && r.city) {
+      a.cityCounts.set(r.city, (a.cityCounts.get(r.city) || 0) + 1);
+    }
+    const score = typeof r.score === 'number' ? r.score : Number(r.score) || 0;
+    if (isWishlist || isGoing || (isAttended && score >= LOVED_MIN_SCORE)) {
+      a.watch.add(r.artist);
+    }
+    agg.set(r.user_id, a);
+  }
+
+  // Resolve each user's home city + finalize the watch list.
+  // byUser: user_id -> { homeCity, artists: string[] }
+  const byUser = new Map<string, { homeCity: string; artists: string[] }>();
+  for (const [u, a] of agg) {
+    if (a.watch.size === 0) continue;
+    let homeCity = '';
+    let best = 0;
+    for (const [c, n] of a.cityCounts) {
+      if (n > best) { best = n; homeCity = c; }
+    }
+    byUser.set(u, { homeCity, artists: [...a.watch] });
   }
 
   // Pull device tokens once.
@@ -112,39 +138,51 @@ serve(async (_req) => {
   let recorded = 0;
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
 
-  for (const [userId, { artists }] of byUser) {
+  for (const [userId, { homeCity, artists }] of byUser) {
     if (lookups >= MAX_LOOKUPS_PER_RUN) break;
 
     const tokens = tokensByUser.get(userId) || [];
     const sent = sentByUser.get(userId) || new Set();
     let userNotifs = 0;
 
-    for (const [artist, hintCity] of artists) {
+    for (const artist of artists) {
       if (lookups >= MAX_LOOKUPS_PER_RUN) break;
       if (userNotifs >= MAX_NOTIFS_PER_USER) break;
 
       lookups++;
-      const events = await searchTm(artist, hintCity);
+      // With a home city we filter TM to that metro, so every result
+      // is "playing your city". Without one (brand-new user with no
+      // attended shows) we fall back to a global tour-announcement
+      // lookup so they're no worse off than before.
+      const events = await searchTm(artist, homeCity || null);
       if (!events.length) continue;
 
-      // Push the first event we haven't notified about yet.
-      // Prefer one in the user's hint city if present.
-      const candidates = events
-        .sort((a, b) => {
-          const aH = hintCity && a.city.toLowerCase().includes(hintCity.toLowerCase()) ? -1 : 0;
-          const bH = hintCity && b.city.toLowerCase().includes(hintCity.toLowerCase()) ? -1 : 0;
-          return aH - bH;
-        })
-        .filter((e) => !sent.has(e.id));
+      const candidates = events.filter((e) => !sent.has(e.id));
       if (!candidates.length) continue;
-
       const ev = candidates[0];
+
+      const inHomeCity =
+        !!homeCity && ev.city.toLowerCase().includes(homeCity.toLowerCase());
+
+      // "Playing your city" is the higher-value alert. Fall back to the
+      // original tour-announcement copy when we can't place it locally.
+      const title = inHomeCity
+        ? `${artist} is playing ${homeCity} 🎟️`
+        : `${artist} just announced a tour 🎤`;
+      const body = inHomeCity
+        ? `${ev.venue ? ev.venue + ' · ' : ''}${formatDate(ev.date)} — tickets available`
+        : `${ev.city}${ev.state ? ', ' + ev.state : ''} · ${formatDate(ev.date)}`;
 
       if (tokens.length > 0 && isApnsConfigured()) {
         const results = await sendApnsBatch(tokens, {
-          title: `${artist} just announced a tour 🎤`,
-          body: `${ev.city}${ev.state ? ', ' + ev.state : ''} · ${formatDate(ev.date)}`,
-          data: { kind: 'tour_alert', artist, eventId: ev.id, ticketUrl: ev.ticketUrl },
+          title,
+          body,
+          data: {
+            kind: inHomeCity ? 'city_match' : 'tour_alert',
+            artist,
+            eventId: ev.id,
+            ticketUrl: ev.ticketUrl,
+          },
         });
         const okCount = results.filter((r) => r.ok).length;
         pushed += okCount;
@@ -160,6 +198,8 @@ serve(async (_req) => {
         }
       }
 
+      // Single dedup namespace ('tour_alert') so the same event is
+      // never notified twice regardless of which copy fired.
       sentInsertBuffer.push({ user_id: userId, kind: 'tour_alert', ref: ev.id });
       sent.add(ev.id);
       userNotifs++;
@@ -192,6 +232,7 @@ interface TmEvent {
   id: string;
   city: string;
   state: string;
+  venue: string;
   date: string;
   ticketUrl: string;
 }
@@ -228,6 +269,7 @@ async function searchTm(artist: string, hintCity: string | null): Promise<TmEven
           id: ev.id || '',
           city: venue.city?.name || '',
           state: venue.state?.stateCode || venue.state?.name || '',
+          venue: venue.name || '',
           date: ev?.dates?.start?.localDate || '',
           ticketUrl: ev.url || '',
         };

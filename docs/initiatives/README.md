@@ -33,6 +33,15 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
+- `2026-05-22-artist-in-your-city-alerts.md` — in-progress (code done,
+  pending Edge Function redeploy) · The one part of Seated the user
+  wanted, built natively: a push when an artist you care about is
+  playing your city. Extends the existing `tour-alerts` cron —
+  broadens the watch set to loved (score≥7) + going + wishlist
+  artists, derives home city server-side from logged shows (no GPS),
+  filters the TM lookup to that metro, and sends "{artist} is playing
+  {city} 🎟️". No schema change, no new dependency. Deploy:
+  `supabase functions deploy tour-alerts`.
 - `2026-05-21-trip-discovery.md` — in-progress · Phase 1 shipped ·
   "Who's playing in [city]?" Festivals page → **Discover** page with a
   Shows | Festivals toggle. Shows = instant city search (type Austin →
