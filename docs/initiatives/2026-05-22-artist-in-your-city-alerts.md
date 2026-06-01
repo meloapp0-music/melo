@@ -67,6 +67,20 @@ existing APNs sender, device-token table, dedup table, and caps.
   loved+going+wishlist artists, derived home city server-side, added
   city-filtered TM lookup + "playing your city" copy + `venue` field
   on the TM event shape. Code complete.
+- 2026-05-22: Added **pre-show reminders** to the same cron (user
+  request — "notify me a week out + a day or two before to make sure I
+  have tickets and check venue guidelines"). For each Going show with a
+  future date:
+  - ~1 week out (`d` in 6–8): `"{artist} is 1 week away 🎟️ — Got your
+    tickets sorted?"` (kind `preshow_week`).
+  - ~1–2 days out (`d` in 1–2): `"{artist} is tomorrow/in 2 days! 🎶 —
+    Double-check your tickets and the venue guidelines."` (kind
+    `preshow_day`).
+  - No TM lookup (date math only); deduped per show per kind via
+    `notifications_sent`; shares the `MAX_NOTIFS_PER_USER` cap.
+  - Refactors dedup to composite `${kind}|${ref}` keys and extracts a
+    shared `pruneDeadTokens` helper + a `daysUntil` helper. No schema
+    change.
 
 ## Deploy (required — code changes don't auto-ship)
 

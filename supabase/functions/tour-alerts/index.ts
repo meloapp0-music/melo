@@ -59,24 +59,25 @@ serve(async (_req) => {
   //                      (score >= 7), plus Going, plus Wishlist.
   const { data: rows, error: wlErr } = await admin
     .from('shows')
-    .select('user_id, artist, city, score, status, wishlist');
+    .select('id, user_id, artist, city, venue, date, score, status, wishlist');
   if (wlErr) {
     console.error('[tour-alerts] shows query failed', wlErr);
     return err({ error: wlErr.message }, 500);
   }
 
   const LOVED_MIN_SCORE = 7;
-  // user_id -> { cityCounts, watch }
+  // user_id -> { cityCounts, watch, going }
   const agg = new Map<string, {
     cityCounts: Map<string, number>;
     watch: Set<string>;
+    going: GoingShow[];
   }>();
   for (const r of rows || []) {
     if (!r.artist) continue;
     const isWishlist = r.status === 'wishlist' || r.wishlist === true;
     const isGoing = r.status === 'going';
     const isAttended = !isWishlist && !isGoing;
-    const a = agg.get(r.user_id) || { cityCounts: new Map(), watch: new Set() };
+    const a = agg.get(r.user_id) || { cityCounts: new Map(), watch: new Set(), going: [] };
     if (isAttended && r.city) {
       a.cityCounts.set(r.city, (a.cityCounts.get(r.city) || 0) + 1);
     }
@@ -84,20 +85,24 @@ serve(async (_req) => {
     if (isWishlist || isGoing || (isAttended && score >= LOVED_MIN_SCORE)) {
       a.watch.add(r.artist);
     }
+    // Going shows with a future date → pre-show reminder candidates.
+    if (isGoing && r.id && r.date) {
+      a.going.push({ id: r.id, artist: r.artist, venue: r.venue || '', date: r.date });
+    }
     agg.set(r.user_id, a);
   }
 
-  // Resolve each user's home city + finalize the watch list.
-  // byUser: user_id -> { homeCity, artists: string[] }
-  const byUser = new Map<string, { homeCity: string; artists: string[] }>();
+  // Resolve each user's home city + finalize watch list + going shows.
+  // byUser: user_id -> { homeCity, artists, going }
+  const byUser = new Map<string, { homeCity: string; artists: string[]; going: GoingShow[] }>();
   for (const [u, a] of agg) {
-    if (a.watch.size === 0) continue;
+    if (a.watch.size === 0 && a.going.length === 0) continue;
     let homeCity = '';
     let best = 0;
     for (const [c, n] of a.cityCounts) {
       if (n > best) { best = n; homeCity = c; }
     }
-    byUser.set(u, { homeCity, artists: [...a.watch] });
+    byUser.set(u, { homeCity, artists: [...a.watch], going: a.going });
   }
 
   // Pull device tokens once.
@@ -116,11 +121,13 @@ serve(async (_req) => {
     tokensByUser.set(t.user_id, list);
   }
 
-  // Pull what we've already notified so we don't repeat.
+  // Pull what we've already notified so we don't repeat. We manage
+  // several kinds here; key the per-user set as `${kind}|${ref}` so
+  // each kind dedups in its own namespace.
   const { data: sentRows, error: sentErr } = await admin
     .from('notifications_sent')
-    .select('user_id, ref')
-    .eq('kind', 'tour_alert');
+    .select('user_id, kind, ref')
+    .in('kind', ['tour_alert', 'preshow_week', 'preshow_day']);
   if (sentErr) {
     console.error('[tour-alerts] sent read failed', sentErr);
     return err({ error: sentErr.message }, 500);
@@ -128,7 +135,7 @@ serve(async (_req) => {
   const sentByUser = new Map<string, Set<string>>();
   for (const s of sentRows || []) {
     const set = sentByUser.get(s.user_id) || new Set();
-    set.add(s.ref);
+    set.add(`${s.kind}|${s.ref}`);
     sentByUser.set(s.user_id, set);
   }
 
@@ -138,12 +145,48 @@ serve(async (_req) => {
   let recorded = 0;
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
 
-  for (const [userId, { homeCity, artists }] of byUser) {
+  for (const [userId, { homeCity, artists, going }] of byUser) {
     if (lookups >= MAX_LOOKUPS_PER_RUN) break;
 
     const tokens = tokensByUser.get(userId) || [];
     const sent = sentByUser.get(userId) || new Set();
     let userNotifs = 0;
+
+    // --- Pre-show reminders for Going shows (no TM lookup needed) ---
+    // ~1 week out: "got your tickets?" · ~1-2 days out: "check the
+    // venue guidelines." Each fires once per show (deduped by kind).
+    for (const show of going) {
+      if (userNotifs >= MAX_NOTIFS_PER_USER) break;
+      const d = daysUntil(show.date);
+      let kind = '';
+      let title = '';
+      let body = '';
+      if (d >= 6 && d <= 8) {
+        kind = 'preshow_week';
+        title = `${show.artist} is 1 week away 🎟️`;
+        body = `${show.venue ? show.venue + ' · ' : ''}Got your tickets sorted?`;
+      } else if (d >= 1 && d <= 2) {
+        kind = 'preshow_day';
+        title = d === 1 ? `${show.artist} is tomorrow! 🎶` : `${show.artist} is in 2 days! 🎶`;
+        body = `Double-check your tickets and the venue guidelines before you head out.`;
+      }
+      if (!kind) continue;
+      const key = `${kind}|${show.id}`;
+      if (sent.has(key)) continue;
+
+      if (tokens.length > 0 && isApnsConfigured()) {
+        const results = await sendApnsBatch(tokens, {
+          title,
+          body,
+          data: { kind, artist: show.artist, showId: show.id },
+        });
+        pushed += results.filter((r) => r.ok).length;
+        await pruneDeadTokens(admin, userId, results);
+      }
+      sentInsertBuffer.push({ user_id: userId, kind, ref: show.id });
+      sent.add(key);
+      userNotifs++;
+    }
 
     for (const artist of artists) {
       if (lookups >= MAX_LOOKUPS_PER_RUN) break;
@@ -157,7 +200,7 @@ serve(async (_req) => {
       const events = await searchTm(artist, homeCity || null);
       if (!events.length) continue;
 
-      const candidates = events.filter((e) => !sent.has(e.id));
+      const candidates = events.filter((e) => !sent.has(`tour_alert|${e.id}`));
       if (!candidates.length) continue;
       const ev = candidates[0];
 
@@ -184,24 +227,14 @@ serve(async (_req) => {
             ticketUrl: ev.ticketUrl,
           },
         });
-        const okCount = results.filter((r) => r.ok).length;
-        pushed += okCount;
-        // Prune dead tokens. Apple uses 410 Unregistered + reasons
-        // `BadDeviceToken`/`Unregistered` for stale tokens.
-        const dead = results
-          .filter((r) => !r.ok && (r.status === 410 || r.reason === 'Unregistered' || r.reason === 'BadDeviceToken'))
-          .map((r) => r.token);
-        if (dead.length) {
-          await admin.from('device_tokens').delete()
-            .eq('user_id', userId)
-            .in('token', dead);
-        }
+        pushed += results.filter((r) => r.ok).length;
+        await pruneDeadTokens(admin, userId, results);
       }
 
       // Single dedup namespace ('tour_alert') so the same event is
       // never notified twice regardless of which copy fired.
       sentInsertBuffer.push({ user_id: userId, kind: 'tour_alert', ref: ev.id });
-      sent.add(ev.id);
+      sent.add(`tour_alert|${ev.id}`);
       userNotifs++;
     }
   }
@@ -228,6 +261,13 @@ serve(async (_req) => {
 
 // -------------------- helpers --------------------
 
+interface GoingShow {
+  id: string;
+  artist: string;
+  venue: string;
+  date: string;
+}
+
 interface TmEvent {
   id: string;
   city: string;
@@ -235,6 +275,28 @@ interface TmEvent {
   venue: string;
   date: string;
   ticketUrl: string;
+}
+
+// Whole days from today (local) until an ISO date (YYYY-MM-DD).
+// Negative = in the past.
+function daysUntil(iso: string): number {
+  if (!iso) return NaN;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(iso + 'T00:00:00');
+  return Math.round((d.getTime() - today.getTime()) / 86400000);
+}
+
+// Delete APNs tokens Apple reported as dead (410 / Unregistered /
+// BadDeviceToken) so we stop pushing to them.
+// deno-lint-ignore no-explicit-any
+async function pruneDeadTokens(admin: any, userId: string, results: Array<{ token: string; ok: boolean; status?: number; reason?: string }>) {
+  const dead = results
+    .filter((r) => !r.ok && (r.status === 410 || r.reason === 'Unregistered' || r.reason === 'BadDeviceToken'))
+    .map((r) => r.token);
+  if (dead.length) {
+    await admin.from('device_tokens').delete().eq('user_id', userId).in('token', dead);
+  }
 }
 
 async function searchTm(artist: string, hintCity: string | null): Promise<TmEvent[]> {
