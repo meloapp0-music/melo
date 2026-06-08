@@ -127,7 +127,7 @@ serve(async (_req) => {
   const { data: sentRows, error: sentErr } = await admin
     .from('notifications_sent')
     .select('user_id, kind, ref')
-    .in('kind', ['tour_alert', 'preshow_week', 'preshow_day']);
+    .in('kind', ['tour_alert', 'preshow_week', 'preshow_day', 'preshow_today']);
   if (sentErr) {
     console.error('[tour-alerts] sent read failed', sentErr);
     return err({ error: sentErr.message }, 500);
@@ -153,22 +153,27 @@ serve(async (_req) => {
     let userNotifs = 0;
 
     // --- Pre-show reminders for Going shows (no TM lookup needed) ---
-    // ~1 week out: "got your tickets?" · ~1-2 days out: "check the
-    // venue guidelines." Each fires once per show (deduped by kind).
+    // Day-of ("tonight"), ~1-2 days out, and ~1 week out. Each fires
+    // once per show (deduped by kind). The cron runs ~midday, so the
+    // day-of ping lands the day of the show.
     for (const show of going) {
       if (userNotifs >= MAX_NOTIFS_PER_USER) break;
       const d = daysUntil(show.date);
       let kind = '';
       let title = '';
       let body = '';
-      if (d >= 6 && d <= 8) {
-        kind = 'preshow_week';
-        title = `${show.artist} is 1 week away 🎟️`;
-        body = `${show.venue ? show.venue + ' · ' : ''}Got your tickets sorted?`;
+      if (d === 0) {
+        kind = 'preshow_today';
+        title = `Tonight: ${show.artist} 🎶`;
+        body = `${show.venue ? show.venue + ' · ' : ''}Have your tickets ready and check the venue guidelines. Enjoy the show!`;
       } else if (d >= 1 && d <= 2) {
         kind = 'preshow_day';
         title = d === 1 ? `${show.artist} is tomorrow! 🎶` : `${show.artist} is in 2 days! 🎶`;
         body = `Double-check your tickets and the venue guidelines before you head out.`;
+      } else if (d >= 6 && d <= 8) {
+        kind = 'preshow_week';
+        title = `${show.artist} is 1 week away 🎟️`;
+        body = `${show.venue ? show.venue + ' · ' : ''}Got your tickets sorted?`;
       }
       if (!kind) continue;
       const key = `${kind}|${show.id}`;
