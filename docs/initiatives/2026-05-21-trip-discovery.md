@@ -141,6 +141,15 @@ _Pending — planning only._
 - **Geolocation dependency.** Adding `@capacitor/geolocation` means a
   native rebuild + a new App Store privacy declaration ("Location →
   used to find nearby events, not linked to identity, not tracking").
+- **User-requested "near a venue → who's playing" (2026-05-22).** A user
+  suggested location pushes. Take the **foreground** version — open the
+  app → use current location → show who's playing nearby (this is the
+  GPS "near me now" phase already planned above). Do NOT pursue the
+  **background-geofence** version ("ping me when I walk near a venue"):
+  background/Always location is the most privacy-sensitive iOS
+  permission, drains battery, and draws heavy App Store scrutiny for a
+  concert tracker. Foreground = ~80% of the value at ~10% of the cost.
+  Background geofencing is a someday-maybe, not near-term.
 - **Ticketmaster coverage.** Discovery API is strong for ticketed
   venues but misses small DIY/club shows and some festivals. Acceptable
   for v1; note as a known gap. Bandsintown would fill it but they

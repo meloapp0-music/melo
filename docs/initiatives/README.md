@@ -33,6 +33,14 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
+- `2026-05-22-engagement-retention-loops.md` — planned · "A reason to
+  keep logging" (the biggest retention lever). Post-show "rate it"
+  prompt (Going→Rated loop, highest leverage), friends activity +
+  **multi-dimensional friends-leaderboards** (shows/miles/together/
+  discoveries/genres — friends-only, celebratory), streaks + goals,
+  collection/completion (venues/cities/states/festivals), expanded
+  badges, monthly mini-recaps. Mostly derived data; depends on the
+  friend system for leaderboards.
 - `2026-05-22-home-screen-widget.md` — planned · Daily home-screen
   presence users *choose* (vs. notification spam): a WidgetKit/SwiftUI
   widget showing next-show countdown (P1), on-this-day memory (P2), and
