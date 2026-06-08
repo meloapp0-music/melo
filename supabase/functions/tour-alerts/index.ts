@@ -127,7 +127,7 @@ serve(async (_req) => {
   const { data: sentRows, error: sentErr } = await admin
     .from('notifications_sent')
     .select('user_id, kind, ref')
-    .in('kind', ['tour_alert', 'preshow_week', 'preshow_day', 'preshow_today']);
+    .in('kind', ['tour_alert', 'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate']);
   if (sentErr) {
     console.error('[tour-alerts] sent read failed', sentErr);
     return err({ error: sentErr.message }, 500);
@@ -152,17 +152,24 @@ serve(async (_req) => {
     const sent = sentByUser.get(userId) || new Set();
     let userNotifs = 0;
 
-    // --- Pre-show reminders for Going shows (no TM lookup needed) ---
-    // Day-of ("tonight"), ~1-2 days out, and ~1 week out. Each fires
-    // once per show (deduped by kind). The cron runs ~midday, so the
-    // day-of ping lands the day of the show.
+    // --- Show reminders for Going shows (no TM lookup needed) ---
+    // Pre-show: 1 week / 1-2 days / day-of. Post-show: the day AFTER,
+    // nudge them to rate it — the Going->Rated loop, the single biggest
+    // "keep logging" driver. Each fires once per show (deduped by kind).
+    // Cron runs ~midday, so day-of lands the day of the show and the
+    // post-show prompt lands the day after.
     for (const show of going) {
       if (userNotifs >= MAX_NOTIFS_PER_USER) break;
       const d = daysUntil(show.date);
       let kind = '';
       let title = '';
       let body = '';
-      if (d === 0) {
+      if (d === -1) {
+        // Day after the show — convert intent into a logged, rated show.
+        kind = 'postshow_rate';
+        title = `How was ${show.artist}? 🎶`;
+        body = `Rate your show${show.venue ? ' at ' + show.venue : ''}, add photos, and lock it into your year.`;
+      } else if (d === 0) {
         kind = 'preshow_today';
         title = `Tonight: ${show.artist} 🎶`;
         body = `${show.venue ? show.venue + ' · ' : ''}Have your tickets ready and check the venue guidelines. Enjoy the show!`;

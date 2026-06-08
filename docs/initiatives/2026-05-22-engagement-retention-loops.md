@@ -26,7 +26,14 @@ single brutal global rank.
 
 ## The mechanics (prioritized by retention impact)
 
-### 1. Post-show "rate it" prompt — close the Going → Rated loop (highest leverage)
+### 1. Post-show "rate it" prompt — close the Going → Rated loop (highest leverage) ✅ SHIPPED (cron)
+**2026-05-22: Built** in `tour-alerts/index.ts` — the day after a Going
+show (d === -1), the cron sends "How was {artist}? Rate it" (kind
+`postshow_rate`, deduped). Converts intent → a logged, rated show and
+creates a guaranteed return visit. Deploy via
+`supabase functions deploy tour-alerts`. The in-app side (tap → rate)
+reuses the existing Home "How was {show}?" CTA.
+
 When a show is marked **Going**, prompt the user the **day after** the
 date: "How was {artist}? Rate it ⭐."
 - Notification (`postshow_rate` kind in the cron) + the existing Home
