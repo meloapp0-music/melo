@@ -52,7 +52,7 @@ export default function BuddySearch({ relationships = {}, onRequest, onAccept, o
           <line x1="16.5" y1="16.5" x2="21" y2="21" />
         </svg>
         <input
-          placeholder="Search by username…"
+          placeholder="Search by name or username…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           autoCapitalize="none"

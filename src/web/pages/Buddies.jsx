@@ -124,7 +124,7 @@ export default function Buddies() {
           ) : friends.length === 0 ? (
             <div className="shows-empty fade-in">
               <div className="shows-empty-icon">👋</div>
-              <p>No friends yet. Find people by username or invite your crew.</p>
+              <p>No friends yet. Search by name or username, or invite your crew.</p>
               <button className="log-submit" style={{ maxWidth: 260, margin: '14px auto 0' }} onClick={invite}>
                 Invite friends 🎶
               </button>
@@ -153,7 +153,7 @@ export default function Buddies() {
             <>
               <div className="section-label" style={{ marginTop: 24 }}>Tagged on your shows</div>
               <p className="settings-desc" style={{ marginBottom: 12 }}>
-                These are names you've tagged on shows. Find them by username above to connect for real.
+                These are names you've tagged on shows. Search their name or username above to connect for real.
               </p>
               <div className="buddy-grid">
                 {legacyBuddies.map((b) => (
