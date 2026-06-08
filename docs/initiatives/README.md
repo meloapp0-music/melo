@@ -33,6 +33,13 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
+- `2026-05-22-notification-expansion.md` — planned · next notification
+  build · Adds two notification kinds to the cron: **discovery**
+  (taste-based — artists you'd like, via Deezer related-artists,
+  playing your city) and **festival_lineup** (a festival's lineup
+  dropped with N of your artists). Plus a Settings notifications-toggle
+  section (migration 0011) now that there are 5+ kinds. Builds on the
+  existing tour-alerts cron, pre-show reminders, and city alerts.
 - `2026-05-22-cold-start-activation.md` — planned · v1.2 (build after
   v1.1 ships, informed by the PostHog funnel) · Fixes the empty-new-user
   churn. Activation onboarding funneling into the past-show finder +
