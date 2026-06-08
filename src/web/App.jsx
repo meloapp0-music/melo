@@ -9,6 +9,7 @@ import { identify, resetAnalytics } from './lib/analytics';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
 import ShowComparison from './components/ShowComparison';
+import UserProfileView from './pages/UserProfileView';
 import QuickLog from './components/QuickLog';
 import AuthGate from './components/AuthGate';
 import Home from './pages/Home';
@@ -56,6 +57,7 @@ export default function App() {
   // lands directly in the score/vibes editor with all fields prefilled.
   const [logEditTarget, setLogEditTarget] = useState(null);
   const [selectedShow, setSelectedShow] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   const [subPage, setSubPage] = useState(null);
   const [artistImages, setArtistImages] = useState({});
   const [wrappedYear, setWrappedYear] = useState(null);
@@ -307,6 +309,7 @@ export default function App() {
     setShowLog,
     setLogEditTarget,
     setSelectedShow,
+    setSelectedUserId,
     subPage,
     navigate,
     updateSettings,
@@ -388,6 +391,12 @@ export default function App() {
         )}
         {selectedShow && (
           <ShowDetail show={selectedShow} onClose={() => setSelectedShow(null)} />
+        )}
+        {selectedUserId && (
+          <UserProfileView
+            userId={selectedUserId}
+            onClose={() => setSelectedUserId(null)}
+          />
         )}
         {wrappedYear && (
           <Wrapped year={wrappedYear} onClose={() => setWrappedYear(null)} />

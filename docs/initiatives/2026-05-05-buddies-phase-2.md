@@ -97,6 +97,31 @@ thing in one TestFlight build.
   user-search feature shipping to the App Store, and it's hours of
   extra work, not weeks. Phase 2c (buddy profile view), 2d (going +
   seats), 2e (Wrapped) follow in v1.2.
+- 2026-05-22: **Phase 2a + 2b core built** (users asked for it
+  unprompted). Two-way friend graph + shared shows + safety + invite
+  growth loop.
+  - **Migration `0010_friendships.sql`**: `friendships` (canonical pair,
+    pending/accepted), `blocks`, `user_reports`, `show_attendees`, a
+    `can_view_shows()` SECURITY DEFINER helper + friend-read SELECT
+    policy on `shows`, and a profiles read policy for friend-or-pending
+    pairs.
+  - **`friendships.js`** (new): request/accept/decline/remove,
+    block/unblock/listBlocked, reportUser, listFriends/incoming/
+    outgoing, getRelationships.
+  - **`profiles.js`**: implemented `searchUsers` + `getProfileById`.
+  - **`shows.js`**: `listUserShows` (RLS-gated) + tag/untag/listAttendees.
+  - **`Buddies.jsx`** rewritten: Friends / Requests / Find tabs, search
+    (`BuddySearch.jsx`), **Invite friends** share button; legacy
+    free-text buddies preserved in a secondary section.
+  - **`UserProfileView.jsx`** (new): friend profile — stats, RLS-gated
+    show history, **"shows you've been to together"** (auto-detected),
+    add/accept/remove + block/report.
+  - **`App.jsx`**: `selectedUserId` + UserProfileView overlay. `App.css`
+    styling. `npm run build` passes.
+  - **Pending: apply migration 0010 in Supabase** before it works live.
+  - **Remaining**: explicit @friend tagging in LogShow (writes
+    `show_attendees` + auto-confirm); friend-request push notifications;
+    Wrapped "concert crew" (2e); going-buddies + seats (2d).
 
 ## Open questions / follow-ups
 

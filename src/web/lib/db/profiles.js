@@ -28,6 +28,18 @@ export async function getMyProfile() {
   return fromRow(data);
 }
 
+// Read another user's profile by id. RLS allows this when the profile is
+// searchable, is yours, or you have a friendship row with them.
+export async function getProfileById(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return fromRow(data);
+}
+
 export async function updateMyProfile(patch) {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('Not signed in');
@@ -66,7 +78,49 @@ export async function checkUsernameAvailable(username) {
   return data.id === user?.id;
 }
 
-// Placeholder for Phase 2 — returns [] for now so the UI can be wired up.
-export async function searchUsers(_query) {
-  return [];
+// Username/display-name search for friend discovery. Returns up to 20
+// searchable profiles matching the query, excluding yourself and anyone
+// blocked in either direction. Per buddies-phase-2.
+export async function searchUsers(query) {
+  const raw = String(query || '').trim();
+  if (raw.length < 2) return [];
+  // Usernames are [a-z0-9_]; strip chars that would break the PostgREST
+  // `or=ilike` filter (commas, parens, percent).
+  const q = raw.replace(/[%,()]/g, '');
+  if (!q) return [];
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const me = user?.id;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_color, avatar_url, bio')
+    .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+    .eq('is_searchable', true)
+    .limit(20);
+  if (error) throw error;
+
+  let results = (data || []).filter((p) => p.id !== me);
+
+  // Exclude blocked users (either direction).
+  if (me && results.length) {
+    const { data: blocks } = await supabase
+      .from('blocks')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${me},blocked_id.eq.${me}`);
+    const blocked = new Set();
+    (blocks || []).forEach((b) => {
+      blocked.add(b.blocker_id === me ? b.blocked_id : b.blocker_id);
+    });
+    results = results.filter((p) => !blocked.has(p.id));
+  }
+
+  return results.map((p) => ({
+    id: p.id,
+    username: p.username || '',
+    displayName: p.display_name || '',
+    avatarColor: p.avatar_color || '#E8573A',
+    avatarUrl: p.avatar_url || '',
+    bio: p.bio || '',
+  }));
 }

@@ -1,224 +1,236 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, isAttended, formatDate } from '../store';
+import { isAttended } from '../store';
+import BuddySearch from '../components/BuddySearch';
+import {
+  listFriends, listIncomingRequests, listOutgoingRequests, getRelationships,
+  requestFriend, acceptFriend, removeFriend,
+} from '../lib/db/friendships';
+
+// Invite link shared via the native share sheet — the growth loop.
+const INVITE_URL = 'https://melo.show';
+
+function Avatar({ name, color, url, size = 44 }) {
+  const style = {
+    width: size, height: size, background: color,
+    ...(url ? { backgroundImage: `url(${url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+  };
+  return (
+    <div className="buddy-avatar" style={style}>
+      {!url && (name || '?')[0].toUpperCase()}
+    </div>
+  );
+}
 
 export default function Buddies() {
-  const { shows, buddies, navigate, getArtistImage, updateShow } = useApp();
+  const { shows, buddies, navigate, setSelectedUserId, showToast } = useApp();
   const attended = shows.filter(isAttended);
 
-  // ----- Add Buddy modal state -----
-  // Phase 1 architecture stores buddies as label strings inside each show's
-  // `buddies` array — there's no separate buddy table. So "adding" a buddy
-  // means picking past attended shows to retro-tag them on. Once any show
-  // has the name, the derived `buddies` list (App.jsx) surfaces the buddy
-  // everywhere.
-  const [addOpen, setAddOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [pickedShowIds, setPickedShowIds] = useState([]);
-  const [savingBuddy, setSavingBuddy] = useState(false);
-  const [addError, setAddError] = useState('');
+  const [view, setView] = useState('friends'); // 'friends' | 'requests' | 'find'
+  const [friends, setFriends] = useState([]);
+  const [incoming, setIncoming] = useState([]);
+  const [outgoing, setOutgoing] = useState([]);
+  const [relationships, setRelationships] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const togglePicked = (id) =>
-    setPickedShowIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-
-  const closeAdd = () => {
-    setAddOpen(false);
-    setNewName('');
-    setPickedShowIds([]);
-    setAddError('');
-  };
-
-  const saveBuddy = async () => {
-    setAddError('');
-    const name = newName.trim();
-    if (!name) {
-      setAddError('Type a name first');
-      return;
-    }
-    if (pickedShowIds.length === 0) {
-      setAddError('Pick at least one show to tag this buddy on');
-      return;
-    }
-    setSavingBuddy(true);
+  const refresh = useCallback(async () => {
     try {
-      await Promise.all(
-        pickedShowIds.map((id) => {
-          const s = shows.find((sh) => sh.id === id);
-          if (!s) return null;
-          const existing = Array.isArray(s.buddies) ? s.buddies : [];
-          if (existing.includes(name)) return null;
-          return updateShow(id, { buddies: [...existing, name] });
-        })
-      );
-      closeAdd();
+      const [f, inc, out, rel] = await Promise.all([
+        listFriends(), listIncomingRequests(), listOutgoingRequests(), getRelationships(),
+      ]);
+      setFriends(f); setIncoming(inc); setOutgoing(out); setRelationships(rel);
     } catch (err) {
-      setAddError(err?.message || 'Could not save');
+      // eslint-disable-next-line no-console
+      console.error('[Melo] friends load failed', err);
     } finally {
-      setSavingBuddy(false);
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const handleRequest = async (userId) => {
+    try { await requestFriend(userId); showToast?.({ message: 'Request sent' }); await refresh(); }
+    catch (err) { showToast?.({ message: err?.message || 'Could not send request' }); }
+  };
+  const handleAccept = async (userId) => {
+    try { await acceptFriend(userId); showToast?.({ message: 'Friend added 🎶' }); await refresh(); }
+    catch (err) { showToast?.({ message: err?.message || 'Could not accept' }); }
+  };
+  const handleRemove = async (userId) => {
+    if (!confirm('Remove this friend?')) return;
+    try { await removeFriend(userId); await refresh(); }
+    catch (err) { showToast?.({ message: err?.message || 'Could not remove' }); }
+  };
+  const handleDecline = async (userId) => {
+    try { await removeFriend(userId); await refresh(); }
+    catch (err) { showToast?.({ message: err?.message || 'Could not decline' }); }
   };
 
-  const buddyStats = useMemo(() => {
+  const invite = async () => {
+    const text = 'I track all my concerts on Melo — join me 🎶';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Melo', text, url: INVITE_URL });
+      } else {
+        await navigator.clipboard.writeText(`${text} ${INVITE_URL}`);
+        showToast?.({ message: 'Invite link copied' });
+      }
+    } catch { /* user dismissed */ }
+  };
+
+  // Legacy free-text buddies (Phase 1) that aren't linked to a real user.
+  const legacyBuddies = useMemo(() => {
     return buddies
       .map((b) => {
-        const sharedShows = attended.filter(
-          (s) => s.buddies && s.buddies.includes(b.name)
-        );
-        return { ...b, shows: sharedShows, count: sharedShows.length };
+        const count = attended.filter((s) => (s.buddies || []).includes(b.name)).length;
+        return { ...b, count };
       })
+      .filter((b) => b.count > 0)
       .sort((a, b) => b.count - a.count);
   }, [buddies, attended]);
-
-  const topBuddy = buddyStats[0];
-
-  const bgStyle = (artist) => {
-    const img = getArtistImage(artist);
-    return img
-      ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { background: getArtistGradient(artist) };
-  };
 
   return (
     <div className="page page-top">
       <div className="buddies-header">
         <button className="back-btn" onClick={() => navigate('profile')}>
-          <svg viewBox="0 0 24 24">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
           Profile
         </button>
         <h1>Buddies</h1>
-        <button
-          className="buddies-add-btn"
-          onClick={() => setAddOpen(true)}
-          aria-label="Add a buddy"
-        >
-          + Add
+        <button className="buddies-add-btn" onClick={() => setView('find')}>
+          + Find
         </button>
       </div>
 
-      {topBuddy && topBuddy.count > 0 && (
-        <div className="buddy-spotlight">
-          <div className="buddy-spotlight-inner">
-            <div
-              className="buddy-spotlight-avatar"
-              style={{ background: topBuddy.color }}
-            >
-              {topBuddy.name[0]}
-            </div>
-            <div className="buddy-spotlight-name">{topBuddy.name}</div>
-            <div className="buddy-spotlight-stat">
-              Your #1 concert buddy &middot; {topBuddy.count} shows together
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="section-label">All Buddies</div>
-      <div className="buddy-grid">
-        {buddyStats.map((buddy) => (
-          <div key={buddy.id} className="buddy-card">
-            <div className="buddy-avatar" style={{ background: buddy.color }}>
-              {buddy.name[0]}
-            </div>
-            <div className="buddy-info">
-              <div className="buddy-name">{buddy.name}</div>
-              <div className="buddy-shows-count">
-                {buddy.count} show{buddy.count !== 1 ? 's' : ''} together
-              </div>
-            </div>
-            <div className="buddy-thumbs">
-              {buddy.shows.slice(0, 3).map((s) => (
-                <div
-                  key={s.id}
-                  className="buddy-thumb"
-                  style={bgStyle(s.artist)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-        {buddyStats.length === 0 && (
-          <div className="shows-empty">
-            <p>No buddies yet — tap "+ Add" up top to tag a friend on past shows.</p>
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="festival-mode-tabs">
+        <button className={`shows-tab ${view === 'friends' ? 'active' : ''}`} onClick={() => setView('friends')}>
+          Friends ({friends.length})
+        </button>
+        <button className={`shows-tab ${view === 'requests' ? 'active' : ''}`} onClick={() => setView('requests')}>
+          Requests{incoming.length > 0 ? ` (${incoming.length})` : ''}
+        </button>
+        <button className={`shows-tab ${view === 'find' ? 'active' : ''}`} onClick={() => setView('find')}>
+          Find
+        </button>
       </div>
 
-      {addOpen && (
-        <div className="detail-overlay">
-          <div className="detail-backdrop" onClick={closeAdd} />
-          <div className="detail-sheet" style={{ maxHeight: '85vh', overflow: 'auto' }}>
-            <div className="log-header" style={{ padding: '20px 20px 12px' }}>
-              <button className="detail-close" onClick={closeAdd}>×</button>
-              <h2 style={{ margin: 0 }}>Add a buddy</h2>
-            </div>
-
-            <div className="log-section">
-              <div className="log-section-title">Name</div>
-              <input
-                className="log-input"
-                placeholder="Their name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                maxLength={40}
-                autoFocus
-              />
-            </div>
-
-            <div className="log-section">
-              <div className="log-section-title">
-                Tag on past shows ({pickedShowIds.length} selected)
-              </div>
-              {attended.length === 0 ? (
-                <p className="settings-desc">
-                  You haven't logged any attended shows yet — log a show first,
-                  then come back to tag buddies on it.
-                </p>
-              ) : (
-                <div className="buddy-add-shows">
-                  {attended.map((s) => {
-                    const picked = pickedShowIds.includes(s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        className={`buddy-add-show-row ${picked ? 'picked' : ''}`}
-                        onClick={() => togglePicked(s.id)}
-                      >
-                        <span className="buddy-add-show-check" aria-hidden>
-                          {picked ? '✓' : ''}
-                        </span>
-                        <span className="buddy-add-show-info">
-                          <strong>{s.artist}</strong>
-                          <span className="settings-desc" style={{ marginBottom: 0 }}>
-                            {formatDate(s.date)} · {s.venue || s.city || '—'}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {addError && (
-              <p className="settings-desc" style={{ color: '#C34A36', padding: '0 20px' }}>{addError}</p>
-            )}
-
-            <div style={{ padding: '12px 20px 24px' }}>
-              <button
-                className="log-submit"
-                onClick={saveBuddy}
-                disabled={savingBuddy || attended.length === 0}
-              >
-                {savingBuddy ? 'Saving…' : 'Save buddy'}
+      {/* FRIENDS */}
+      {view === 'friends' && (
+        <>
+          {loading ? (
+            <div className="upcoming-loading">Loading friends…</div>
+          ) : friends.length === 0 ? (
+            <div className="shows-empty fade-in">
+              <div className="shows-empty-icon">👋</div>
+              <p>No friends yet. Find people by username or invite your crew.</p>
+              <button className="log-submit" style={{ maxWidth: 260, margin: '14px auto 0' }} onClick={invite}>
+                Invite friends 🎶
               </button>
             </div>
+          ) : (
+            <div className="buddy-grid">
+              {friends.map((f) => (
+                <button
+                  key={f.userId}
+                  className="buddy-card buddy-card-tappable"
+                  onClick={() => setSelectedUserId(f.userId)}
+                >
+                  <Avatar name={f.displayName || f.username} color={f.avatarColor} url={f.avatarUrl} />
+                  <div className="buddy-info">
+                    <div className="buddy-name">{f.displayName || f.username}</div>
+                    <div className="buddy-shows-count">@{f.username}</div>
+                  </div>
+                  <span className="buddy-card-chevron">›</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Legacy free-text buddies (not yet linked to real accounts) */}
+          {legacyBuddies.length > 0 && (
+            <>
+              <div className="section-label" style={{ marginTop: 24 }}>Tagged on your shows</div>
+              <p className="settings-desc" style={{ marginBottom: 12 }}>
+                These are names you've tagged on shows. Find them by username above to connect for real.
+              </p>
+              <div className="buddy-grid">
+                {legacyBuddies.map((b) => (
+                  <div key={b.id} className="buddy-card">
+                    <Avatar name={b.name} color={b.color} />
+                    <div className="buddy-info">
+                      <div className="buddy-name">{b.name}</div>
+                      <div className="buddy-shows-count">{b.count} show{b.count !== 1 ? 's' : ''} together</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* REQUESTS */}
+      {view === 'requests' && (
+        <>
+          <div className="section-label">Incoming</div>
+          {incoming.length === 0 ? (
+            <p className="settings-desc">No incoming requests.</p>
+          ) : (
+            <div className="buddy-grid">
+              {incoming.map((r) => (
+                <div key={r.userId} className="buddy-card">
+                  <Avatar name={r.displayName || r.username} color={r.avatarColor} url={r.avatarUrl} />
+                  <div className="buddy-info">
+                    <div className="buddy-name">{r.displayName || r.username}</div>
+                    <div className="buddy-shows-count">@{r.username}</div>
+                  </div>
+                  <div className="buddy-req-actions">
+                    <button className="buddy-action-btn" onClick={() => handleAccept(r.userId)}>Accept</button>
+                    <button className="buddy-action-btn buddy-action-ghost" onClick={() => handleDecline(r.userId)}>Decline</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="section-label" style={{ marginTop: 24 }}>Sent</div>
+          {outgoing.length === 0 ? (
+            <p className="settings-desc">No pending sent requests.</p>
+          ) : (
+            <div className="buddy-grid">
+              {outgoing.map((r) => (
+                <div key={r.userId} className="buddy-card">
+                  <Avatar name={r.displayName || r.username} color={r.avatarColor} url={r.avatarUrl} />
+                  <div className="buddy-info">
+                    <div className="buddy-name">{r.displayName || r.username}</div>
+                    <div className="buddy-shows-count">@{r.username}</div>
+                  </div>
+                  <button className="buddy-action-btn buddy-action-ghost" onClick={() => handleDecline(r.userId)}>Cancel</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* FIND */}
+      {view === 'find' && (
+        <>
+          <BuddySearch
+            relationships={relationships}
+            onRequest={handleRequest}
+            onAccept={handleAccept}
+            onOpenProfile={(id) => setSelectedUserId(id)}
+          />
+          <div style={{ textAlign: 'center', marginTop: 18 }}>
+            <p className="settings-desc">Friends not on Melo yet?</p>
+            <button className="log-submit" style={{ maxWidth: 260, margin: '8px auto 0' }} onClick={invite}>
+              Invite friends 🎶
+            </button>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

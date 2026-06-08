@@ -88,6 +88,45 @@ export async function listMyShows() {
   return (data || []).map(fromRow);
 }
 
+// A friend's shows. RLS (can_view_shows) enforces visibility — this
+// returns rows only if the viewer is allowed to see them. Per
+// buddies-phase-2 (friend profiles + "shows together").
+export async function listUserShows(userId) {
+  const { data, error } = await supabase
+    .from('shows')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(fromRow);
+}
+
+// ---- show attendees (tag a real friend on a show you own) ----
+export async function tagAttendee(showId, userId) {
+  const { error } = await supabase
+    .from('show_attendees')
+    .upsert({ show_id: showId, user_id: userId }, { onConflict: 'show_id,user_id', ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+export async function untagAttendee(showId, userId) {
+  const { error } = await supabase
+    .from('show_attendees')
+    .delete()
+    .eq('show_id', showId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function listAttendees(showId) {
+  const { data, error } = await supabase
+    .from('show_attendees')
+    .select('user_id, confirmed_at')
+    .eq('show_id', showId);
+  if (error) throw error;
+  return data || [];
+}
+
 export async function createShow(show, userId) {
   const row = toRow(show, userId);
   // If the caller supplied its own id (the legacy store generated short IDs),
