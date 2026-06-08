@@ -33,6 +33,12 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
+- `2026-05-22-home-screen-widget.md` — planned · Daily home-screen
+  presence users *choose* (vs. notification spam): a WidgetKit/SwiftUI
+  widget showing next-show countdown (P1), on-this-day memory (P2), and
+  streak/stats (P3). Honest flag: this is the most native work in Melo
+  (Swift, separate Xcode target, App Group shared storage, JS→native
+  bridge) — consider native-iOS help for the Swift portion. No schema.
 - `2026-05-22-notification-expansion.md` — planned · next notification
   build · Adds two notification kinds to the cron: **discovery**
   (taste-based — artists you'd like, via Deezer related-artists,
