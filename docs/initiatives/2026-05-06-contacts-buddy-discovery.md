@@ -180,6 +180,22 @@ This section needs to be solid before shipping.
 
 _None yet — planning only._
 
+- 2026-05-22: Re-surfaced by user request — "can it connect to contacts
+  so when you search a name/username, people in your contacts come up?"
+  Confirms demand. Two UX shapes to support:
+  1. **Dedicated "Find friends from your contacts"** flow (the primary
+     pattern this doc specs) — scan → show contacts already on Melo
+     (Add) + invite the rest.
+  2. **Search-blended ranking** — when searching by name (now live via
+     the username+display_name `searchUsers`), rank
+     contacts-matched results first and badge them "In your contacts."
+     A refinement on top of #1; needs the same hashed-contact match.
+  **Sequencing:** build AFTER the friend system (v1.2) ships — contacts
+  discovery is pointless until friends are live, and the privacy work
+  (hash, opt-in, no raw upload) deserves its own careful pass, not a
+  bundle into the v1.2 rush. Name search (shipped 2026-05-22) covers
+  most of the gap in the meantime.
+
 ## Open questions / follow-ups
 
 - **Pepper rotation.** The hash pepper is one secret stored as a
