@@ -126,9 +126,44 @@ one progression you can fill and share. Four $0 tracks:
 - **Background infra:** programmatic SEO (start now, compounds for
   months).
 
+## Tangible / cash rewards — when & how (the "Melo covers 10% of your ticket" question)
+A user asked about real-money perks (e.g. "log X → Melo covers 10% of
+your next ticket"). The instinct (tangible rewards are powerful) is
+right, but the execution has to be disciplined:
+
+- **DON'T self-fund guaranteed cash/discount payouts pre-revenue.**
+  Tickets are $50–300; 10% = $5–30 per user per show paid from your
+  pocket while the app earns $0. It (a) incinerates money you don't
+  have, (b) attracts reward-farmers who churn when it stops, (c)
+  creates a cliff once you can't afford it, and (d) invites fraud (fake
+  logs to claim discounts) + payout/tax ops. Net: buys the *wrong*
+  users. Skip it.
+- **Tangible rewards must be funded by someone OTHER than you.** Two
+  legit paths:
+  1. **Affiliate-funded.** Ticketmaster / SeatGeek / AXS / DICE / nugs /
+     Seated have affiliate programs — a ticket bought through a Melo
+     link earns a commission. That commission is Melo's *first revenue*
+     (someone else's CAC budget) and the only sustainable thing that
+     could later fund a real "we covered part of your ticket" reward.
+     This is exactly how Seated's rewards work — **artists/partners**
+     fund them, not Seated. Path: earn affiliate revenue first, reward
+     later.
+  2. **Capped giveaways, not open-ended rebates.** "Log 5 shows this
+     month → entered to win a pair of tickets / a festival pass."
+     Bounded, predictable cost (one prize, ideally partner-donated) vs.
+     an unbounded liability. Same "do X → get something real" pull at
+     ~1% of the cost, and it doubles as a shareable marketing event.
+- **Everyday engine stays $0 status/identity rewards** (The Pass) —
+  sustainable and attracts genuine fans, not farmers.
+- **Sequencing:** $0 status rewards now → occasional capped giveaway as
+  a marketing spike → ticketing affiliate revenue (first income) → only
+  then real ticket perks, partner/affiliate-funded.
+
 ## Explicitly DON'T
 - No global leaderboards (friends-only, celebratory).
-- No money-cost rewards pre-scale.
+- **No self-funded cash/discount payouts pre-revenue** (see above —
+  money-incinerator that buys the wrong users). Tangible rewards only
+  when affiliate/partner-funded or as a capped giveaway.
 - No public UGC (Show Twins, Curator, open "were you there?" tags) until
   the moderation/T&S floor exists (Guideline 1.2).
 - Never gate behind a calendar-day streak — it punishes concert cadence.
