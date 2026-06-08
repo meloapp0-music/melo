@@ -5,6 +5,7 @@ import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
 import KineticVibe from '../components/KineticVibe';
 import WrappedMapSlide from '../components/WrappedMapSlide';
 import { track } from '../lib/analytics';
+import { shareWrappedCard } from '../lib/shareCard';
 import {
   resolveCities,
   totalMilesTraveled,
@@ -100,7 +101,7 @@ function SlideBg({ image, overlay, fallbackArtist, key }) {
 }
 
 export default function Wrapped({ year, onClose }) {
-  const { shows, getArtistImage } = useApp();
+  const { shows, getArtistImage, profile } = useApp();
   const [slide, setSlide] = useState(0);
   const [entered, setEntered] = useState(false);
   const touchRef = useRef({ startX: 0, startY: 0 });
@@ -714,9 +715,17 @@ export default function Wrapped({ year, onClose }) {
             <p className="wrapped-summary-personality wrapped-stagger" style={{ animationDelay: '0.85s' }}>
               {data.personality.sentence}
             </p>
-            <p className="wrapped-summary-footer wrapped-stagger" style={{ animationDelay: '1s' }}>
-              Share your year in music
-            </p>
+            <button
+              className="wrapped-share-btn wrapped-stagger"
+              style={{ animationDelay: '1s' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                track('wrapped_shared', { year });
+                shareWrappedCard(data, year, mapData, profile?.username);
+              }}
+            >
+              <span aria-hidden="true">↗</span> Share your year in music
+            </button>
           </div>
         </div>
       </div>

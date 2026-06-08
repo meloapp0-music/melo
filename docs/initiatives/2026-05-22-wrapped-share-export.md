@@ -1,8 +1,27 @@
 # Wrapped Share Export — wire up the dead "Share your year" button
 
 - Started: 2026-05-22
-- Status: planned (QUICK WIN #1 — build before December)
+- Status: in-progress — summary-slide share SHIPPED; per-slide share next
 - Last updated: 2026-05-22
+
+## Changes made
+
+- 2026-05-22: **Shipped the summary "Share your year" share.** The dead
+  `<p>` (Wrapped.jsx:717) is now a real button → `shareWrappedCard()`.
+  - **New `src/web/lib/shareCard.js`** — renders a 1080×1920 PNG on a
+    `<canvas>` (NOT html2canvas — zero deps, no font/CORS/gradient
+    surprises, identical on web + device): dark→orange gradient, "melo"
+    wordmark, year, 2×2 stat grid (shows/cities/avg/songs), miles, top
+    artist/venue/best show, the personality sentence, and a
+    `melo.show` + `@handle` branded footer. Shares via the Web Share
+    API (file) with a download fallback.
+  - `Wrapped.jsx` — button wired; fires `wrapped_shared` PostHog event;
+    passes `profile.username` for the footer.
+  - `App.css` — `.wrapped-share-btn` (white pill).
+  - `npm run build` passes.
+  - **Still TODO:** per-slide share icons (map/archetype/songs) for
+    multi-card drops; on-device render QA (fonts/gradient in the PNG);
+    a real `melo.show/@handle` resolver (point at the App Store for now).
 
 ## Context
 
