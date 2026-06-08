@@ -33,6 +33,21 @@ on itemized cost capture (P3). Etc.
   shows" with festival/setlist auto-filled. New `searchPastShows` API
   + `createShows`/`addShows` batch helpers. No schema change. Pulled
   ahead of Wrapped Depth.
+- `2026-05-22-growth-strategy.md` — strategy (living) · Master growth &
+  retention playbook synthesized from a 7-agent / 71-idea brainstorm.
+  Core: "The Pass" identity-and-collection system (archetype tiers,
+  per-artist Superfan badges, Collection Passport, Founding scarcity,
+  earned Streak Freeze). Quick wins (wire the dead Wrapped share button,
+  branded footer, per-slide share, archetype evolution, superfan
+  badges), big bets (year-round Wrapped/stubs, Bust-out Rarity Radar,
+  friends compare cards, programmatic SEO, Setlist Bingo), outside-the-
+  box plays (lot-scene QR cards, adopt-a-band scribe, Show Twins,
+  Founding 100), and an anti-burnout plan. Favors $0 status rewards.
+- `2026-05-22-wrapped-share-export.md` — planned · QUICK WIN #1 (before
+  December) · Wire the confirmed dead "Share your year" button
+  (Wrapped.jsx:717) → branded 1080×1920 IG-Story export, reusing the
+  existing deliverFile() share path; then per-slide share. The #1 viral
+  gap.
 - `2026-05-22-engagement-retention-loops.md` — planned · "A reason to
   keep logging" (the biggest retention lever). Post-show "rate it"
   prompt (Going→Rated loop, highest leverage), friends activity +
