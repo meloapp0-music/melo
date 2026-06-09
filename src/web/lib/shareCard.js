@@ -13,11 +13,10 @@ import QRCode from 'qrcode';
 const W = 1080;
 const H = 1920;
 
-// QR target. Set up melo.show to redirect to the App Store so this one
-// scan installs the app (and you can change the destination without
-// reprinting/re-rendering anything). Per the marketing-operating-system
-// "close the share-footer install loop" move.
-const INSTALL_URL = 'https://melo.show';
+// QR target — the direct App Store listing, so a scan opens straight to
+// install with zero redirect/domain setup. Per the marketing-operating-
+// system "close the share-footer install loop" move.
+const INSTALL_URL = 'https://apps.apple.com/us/app/melo-concert-tracker/id6763952800';
 
 const ORANGE = '#E8573A';
 const AMBER = '#F4A261';
