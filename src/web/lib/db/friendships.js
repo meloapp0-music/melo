@@ -31,6 +31,12 @@ export async function requestFriend(otherId) {
       { onConflict: 'user_a,user_b', ignoreDuplicates: true }
     );
   if (error) throw error;
+
+  // Real-time push to the recipient (best-effort, iOS only). Fire-and-
+  // forget — never block or fail the request on a notification error.
+  supabase.functions
+    .invoke('notify-friend-request', { body: { toUserId: otherId } })
+    .catch(() => {});
 }
 
 export async function acceptFriend(otherId) {
