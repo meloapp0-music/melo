@@ -8,8 +8,16 @@
 //
 // Per docs/initiatives/2026-05-22-wrapped-share-export.md (Quick Win #1).
 
+import QRCode from 'qrcode';
+
 const W = 1080;
 const H = 1920;
+
+// QR target. Set up melo.show to redirect to the App Store so this one
+// scan installs the app (and you can change the destination without
+// reprinting/re-rendering anything). Per the marketing-operating-system
+// "close the share-footer install loop" move.
+const INSTALL_URL = 'https://melo.show';
 
 const ORANGE = '#E8573A';
 const AMBER = '#F4A261';
@@ -148,13 +156,46 @@ export async function renderWrappedCard(data, year, mapData, handle) {
     y = wrapCentered(ctx, data.personality.sentence, cx, y, W - 180, 56) + 40;
   }
 
-  // --- Footer ---
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '800 46px Outfit, system-ui, sans-serif';
-  ctx.fillText('melo.show', cx, H - 150);
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.font = '500 32px DM Sans, system-ui, sans-serif';
-  ctx.fillText(handle ? `@${handle}` : 'Track every concert you go to', cx, H - 100);
+  // --- Footer: QR install loop ---
+  // Every share is one camera-scan from an install. Generate the QR
+  // locally (data URL → no network, no canvas taint, toBlob still works).
+  let qrImg = null;
+  try {
+    const qrUrl = await QRCode.toDataURL(INSTALL_URL, {
+      margin: 1,
+      width: 220,
+      color: { dark: '#1A0E07', light: '#FFFFFF' },
+    });
+    qrImg = new Image();
+    qrImg.src = qrUrl;
+    if (qrImg.decode) await qrImg.decode();
+  } catch {
+    qrImg = null; // QR is best-effort; fall back to a text footer
+  }
+
+  if (qrImg) {
+    const qrSize = 190;
+    const qx = cx - qrSize / 2;
+    const qy = H - 330;
+    // White rounded plate behind the QR so it always scans on the dark bg.
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(ctx, qx - 16, qy - 16, qrSize + 32, qrSize + 32, 22);
+    ctx.fill();
+    ctx.drawImage(qrImg, qx, qy, qrSize, qrSize);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '700 34px Outfit, system-ui, sans-serif';
+    ctx.fillText('Scan to get Melo — free on iOS', cx, qy + qrSize + 56);
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.font = '500 28px DM Sans, system-ui, sans-serif';
+    ctx.fillText(handle ? `melo.show · @${handle}` : 'melo.show', cx, qy + qrSize + 98);
+  } else {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '800 46px Outfit, system-ui, sans-serif';
+    ctx.fillText('melo.show', cx, H - 150);
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.font = '500 32px DM Sans, system-ui, sans-serif';
+    ctx.fillText(handle ? `@${handle} · Get Melo free on iOS` : 'Get Melo free on iOS', cx, H - 100);
+  }
 
   return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png', 0.95));
 }

@@ -42,6 +42,7 @@
     "expo-status-bar": "~3.0.9",
     "leaflet": "^1.9.4",
     "posthog-js": "^1.373.5",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "^19.1.0",
     "react-native": "0.81.5",
