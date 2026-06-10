@@ -109,6 +109,18 @@ existing APNs sender, device-token table, dedup table, and caps.
     (BadDeviceToken), this is the next thing to fix.
   - **Requires a new iOS build** to take effect (the v1.2 binary already
     in review predates this fix).
+- 2026-06-10: **Confirmed working end-to-end.** Built 1.2.1 (build 16)
+  with the AppDelegate fix, installed via TestFlight → the device
+  registered a real **production** APNs token (so the `aps-environment`
+  risk was a non-issue — TestFlight/App Store distribution yields a
+  production token that the production-targeted server reaches). Cleared
+  the stale Mumford `preshow_*` rows and invoked the cron → APNs accepted
+  the push (`pushed: 1`). First attempt didn't *appear* because Melo was
+  foregrounded (iOS suppresses banners for the active app); re-fired with
+  the phone locked and the pre-show banner delivered. **Push is now fully
+  functional.** Ships to all users with **1.2.1 (build 16)**, in App
+  Store review (resubmitted with corrected demo-account email after a
+  Guideline 2.1 bounce).
 
 ## Deploy (required — code changes don't auto-ship)
 
