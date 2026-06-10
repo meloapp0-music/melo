@@ -186,15 +186,23 @@ serve(async (_req) => {
       const key = `${kind}|${show.id}`;
       if (sent.has(key)) continue;
 
+      let delivered = false;
       if (tokens.length > 0 && isApnsConfigured()) {
         const results = await sendApnsBatch(tokens, {
           title,
           body,
           data: { kind, artist: show.artist, showId: show.id },
         });
-        pushed += results.filter((r) => r.ok).length;
+        const okCount = results.filter((r) => r.ok).length;
+        pushed += okCount;
+        delivered = okCount > 0;
         await pruneDeadTokens(admin, userId, results);
       }
+      // Only mark as sent once APNs actually ACCEPTS the push. Recording a
+      // skipped/failed send is the bug that silently suppressed every
+      // reminder while no live device token existed — leave it unrecorded so
+      // it retries on a later run, once the user has a deliverable token.
+      if (!delivered) continue;
       sentInsertBuffer.push({ user_id: userId, kind, ref: show.id });
       sent.add(key);
       userNotifs++;
@@ -228,6 +236,7 @@ serve(async (_req) => {
         ? `${ev.venue ? ev.venue + ' · ' : ''}${formatDate(ev.date)} — tickets available`
         : `${ev.city}${ev.state ? ', ' + ev.state : ''} · ${formatDate(ev.date)}`;
 
+      let delivered = false;
       if (tokens.length > 0 && isApnsConfigured()) {
         const results = await sendApnsBatch(tokens, {
           title,
@@ -239,9 +248,14 @@ serve(async (_req) => {
             ticketUrl: ev.ticketUrl,
           },
         });
-        pushed += results.filter((r) => r.ok).length;
+        const okCount = results.filter((r) => r.ok).length;
+        pushed += okCount;
+        delivered = okCount > 0;
         await pruneDeadTokens(admin, userId, results);
       }
+      // Same rule as pre-show: only record once APNs accepts it, so an
+      // undeliverable alert retries instead of being permanently suppressed.
+      if (!delivered) continue;
 
       // Single dedup namespace ('tour_alert') so the same event is
       // never notified twice regardless of which copy fired.
@@ -251,10 +265,11 @@ serve(async (_req) => {
     }
   }
 
-  // Bulk record what we sent, even in dry-run mode if APNs isn't
-  // configured — that way a future backfill won't double-push the
-  // same events. Skip-on-conflict because the primary key is
-  // (user_id, kind, ref).
+  // Bulk record only what we ACTUALLY delivered. Every row here was
+  // buffered after APNs accepted the push (see the per-notification
+  // `delivered` gates above) — a skipped or failed send records nothing
+  // and retries on a later run. Skip-on-conflict because the primary key
+  // is (user_id, kind, ref).
   if (sentInsertBuffer.length) {
     const { error: insErr } = await admin
       .from('notifications_sent')
