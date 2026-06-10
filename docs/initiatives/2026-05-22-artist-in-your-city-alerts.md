@@ -81,6 +81,34 @@ existing APNs sender, device-token table, dedup table, and caps.
   - Refactors dedup to composite `${kind}|${ref}` keys and extracts a
     shared `pruneDeadTokens` helper + a `daysUntil` helper. No schema
     change.
+- 2026-06-09: **Push was never actually delivering — root-caused and
+  fixed.** Symptom: a "going" Mumford & Sons show 2 days out produced no
+  notification. Investigation (live, via SQL editor + CLI):
+  - ✅ Cron IS scheduled & active (`tour-alerts-daily`, `0 17 * * *`),
+    APNs fully configured, bundle ID correct (verified by digest match),
+    cron WAS recording `preshow_*` rows daily.
+  - ❌ But `device_tokens` was **empty for every user** — no push ever
+    reached a single device since launch.
+  - **Root cause:** `ios/App/App/AppDelegate.swift` was missing
+    `didRegisterForRemoteNotificationsWithDeviceToken` (+ the
+    `didFailToRegister` counterpart). iOS returned APNs tokens fine, but
+    they were never forwarded to `@capacitor/push-notifications`, so the
+    JS `registration` event never fired and no token was ever saved.
+    Fixed by adding the two standard Capacitor forwarding callbacks.
+    (Native file; `/ios` is gitignored, so the fix lives on disk and
+    ships with the next Xcode build.)
+  - **Secondary bug fixed:** the cron recorded `notifications_sent` even
+    when the send was skipped (no token) or rejected by APNs — which
+    marked every reminder "sent" and then permanently suppressed retries.
+    Now each send site only records after APNs accepts ≥1 push
+    (`okCount > 0`). Deployed (tour-alerts v12).
+  - **Latent risk flagged:** `aps-environment = development` in
+    `App.entitlements`. App Store/TestFlight distribution should force
+    `production` (matching the production-targeted server), but verify on
+    the first real build — if tokens register yet don't deliver
+    (BadDeviceToken), this is the next thing to fix.
+  - **Requires a new iOS build** to take effect (the v1.2 binary already
+    in review predates this fix).
 
 ## Deploy (required — code changes don't auto-ship)
 
