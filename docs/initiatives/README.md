@@ -25,6 +25,11 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-10-preshow-postshow-experience.md` — shipped (next build) ·
+  The push-to-action loop: notification taps deep-link to the show /
+  rate editor, "Up Next" hero section on Home for shows within 7 days,
+  pre-show hype pop-up (0–2 days out) with a shareable countdown card +
+  QR, countdown chip on ShowDetail.
 - `2026-05-21-festival-past-show-finder.md` — in-progress · v1.0.7 ·
   Fixes the #1 churn point: logging past/festival shows was
   100% artist-driven. Adds a "Find a past show" mode on the Attended

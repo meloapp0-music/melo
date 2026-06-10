@@ -30,6 +30,35 @@ import { upsertDeviceToken } from './db/devices';
 
 let wired = false;
 
+// ---- Notification-tap deep linking ----
+// iOS fires `pushNotificationActionPerformed` when the user taps a
+// notification — including the tap that cold-launches the app. We wire
+// this listener at App mount (no permission needed just to listen) and
+// buffer the payload if the tap lands before App has attached its
+// handler, so cold-start taps are never dropped.
+let tapWired = false;
+let tapHandler = null;
+let pendingTap = null;
+
+export function onPushTap(handler) {
+  tapHandler = handler;
+  if (pendingTap && handler) {
+    const data = pendingTap;
+    pendingTap = null;
+    handler(data);
+  }
+  if (!Capacitor.isNativePlatform || !Capacitor.isNativePlatform()) return;
+  if (tapWired) return;
+  tapWired = true;
+  PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
+    // Our custom keys (kind, showId, …) ride at the top level of the
+    // APNs payload, which Capacitor surfaces as notification.data.
+    const data = event?.notification?.data || {};
+    if (tapHandler) tapHandler(data);
+    else pendingTap = data;
+  });
+}
+
 export async function registerForPush() {
   if (!Capacitor.isNativePlatform || !Capacitor.isNativePlatform()) {
     // Web build — quietly no-op.

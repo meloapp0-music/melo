@@ -7347,3 +7347,234 @@ h4 { font-size: 17px; }
 @media (prefers-reduced-motion: reduce) {
   .wrapped-score-shimmer { animation: none; background: #fff; -webkit-text-fill-color: #fff; color: #fff; }
 }
+
+/* ===== Up Next — imminent going shows (Home hero cards) =====
+   Per docs/initiatives/2026-06-10-preshow-postshow-experience.md */
+.upnext-section {
+  margin-bottom: 28px;
+}
+.upnext-card {
+  /* A real <button> for VoiceOver — reset the UA styles. The content
+     flows normally (padding-top creates the hero headroom) so long
+     artist/venue text grows the card instead of clipping the pill. */
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  position: relative;
+  min-height: 172px;
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 12px;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+.upnext-card:active {
+  transform: scale(0.985);
+}
+.upnext-card-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(165deg, #1E1E1E 0%, #C34A36 100%);
+}
+.upnext-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 12, 6, 0.05) 0%, rgba(20, 12, 6, 0.78) 78%);
+}
+.upnext-card-content {
+  position: relative;
+  padding: 72px 16px 14px;
+}
+.upnext-countdown {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 14px rgba(232, 87, 58, 0.35);
+}
+.upnext-artist {
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+.upnext-meta {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 3px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+}
+.upnext-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.upnext-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.upnext-btn-tickets {
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--brown);
+}
+.upnext-btn-details {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ===== Detail-sheet countdown chip (upcoming shows) ===== */
+.detail-countdown {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 14px rgba(232, 87, 58, 0.35);
+}
+
+/* ===== Pre-show hype pop-up ===== */
+.hype-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  max-width: 430px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hype-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 12, 6, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.hype-card {
+  position: relative;
+  width: calc(100% - 44px);
+  max-width: 360px;
+  border-radius: 28px;
+  background: var(--bg);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+  animation: hype-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes hype-pop {
+  from { transform: scale(0.92) translateY(14px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+.hype-hero {
+  position: relative;
+  height: 190px;
+  background: linear-gradient(165deg, #1E1E1E 0%, #C34A36 100%);
+}
+.hype-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 12, 6, 0.08) 0%, rgba(20, 12, 6, 0.62) 100%);
+}
+.hype-countdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  text-align: center;
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
+}
+.hype-body {
+  padding: 18px 20px 20px;
+  text-align: center;
+}
+.hype-artist {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--brown);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.hype-meta {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brown-light);
+  margin-top: 4px;
+}
+.hype-share-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 15px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(232, 87, 58, 0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+.hype-share-btn:disabled {
+  opacity: 0.7;
+}
+.hype-view-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px;
+  border: 1px solid rgba(61, 44, 30, 0.14);
+  border-radius: 16px;
+  background: rgba(61, 44, 30, 0.04);
+  color: var(--brown);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hype-dismiss {
+  margin-top: 12px;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: var(--brown-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

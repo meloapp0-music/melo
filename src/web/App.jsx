@@ -1,13 +1,15 @@
-import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback, useMemo, useRef } from 'react';
 import { prefetchArtistImages, getCachedImage } from './api';
 import { useSession, signOut } from './lib/auth';
 import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
-import { registerForPush } from './lib/push';
-import { identify, resetAnalytics } from './lib/analytics';
+import { registerForPush, onPushTap } from './lib/push';
+import { identify, resetAnalytics, track } from './lib/analytics';
+import { isGoing, daysUntil } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
+import HypeCard from './components/HypeCard';
 import ShowComparison from './components/ShowComparison';
 import UserProfileView from './pages/UserProfileView';
 import QuickLog from './components/QuickLog';
@@ -41,6 +43,14 @@ const isTempUsername = (u) => !u || /^user_[0-9a-f]{8}$/i.test(u);
 // reset email, Supabase appends `type=recovery` to the URL hash.
 const isPasswordRecovery = () =>
   typeof window !== 'undefined' && /[#&?]type=recovery(&|$)/.test(window.location.hash + window.location.search);
+
+// Local-calendar day key. The iOS webview survives overnight in the app
+// switcher, so anything date-derived (countdowns, the hype card) must
+// key off this and refresh on foreground — not just on mount.
+const localDayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
 
 export default function App() {
   const session = useSession();
@@ -118,6 +128,108 @@ export default function App() {
       console.warn('[Melo] registerForPush threw', err);
     });
   }, [session.status, userId]);
+
+  // ---- Notification-tap deep linking ----
+  // A tap stashes the push payload here; the effect below resolves it
+  // once the signed-in data is loaded (a cold-start tap fires before
+  // shows exist). Per docs/initiatives/2026-06-10-preshow-postshow-experience.md.
+  const [pushNav, setPushNav] = useState(null);
+  useEffect(() => {
+    onPushTap((data) => setPushNav(data || {}));
+  }, []);
+
+  useEffect(() => {
+    // `profile` is only set once the initial cloud load finishes, so it
+    // doubles as a "shows are loaded" gate — a cold-start tap otherwise
+    // races the first fetch and misses its show.
+    if (!pushNav || session.status !== 'signedIn' || dataLoading || !profile) return;
+    const kind = String(pushNav.kind || '');
+    const done = () => setPushNav(null);
+    track('push_opened', { kind });
+    // A push-opened session has the user's attention on a specific
+    // destination — keep the hype pop-up out of the way until tomorrow
+    // (or the next cold start).
+    setHypeSnoozedDay(localDayKey());
+
+    // Pre-show reminders + post-show rate prompt → that exact show.
+    if (kind.startsWith('preshow') || kind === 'postshow_rate') {
+      const show = shows.find((s) => s.id === pushNav.showId);
+      setSubPage(null);
+      setTab('home');
+      if (show) {
+        if (kind === 'postshow_rate') setLogEditTarget(show);
+        else setSelectedShow(show);
+      }
+      return done();
+    }
+    // Tour / city alerts → there's no local show yet; offer the tickets
+    // link via a tappable toast so the user stays in the app.
+    if (kind === 'tour_alert' || kind === 'city_match') {
+      if (pushNav.ticketUrl) {
+        const url = pushNav.ticketUrl;
+        showToast({
+          message: `🎟️ ${pushNav.artist || 'Tickets'} — tap to get tickets`,
+          onClick: () => { try { window.open(url, '_blank'); } catch {} },
+          durationMs: 8000,
+        });
+      } else {
+        setSubPage('festivals');
+      }
+      return done();
+    }
+    if (kind === 'friend_request') {
+      setSubPage(null);
+      setTab('buddies');
+      return done();
+    }
+    done();
+  }, [pushNav, session.status, dataLoading, profile, shows]);
+
+  // ---- Day stamp ----
+  // Re-derives on every foreground (visibilitychange fires when the
+  // webview resumes from the app switcher) so countdowns and the hype
+  // card roll over at midnight instead of freezing at mount time.
+  const [dayStamp, setDayStamp] = useState(localDayKey);
+  useEffect(() => {
+    const refresh = () =>
+      setDayStamp((prev) => {
+        const k = localDayKey();
+        return prev === k ? prev : k;
+      });
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
+
+  // ---- Pre-show hype card ----
+  // When a Going show is 0–2 days out, pop the hype card once per show
+  // per countdown-day (persisted in localStorage so it never nags).
+  // `hypeSnoozedDay` suppresses it for the rest of the day in-session
+  // (dismissal, or a push tap that deep-links elsewhere) and naturally
+  // re-arms when dayStamp rolls over.
+  const [hypeSnoozedDay, setHypeSnoozedDay] = useState(null);
+  const hype = useMemo(() => {
+    if (hypeSnoozedDay === dayStamp || session.status !== 'signedIn') return null;
+    const candidates = shows
+      .filter(isGoing)
+      .map((s) => ({ show: s, d: daysUntil(s.date) }))
+      .filter(({ d }) => d >= 0 && d <= 2)
+      .sort((a, b) => a.d - b.d);
+    for (const c of candidates) {
+      try {
+        if (!localStorage.getItem(`melo_hype_${c.show.id}_${c.d}`)) return c;
+      } catch {
+        return c;
+      }
+    }
+    return null;
+  }, [shows, hypeSnoozedDay, dayStamp, session.status]);
+
+  const dismissHype = useCallback(() => {
+    if (hype) {
+      try { localStorage.setItem(`melo_hype_${hype.show.id}_${hype.d}`, '1'); } catch {}
+    }
+    setHypeSnoozedDay(localDayKey());
+  }, [hype]);
 
   // ---- Tie analytics events to the signed-in user ----
   // identify() on sign-in so events attribute to a stable Supabase
@@ -301,6 +413,7 @@ export default function App() {
     settings,
     profile,
     session,
+    dayStamp,
     addShow,
     addShows,
     updateShow,
@@ -409,6 +522,12 @@ export default function App() {
             onClose={() => setShowQuickLog(false)}
             onOpenFull={() => { setShowQuickLog(false); setShowLog(true); }}
           />
+        )}
+        {/* Hype pop-up — only when nothing else is open and no
+            notification deep-link is about to land somewhere else. */}
+        {hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
+          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && (
+          <HypeCard show={hype.show} daysLeft={hype.d} onClose={dismissHype} />
         )}
         <NavBar />
         {dataLoading && shows.length === 0 && (

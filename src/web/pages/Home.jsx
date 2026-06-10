@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { useApp } from '../App';
 import {
-  getArtistGradient, getGreeting, formatDate,
+  getArtistGradient, getGreeting, formatDate, daysUntil,
   calculateStreak, getWrappedYears, wrappedLabel, DISCOVERY_ARTISTS,
   isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl,
 } from '../store';
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
 import { MeloIcon } from '../components/MeloLogo';
 
-// Day-precision UTC midnight; safer than `new Date()` for relative
+// Day-precision local midnight; safer than `new Date()` for relative
 // "is this date in the past" comparisons against `YYYY-MM-DD` strings.
 const today = () => {
   const d = new Date();
@@ -17,14 +17,8 @@ const today = () => {
   return d;
 };
 
-const daysUntil = (dateStr) => {
-  const d = new Date(dateStr + 'T00:00:00');
-  const diff = (d - today()) / (1000 * 60 * 60 * 24);
-  return Math.round(diff);
-};
-
 export default function Home() {
-  const { shows, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
+  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
   const artists = new Set(attended.map((s) => s.artist));
@@ -40,14 +34,31 @@ export default function Home() {
   // Going shows split by date — future ones get a countdown card,
   // past ones get a "How was it?" CTA that converts them to Attended
   // and opens the score editor pre-filled.
-  const goingFuture = useMemo(() => {
-    const t = today();
+  //
+  // Shows within the next 7 days graduate out of the rail into the
+  // full-width "Up Next" hero section at the top of the page.
+  // dayStamp in the deps re-buckets everything when the date rolls over
+  // while the webview stays alive in the iOS app switcher overnight.
+  const upNext = useMemo(() => {
     return shows
       .filter(isGoing)
-      .filter((s) => new Date(s.date + 'T00:00:00') >= t)
+      .filter((s) => {
+        const d = daysUntil(s.date);
+        return d >= 0 && d <= 7;
+      })
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 3);
-  }, [shows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shows, dayStamp]);
+
+  const goingFuture = useMemo(() => {
+    return shows
+      .filter(isGoing)
+      .filter((s) => daysUntil(s.date) > 7)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shows, dayStamp]);
 
   const goingPast = useMemo(() => {
     const t = today();
@@ -56,7 +67,8 @@ export default function Home() {
       .filter((s) => new Date(s.date + 'T00:00:00') < t)
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 3);
-  }, [shows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shows, dayStamp]);
 
   // Streak
   const streak = useMemo(() => calculateStreak(shows), [shows]);
@@ -189,6 +201,59 @@ export default function Home() {
         </div>
       )}
 
+      {/* Up Next — going shows within the week. Full-width hero cards,
+          countdown-first, with Tickets + Details. The imminent shows
+          earn the top of the page; everything further out stays in the
+          "You're Going" rail below. */}
+      {upNext.length > 0 && (
+        <div className="upnext-section fade-in">
+          <div className="home-section-title">
+            <h3>Up Next</h3>
+          </div>
+          {upNext.map((show) => {
+            const d = daysUntil(show.date);
+            const countdown =
+              d === 0 ? 'Tonight' :
+                d === 1 ? 'Tomorrow' :
+                  `In ${d} days`;
+            return (
+              <button
+                key={show.id}
+                type="button"
+                className="upnext-card"
+                onClick={() => setSelectedShow(show)}
+                aria-label={`${show.artist} ${countdown.toLowerCase()} — view details`}
+              >
+                <div className="upnext-card-bg" style={bgStyle(show.artist)} />
+                <div className="upnext-card-overlay" />
+                <div className="upnext-card-content">
+                  <div className="upnext-countdown">{countdown}</div>
+                  <div className="upnext-artist">{show.artist}</div>
+                  <div className="upnext-meta">
+                    {[show.venue, show.city].filter(Boolean).join(', ')}
+                    {show.date ? ` · ${formatDate(show.date)}` : ''}
+                  </div>
+                  <div className="upnext-btns">
+                    <a
+                      className="upnext-btn upnext-btn-tickets"
+                      href={ticketmasterSearchUrl(show)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      🎟️ Tickets
+                    </a>
+                    <span className="upnext-btn upnext-btn-details" aria-hidden="true">
+                      Details →
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* "How was [show]?" — past Going shows that need a score */}
       {goingPast.length > 0 && (
         <div className="going-recap fade-in">
@@ -289,13 +354,13 @@ export default function Home() {
           </div>
           <div className="home-scroll">
             {goingFuture.map((show) => {
+              // Everything here is >7 days out (the Up Next section owns
+              // the rest of this week), so days → weeks → months.
               const d = daysUntil(show.date);
               const countdown =
-                d <= 0 ? 'Today' :
-                  d === 1 ? 'Tomorrow' :
-                    d < 7 ? `in ${d} days` :
-                      d < 30 ? `in ${Math.round(d / 7)} weeks` :
-                        `in ${Math.round(d / 30)} months`;
+                d < 14 ? `in ${d} days` :
+                  d < 30 ? `in ${Math.round(d / 7)} weeks` :
+                    `in ${Math.round(d / 30)} months`;
               return (
                 <div
                   key={show.id}

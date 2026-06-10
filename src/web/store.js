@@ -144,6 +144,15 @@ export function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Whole days from local midnight today to a YYYY-MM-DD date.
+// 0 = today, 1 = tomorrow, negative = past.
+export function daysUntil(dateStr) {
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.round((d - t) / 86400000);
+}
+
 export function getMonthYear(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });

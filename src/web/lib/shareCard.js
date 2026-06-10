@@ -155,9 +155,15 @@ export async function renderWrappedCard(data, year, mapData, handle) {
     y = wrapCentered(ctx, data.personality.sentence, cx, y, W - 180, 56) + 40;
   }
 
-  // --- Footer: QR install loop ---
-  // Every share is one camera-scan from an install. Generate the QR
-  // locally (data URL → no network, no canvas taint, toBlob still works).
+  await drawFooterQr(ctx, cx, handle);
+
+  return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png', 0.95));
+}
+
+// --- Footer: QR install loop (shared by every share card) ---
+// Every share is one camera-scan from an install. Generate the QR
+// locally (data URL → no network, no canvas taint, toBlob still works).
+async function drawFooterQr(ctx, cx, handle) {
   let qrImg = null;
   try {
     const qrUrl = await QRCode.toDataURL(INSTALL_URL, {
@@ -195,20 +201,88 @@ export async function renderWrappedCard(data, year, mapData, handle) {
     ctx.font = '500 32px DM Sans, system-ui, sans-serif';
     ctx.fillText(handle ? `@${handle} · Get Melo free on iOS` : 'Get Melo free on iOS', cx, H - 100);
   }
+}
+
+// --- Pre-show hype card ---
+// "TOMORROW / MUMFORD & SONS" — the countdown share for Stories. Same
+// canvas + footer-QR approach as Wrapped. Per the hype pop-up in
+// docs/initiatives/2026-06-10-preshow-postshow-experience.md.
+export async function renderHypeCard(show, daysLeft, handle) {
+  try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* noop */ }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, DARK);
+  bg.addColorStop(1, ORANGE);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2;
+  ctx.textAlign = 'center';
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '800 96px Outfit, system-ui, sans-serif';
+  ctx.fillText('melo', cx, 230);
+
+  // Countdown — the headline of the card.
+  const countdown =
+    daysLeft <= 0 ? 'TONIGHT' :
+      daysLeft === 1 ? 'TOMORROW' :
+        `IN ${daysLeft} DAYS`;
+  ctx.fillStyle = AMBER;
+  ctx.font = '800 120px Outfit, system-ui, sans-serif';
+  ctx.fillText(countdown, cx, 560);
+
+  // Artist — big, wrapped if long.
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '800 100px Outfit, system-ui, sans-serif';
+  let y = wrapCentered(ctx, show.artist || '', cx, 740, W - 140, 112) + 110;
+
+  // Venue · city, then the date.
+  const where = [show.venue, show.city].filter(Boolean).join(' · ');
+  if (where) {
+    ctx.fillStyle = CREAM;
+    ctx.font = '500 44px DM Sans, system-ui, sans-serif';
+    y = wrapCentered(ctx, where, cx, y, W - 180, 56) + 78;
+  }
+  ctx.fillStyle = AMBER;
+  ctx.font = '700 40px Outfit, system-ui, sans-serif';
+  ctx.fillText(formatShareDate(show.date), cx, y);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = 'italic 500 40px DM Sans, system-ui, sans-serif';
+  ctx.fillText('See you there 🎶', cx, y + 92);
+
+  await drawFooterQr(ctx, cx, handle);
 
   return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png', 0.95));
 }
 
-// Render + share. Uses the native share sheet (Web Share API with a
-// file) on iOS; falls back to a download elsewhere.
-export async function shareWrappedCard(data, year, mapData, handle) {
-  const blob = await renderWrappedCard(data, year, mapData, handle);
+function formatShareDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+// --- Share plumbing (shared) ---
+// Native share sheet (Web Share API with a file) on iOS; download
+// fallback elsewhere.
+async function shareBlob(blob, filename, title) {
   if (!blob) return false;
-  const file = new File([blob], `melo-wrapped-${year}.png`, { type: 'image/png' });
+  const file = new File([blob], filename, { type: 'image/png' });
 
   if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: `My ${year} Melo Wrapped` });
+      await navigator.share({ files: [file], title });
       return true;
     } catch (err) {
       if (err && err.name === 'AbortError') return false; // user dismissed
@@ -225,4 +299,15 @@ export async function shareWrappedCard(data, year, mapData, handle) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   return true;
+}
+
+export async function shareWrappedCard(data, year, mapData, handle) {
+  const blob = await renderWrappedCard(data, year, mapData, handle);
+  return shareBlob(blob, `melo-wrapped-${year}.png`, `My ${year} Melo Wrapped`);
+}
+
+export async function shareHypeCard(show, daysLeft, handle) {
+  const blob = await renderHypeCard(show, daysLeft, handle);
+  const slug = (show.artist || 'show').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return shareBlob(blob, `melo-${slug || 'show'}.png`, `${show.artist} — see you there!`);
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus } from '../store';
+import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
 import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
@@ -171,6 +171,17 @@ export default function ShowDetail({ show, onClose }) {
           <div className="gradient-bg" style={heroStyle} />
           <div className="detail-hero-overlay" />
           <div className="detail-hero-info">
+            {/* Countdown chip — upcoming shows only ("Tonight" through
+                "In N days"); attended shows skip it. */}
+            {!isAttended(show) && (() => {
+              const d = daysUntil(show.date);
+              if (Number.isNaN(d) || d < 0) return null;
+              const label =
+                d === 0 ? 'Tonight' :
+                  d === 1 ? 'Tomorrow' :
+                    `In ${d} days`;
+              return <div className="detail-countdown">{label}</div>;
+            })()}
             <div className="detail-artist">{show.artist}</div>
             <div className="detail-meta">
               {formatDate(show.date)} &middot; {show.venue}, {show.city}
