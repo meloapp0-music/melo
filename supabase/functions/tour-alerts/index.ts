@@ -172,11 +172,13 @@ serve(async (_req) => {
       } else if (d === 0) {
         kind = 'preshow_today';
         title = `Tonight: ${show.artist} 🎶`;
-        body = `${show.venue ? show.venue + ' · ' : ''}Have your tickets ready and check the venue guidelines. Enjoy the show!`;
+        // Tapping deep-links to the Show Day card (showtime, weather,
+        // directions, bag policy) on ShowDetail.
+        body = `${show.venue ? show.venue + ' · ' : ''}Tap for showtime, weather, directions & bag policy.`;
       } else if (d >= 1 && d <= 2) {
         kind = 'preshow_day';
         title = d === 1 ? `${show.artist} is tomorrow! 🎶` : `${show.artist} is in 2 days! 🎶`;
-        body = `Double-check your tickets and the venue guidelines before you head out.`;
+        body = `Tap for showtime, weather, directions & the venue's bag policy.`;
       } else if (d >= 6 && d <= 8) {
         kind = 'preshow_week';
         title = `${show.artist} is 1 week away 🎟️`;

@@ -7578,3 +7578,80 @@ h4 { font-size: 17px; }
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ===== Show Day card (ShowDetail, upcoming shows) =====
+   Showtime + weather chips, directions + venue-rules links. The day-of
+   push deep-links to this. */
+.showday-card {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(244, 162, 97, 0.14), rgba(232, 87, 58, 0.07));
+  border: 1px solid rgba(232, 87, 58, 0.12);
+}
+.showday-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 10px;
+}
+.showday-chips {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.showday-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+}
+.showday-chip-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.showday-chip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.showday-chip-text b {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brown);
+  letter-spacing: -0.01em;
+}
+.showday-chip-text small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brown-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.showday-links {
+  display: flex;
+  gap: 8px;
+}
+.showday-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 10px;
+  border-radius: 999px;
+  background: rgba(232, 87, 58, 0.08);
+  border: 1px solid rgba(232, 87, 58, 0.22);
+  color: var(--brown);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}

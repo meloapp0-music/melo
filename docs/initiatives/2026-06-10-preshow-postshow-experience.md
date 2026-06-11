@@ -107,3 +107,20 @@ and is NOT touched).
 - Hype-card share: v1 is a canvas image share (house style). Could later
   add per-slide story templates.
 - Up Next could later show friends also going (needs show_attendees UI).
+- 2026-06-11: **Show Day card** (user request: day-of push should open
+  real logistics, not just "get ready"):
+  - `api.js`: `fetchShowWeather(city, date)` (Open-Meteo geocode +
+    daily forecast, keyless/CORS-open, ~15-day horizon, WMO-code →
+    emoji/label, session cache), `fetchEventStartTime(artist, venue,
+    date)` (TM Discovery localTime, venue fuzzy-match),
+    `appleMapsUrl()`, `venuePolicySearchUrl()`.
+  - `ShowDetail.jsx`: "Show day" card on upcoming shows — showtime +
+    weather chips (best-effort, omit when unresolvable), Directions
+    (Apple Maps) + "Bag policy & rules" links. Day-of push deep-links
+    here via the existing preshow tap routing. Tracks
+    `showday_link_tapped` (link enum only).
+  - `tour-alerts/index.ts`: day-of + 1-2-day notification bodies now
+    say "Tap for showtime, weather, directions & bag policy" —
+    deployed (v13).
+  - Verified Open-Meteo endpoints live (Chicago 2026-06-11: code 65,
+    80°/67°, 87% rain). Build clean, web boots clean, iOS synced.

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil } from '../store';
-import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
+import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl, fetchShowWeather, fetchEventStartTime, appleMapsUrl, venuePolicySearchUrl } from '../api';
 import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
@@ -130,6 +130,23 @@ export default function ShowDetail({ show, onClose }) {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show.id]);
+  // --- Show Day intel (upcoming shows only) ---
+  // Weather for the show date (Open-Meteo, ~15-day horizon) and the
+  // event's local start time (Ticketmaster). Both are best-effort —
+  // whatever doesn't resolve simply doesn't render. Fetched once per
+  // show open; module-level caches in api.js keep repeats free.
+  const upcoming = !isAttended(show) && !Number.isNaN(daysUntil(show.date)) && daysUntil(show.date) >= 0;
+  const [weather, setWeather] = useState(null);
+  const [startTime, setStartTime] = useState(null);
+  useEffect(() => {
+    if (!upcoming) return;
+    let cancelled = false;
+    fetchShowWeather(show.city, show.date).then((w) => { if (!cancelled && w) setWeather(w); });
+    fetchEventStartTime(show.artist, show.venue, show.date).then((t) => { if (!cancelled && t) setStartTime(t); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show.id, upcoming]);
+
   const artistImage = getArtistImage(show.artist);
   const gradient = getArtistGradient(show.artist);
 
@@ -235,6 +252,61 @@ export default function ShowDetail({ show, onClose }) {
               <span>Find tickets on Ticketmaster</span>
               <span className="detail-tickets-arrow" aria-hidden="true">↗</span>
             </a>
+          )}
+
+          {/* Show Day card — everything you need before heading out:
+              showtime (TM), weather (Open-Meteo), directions (Apple
+              Maps), and the venue's entry/bag rules. The day-of push
+              deep-links here. Upcoming shows only. */}
+          {upcoming && (
+            <div className="showday-card">
+              <div className="showday-label">Show day</div>
+              {(weather || startTime) && (
+                <div className="showday-chips">
+                  {startTime && (
+                    <div className="showday-chip">
+                      <span className="showday-chip-icon" aria-hidden="true">🕖</span>
+                      <span className="showday-chip-text">
+                        <b>{startTime}</b>
+                        <small>showtime</small>
+                      </span>
+                    </div>
+                  )}
+                  {weather && (
+                    <div className="showday-chip">
+                      <span className="showday-chip-icon" aria-hidden="true">{weather.emoji}</span>
+                      <span className="showday-chip-text">
+                        <b>{weather.hi}° / {weather.lo}°</b>
+                        <small>
+                          {weather.label}
+                          {weather.rainPct != null && weather.rainPct >= 20 ? ` · ${weather.rainPct}% rain` : ''}
+                        </small>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="showday-links">
+                <a
+                  className="showday-link"
+                  href={appleMapsUrl(show.venue, show.city)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => track('showday_link_tapped', { link: 'directions' })}
+                >
+                  <span aria-hidden="true">🧭</span> Directions
+                </a>
+                <a
+                  className="showday-link"
+                  href={venuePolicySearchUrl(show.venue, show.city)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => track('showday_link_tapped', { link: 'venue_rules' })}
+                >
+                  <span aria-hidden="true">🎒</span> Bag policy & rules
+                </a>
+              </div>
+            </div>
           )}
 
           {/* Wishlist → Going upgrade — "I bought tickets". Only on a

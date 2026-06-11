@@ -923,3 +923,141 @@ export async function fetchDiscoveryEvents(genreArtistMap, seenArtists, topCitie
 
   return events.slice(0, 4);
 }
+
+// ===== SHOW DAY — weather, showtime, directions, venue rules =====
+// Powers the "Show Day" card on ShowDetail for upcoming shows (and the
+// day-of notification deep link). Per
+// docs/initiatives/2026-06-10-preshow-postshow-experience.md.
+
+// --- Weather via Open-Meteo (free, keyless, CORS-open) ---
+// Geocode the city once, then pull the daily forecast for the show
+// date. Forecasts exist ~15 days out; beyond that we return null and
+// the card simply omits weather. Module-level cache: one lookup per
+// (city, date) per session.
+const weatherCache = new Map();
+
+const WMO_WEATHER = [
+  { codes: [0], emoji: '☀️', label: 'Clear' },
+  { codes: [1], emoji: '🌤️', label: 'Mostly clear' },
+  { codes: [2], emoji: '⛅', label: 'Partly cloudy' },
+  { codes: [3], emoji: '☁️', label: 'Overcast' },
+  { codes: [45, 48], emoji: '🌫️', label: 'Foggy' },
+  { codes: [51, 53, 55, 56, 57], emoji: '🌦️', label: 'Drizzle' },
+  { codes: [61, 63, 65, 66, 67], emoji: '🌧️', label: 'Rain' },
+  { codes: [71, 73, 75, 77], emoji: '🌨️', label: 'Snow' },
+  { codes: [80, 81, 82], emoji: '🌧️', label: 'Showers' },
+  { codes: [85, 86], emoji: '🌨️', label: 'Snow showers' },
+  { codes: [95, 96, 99], emoji: '⛈️', label: 'Thunderstorms' },
+];
+
+function wmoToWeather(code) {
+  const m = WMO_WEATHER.find((w) => w.codes.includes(code));
+  return m || { emoji: '🌡️', label: '' };
+}
+
+export async function fetchShowWeather(city, dateStr) {
+  if (!city || !dateStr) return null;
+  const cacheKey = `${city.toLowerCase()}|${dateStr}`;
+  if (weatherCache.has(cacheKey)) return weatherCache.get(cacheKey);
+
+  try {
+    // Open-Meteo's daily forecast covers ~15 days ahead.
+    const showDay = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round((showDay - today) / 86400000);
+    if (diff < 0 || diff > 15) return null;
+
+    const geoRes = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+    );
+    if (!geoRes.ok) return null;
+    const geo = await geoRes.json();
+    const loc = geo?.results?.[0];
+    if (!loc) return null;
+
+    const params = new URLSearchParams({
+      latitude: String(loc.latitude),
+      longitude: String(loc.longitude),
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+      temperature_unit: 'fahrenheit',
+      timezone: 'auto',
+      start_date: dateStr,
+      end_date: dateStr,
+    });
+    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+    if (!wxRes.ok) return null;
+    const wx = await wxRes.json();
+    const d = wx?.daily;
+    if (!d || !d.time || d.time.length === 0) return null;
+
+    const { emoji, label } = wmoToWeather(d.weather_code?.[0]);
+    const result = {
+      emoji,
+      label,
+      hi: Math.round(d.temperature_2m_max?.[0]),
+      lo: Math.round(d.temperature_2m_min?.[0]),
+      rainPct: d.precipitation_probability_max?.[0] ?? null,
+    };
+    weatherCache.set(cacheKey, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+// --- Showtime via Ticketmaster ---
+// Look up the event's local start time for artist+date, preferring a
+// venue-name match when several events land on the same day. Returns a
+// formatted string ("7:30 PM") or null — plenty of shows (especially
+// non-TM venues) won't resolve, and the card just omits the chip.
+export async function fetchEventStartTime(artist, venue, dateStr) {
+  const key = import.meta.env.VITE_TICKETMASTER_KEY;
+  if (!key || !artist || !dateStr) return null;
+  try {
+    const params = new URLSearchParams({
+      apikey: key,
+      keyword: artist,
+      classificationName: 'music',
+      size: '20',
+      sort: 'date,asc',
+    });
+    const res = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const events = (data?._embedded?.events || []).filter(
+      (ev) => ev?.dates?.start?.localDate === dateStr && ev?.dates?.start?.localTime
+    );
+    if (events.length === 0) return null;
+
+    const vlc = (venue || '').toLowerCase();
+    const match =
+      events.find((ev) => {
+        const evVenue = (ev?._embedded?.venues?.[0]?.name || '').toLowerCase();
+        return vlc && evVenue && (evVenue.includes(vlc) || vlc.includes(evVenue));
+      }) || events[0];
+
+    const t = match.dates.start.localTime; // "19:30:00"
+    const [hh, mm] = t.split(':').map(Number);
+    if (Number.isNaN(hh)) return null;
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = hh % 12 === 0 ? 12 : hh % 12;
+    return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+  } catch {
+    return null;
+  }
+}
+
+// --- Link builders ---
+// Apple Maps opens natively on iOS; the query form needs no
+// coordinates. Bag-policy info isn't in any API — a targeted search is
+// the honest, always-works answer.
+export function appleMapsUrl(venue, city) {
+  const q = [venue, city].filter(Boolean).join(', ');
+  return `https://maps.apple.com/?q=${encodeURIComponent(q)}`;
+}
+
+export function venuePolicySearchUrl(venue, city) {
+  const q = `${[venue, city].filter(Boolean).join(' ')} bag policy entry rules`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+}
