@@ -102,11 +102,6 @@ and is NOT touched).
     console errors, `npx cap sync ios` done. On-device verification of
     tap-routing + hype card rides the next TestFlight build.
 
-## Open questions / follow-ups
-
-- Hype-card share: v1 is a canvas image share (house style). Could later
-  add per-slide story templates.
-- Up Next could later show friends also going (needs show_attendees UI).
 - 2026-06-11: **Show Day card** (user request: day-of push should open
   real logistics, not just "get ready"):
   - `api.js`: `fetchShowWeather(city, date)` (Open-Meteo geocode +
@@ -124,3 +119,9 @@ and is NOT touched).
     deployed (v13).
   - Verified Open-Meteo endpoints live (Chicago 2026-06-11: code 65,
     80°/67°, 87% rain). Build clean, web boots clean, iOS synced.
+
+## Open questions / follow-ups
+
+- Hype-card share: v1 is a canvas image share (house style). Could later
+  add per-slide story templates.
+- Up Next could later show friends also going (needs show_attendees UI).
