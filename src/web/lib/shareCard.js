@@ -9,6 +9,7 @@
 // Per docs/initiatives/2026-05-22-wrapped-share-export.md (Quick Win #1).
 
 import QRCode from 'qrcode';
+import { getShowStatus, SHOW_STATUS } from '../store';
 
 const W = 1080;
 const H = 1920;
@@ -33,22 +34,39 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Word-wrap centered text; returns the y after the last line.
-function wrapCentered(ctx, text, cx, y, maxW, lineH) {
+// Word-wrap centered text; returns the y of the last drawn line.
+// maxLines clamps runaway input (multi-artist bills, long venue
+// strings) with an ellipsis so flowing layouts can never overdraw the
+// fixed footer QR.
+function wrapCentered(ctx, text, cx, y, maxW, lineH, maxLines = Infinity) {
   const words = String(text).split(/\s+/);
+  const lines = [];
   let line = '';
-  let yy = y;
   for (const word of words) {
     const test = line ? `${line} ${word}` : word;
     if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, cx, yy);
+      lines.push(line);
       line = word;
-      yy += lineH;
     } else {
       line = test;
     }
   }
-  if (line) ctx.fillText(line, cx, yy);
+  if (line) lines.push(line);
+
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+    let last = `${lines[maxLines - 1]}…`;
+    while (ctx.measureText(last).width > maxW && last.length > 2) {
+      last = `${last.slice(0, -2)}…`;
+    }
+    lines[maxLines - 1] = last;
+  }
+
+  let yy = y;
+  lines.forEach((l, i) => {
+    ctx.fillText(l, cx, yy);
+    if (i < lines.length - 1) yy += lineH;
+  });
   return yy;
 }
 
@@ -237,17 +255,18 @@ export async function renderHypeCard(show, daysLeft, handle) {
   ctx.font = '800 120px Outfit, system-ui, sans-serif';
   ctx.fillText(countdown, cx, 560);
 
-  // Artist — big, wrapped if long.
+  // Artist — big, wrapped if long (clamped so the flow can never
+  // reach the footer QR).
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '800 100px Outfit, system-ui, sans-serif';
-  let y = wrapCentered(ctx, show.artist || '', cx, 740, W - 140, 112) + 110;
+  let y = wrapCentered(ctx, show.artist || '', cx, 740, W - 140, 112, 3) + 110;
 
   // Venue · city, then the date.
   const where = [show.venue, show.city].filter(Boolean).join(' · ');
   if (where) {
     ctx.fillStyle = CREAM;
     ctx.font = '500 44px DM Sans, system-ui, sans-serif';
-    y = wrapCentered(ctx, where, cx, y, W - 180, 56) + 78;
+    y = wrapCentered(ctx, where, cx, y, W - 180, 56, 2) + 78;
   }
   ctx.fillStyle = AMBER;
   ctx.font = '700 40px Outfit, system-ui, sans-serif';
@@ -271,6 +290,84 @@ function formatShareDate(dateStr) {
   } catch {
     return dateStr;
   }
+}
+
+// --- Single-show card ---
+// "I WAS THERE / MUMFORD & SONS / 9.2" — send one show to anyone.
+// Attended shows lead with the rating; upcoming ones read as an
+// invitation ("I'M GOING"). Recipients scan the footer QR → App Store.
+export async function renderShowCard(show, handle) {
+  try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* noop */ }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, DARK);
+  bg.addColorStop(1, ORANGE);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2;
+  ctx.textAlign = 'center';
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '800 96px Outfit, system-ui, sans-serif';
+  ctx.fillText('melo', cx, 230);
+
+  const status = getShowStatus(show);
+  const attended = status === SHOW_STATUS.ATTENDED;
+  const statusLabel = attended
+    ? 'I  W A S  T H E R E'
+    : status === SHOW_STATUS.GOING ? "I ' M  G O I N G" : 'O N  M Y  L I S T';
+  ctx.fillStyle = AMBER;
+  ctx.font = '700 38px Outfit, system-ui, sans-serif';
+  ctx.fillText(statusLabel, cx, 380);
+
+  // Artist — the headline (clamped clear of the footer QR).
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '800 104px Outfit, system-ui, sans-serif';
+  let y = wrapCentered(ctx, show.artist || '', cx, 560, W - 140, 116, 3) + 104;
+
+  const where = [show.venue, show.city].filter(Boolean).join(' · ');
+  if (where) {
+    ctx.fillStyle = CREAM;
+    ctx.font = '500 44px DM Sans, system-ui, sans-serif';
+    y = wrapCentered(ctx, where, cx, y, W - 180, 56, 2) + 74;
+  }
+  ctx.fillStyle = AMBER;
+  ctx.font = '700 40px Outfit, system-ui, sans-serif';
+  ctx.fillText(formatShareDate(show.date), cx, y);
+  y += 130;
+
+  // Rating — attended-and-scored shows wear the number big. The y
+  // guard is belt-and-suspenders: with the clamps above the flow can't
+  // reach the QR plate (top edge H-346), but never draw over it.
+  if (attended && show.score > 0 && y + 180 < H - 360) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '800 170px Outfit, system-ui, sans-serif';
+    const scoreText = Number.isInteger(show.score) ? String(show.score) : show.score.toFixed(1);
+    ctx.fillText(scoreText, cx, y + 110);
+    ctx.fillStyle = AMBER;
+    ctx.font = '700 32px Outfit, system-ui, sans-serif';
+    ctx.fillText('MY RATING', cx, y + 168);
+  } else if (!attended) {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'italic 500 40px DM Sans, system-ui, sans-serif';
+    ctx.fillText('Come with me 🎶', cx, y + 40);
+  }
+
+  await drawFooterQr(ctx, cx, handle);
+
+  return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png', 0.95));
+}
+
+export async function shareShowCard(show, handle) {
+  const blob = await renderShowCard(show, handle);
+  const slug = (show.artist || 'show').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return shareBlob(blob, `melo-${slug || 'show'}.png`, `${show.artist} on Melo`);
 }
 
 // --- Share plumbing (shared) ---

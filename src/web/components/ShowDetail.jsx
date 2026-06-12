@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl, fetchShowWeather, fetchEventStartTime, appleMapsUrl, venuePolicySearchUrl } from '../api';
+import { shareShowCard } from '../lib/shareCard';
 import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
@@ -21,7 +22,23 @@ function timeAgoLabel(dateStr) {
 }
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile } = useApp();
+
+  // Share this show — canvas card via the native share sheet. Status
+  // (was-there vs going) is enum-only in analytics; never artist names.
+  const [sharing, setSharing] = useState(false);
+  const shareShow = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      // shareBlob returns false when the user dismisses the share
+      // sheet — only count completed shares.
+      const ok = await shareShowCard(show, profile?.username);
+      if (ok) track('show_card_shared', { status: getShowStatus(show) });
+    } finally {
+      setSharing(false);
+    }
+  };
 
   // Status upgrade — local mirror so the button reflects the change
   // instantly (the parent holds `selectedShow` as a separate object).
@@ -317,6 +334,13 @@ export default function ShowDetail({ show, onClose }) {
               <span>I got tickets — I'm Going</span>
             </button>
           )}
+
+          {/* Share this show — send the card to anyone; the footer QR
+              is their one-scan path to install + connect. */}
+          <button className="detail-share-btn" onClick={shareShow} disabled={sharing}>
+            <span aria-hidden="true">📣</span>
+            <span>{sharing ? 'Making your card…' : 'Share this show'}</span>
+          </button>
 
           {/* Pre-show card — only on upcoming (Going / Wishlist) shows.
               Surfaces the user's last time seeing this artist. Per

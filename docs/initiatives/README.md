@@ -25,6 +25,11 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-11-friends-feed-and-show-sharing.md` — shipped (next build) ·
+  Beli-style friends feed on Home ("Claire went to Mumford & Sons"),
+  single-show share cards with the QR install loop, and the critical
+  fix for friends' shows leaking into your own Recent Shows/stats
+  (unscoped listMyShows vs the 0010 friend-read RLS policy).
 - `2026-06-10-preshow-postshow-experience.md` — shipped (next build) ·
   The push-to-action loop: notification taps deep-link to the show /
   rate editor, "Up Next" hero section on Home for shows within 7 days,

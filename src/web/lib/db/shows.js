@@ -80,12 +80,40 @@ function toRow(show, userId) {
 }
 
 export async function listMyShows() {
+  // MUST scope to the signed-in user. Migration 0010 added a friend-read
+  // RLS policy on shows, so an unscoped select returns friends' visible
+  // shows too — which leaked them into "my shows" (duplicate cards on
+  // Home, inflated stats) the moment a friendship was accepted.
+  // getSession() reads the locally-cached session (no network hop):
+  // getUser() here would add a boot-time round trip whose transient
+  // failure rejects App.jsx's load Promise.all and strands the splash.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('shows')
     .select('*')
+    .eq('user_id', session.user.id)
     .order('date', { ascending: false });
   if (error) throw error;
   return (data || []).map(fromRow);
+}
+
+// Recent shows across a set of friends — the home feed. RLS enforces
+// PROFILE-level visibility per owner (can_view_shows checks
+// shows_visibility; the per-show `visibility` column is not yet
+// consulted by any policy — don't rely on it here). Ordering by
+// created_at makes it an activity feed ("Claire just logged …"), not a
+// concert-date timeline. Each item carries its owner's userId.
+export async function listFriendsShows(friendIds, limit = 30) {
+  if (!Array.isArray(friendIds) || friendIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('shows')
+    .select('*')
+    .in('user_id', friendIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).map((r) => ({ ...fromRow(r), userId: r.user_id }));
 }
 
 // A friend's shows. RLS (can_view_shows) enforces visibility — this

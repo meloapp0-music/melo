@@ -463,6 +463,7 @@ export default function App() {
     setShowLog,
     setLogEditTarget,
     setSelectedShow,
+    selectedUserId,
     setSelectedUserId,
     subPage,
     navigate,

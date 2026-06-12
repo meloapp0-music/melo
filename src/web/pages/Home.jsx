@@ -8,6 +8,7 @@ import {
 } from '../store';
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
 import { MeloIcon } from '../components/MeloLogo';
+import FriendsFeed from '../components/FriendsFeed';
 
 // Day-precision local midnight; safer than `new Date()` for relative
 // "is this date in the past" comparisons against `YYYY-MM-DD` strings.
@@ -344,6 +345,10 @@ export default function Home() {
           <span className="wrapped-banner-arrow">→</span>
         </div>
       )}
+
+      {/* Friends activity feed — "Claire went to Mumford & Sons".
+          Renders nothing until the user has friends with visible shows. */}
+      <FriendsFeed />
 
       {/* Going — upcoming shows the user has tickets for, with countdown */}
       {goingFuture.length > 0 && (
