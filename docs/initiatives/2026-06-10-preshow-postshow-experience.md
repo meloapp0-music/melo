@@ -120,8 +120,48 @@ and is NOT touched).
   - Verified Open-Meteo endpoints live (Chicago 2026-06-11: code 65,
     80°/67°, 87% rain). Build clean, web boots clean, iOS synced.
 
+- 2026-06-11 (pm): **Post-show rate pop-up + showtime watch** (user
+  request after the Mumford night: morning-after pop-up; "the show got
+  delayed until 10pm — Melo should tell me"):
+  - `components/RatePromptCard.jsx` (new): morning-after twin of
+    HypeCard (reuses hype-* styles) — "How was {artist}?" with
+    LAST NIGHT / N NIGHTS AGO chip, ⭐ Rate it now → LogShow editor.
+    Trigger in App.jsx: Going show 1–3 days past, still unrated, once
+    per day per show; outranks hype; the action path doesn't snooze the
+    day (back-to-back show nights can still get TONIGHT hype after
+    rating). Note: the day-after `postshow_rate` PUSH already existed.
+  - `App.jsx`: hype/rate share one `momentSnoozedDay`; all snoozes +
+    localStorage keys now use `dayStamp` (the rendered day) — fixes an
+    undismissable-card bug when the app sits open across midnight.
+    dayStamp/momentSnoozedDay declarations moved above the push effect
+    (its deps reference dayStamp). New `showtime_change` tap kind →
+    ShowDetail.
+  - `supabase/functions/showtime-watch/index.ts` (new, deployed): every
+    30 min during show hours, re-checks TM's local start time for
+    day-of Going shows; pushes "⏰ Showtime update: now 10:00 PM (was
+    8:00 PM)" on change. Hardened per 2-lens adversarial review:
+    sightings ref `${showId}|${date}|${time}` read within today's
+    window only (PostgREST 1k cap + stale-baseline-after-reschedule),
+    latest-by-sent_at semantics so reverts re-alert, records changes
+    only after APNs accepts (retry on next run), TM lookup date-bounded
+    + attraction-name-filtered + no events[0] guessing, 2-day row
+    pruning, 100-lookup cap (shared TM budget note).
+  - **NEEDS USER ACTION:** add the cron job in Dashboard → Integrations
+    → Cron: name `showtime-watch`, schedule `*/30 21-23,0-5 * * *`,
+    Edge Function `showtime-watch`, POST.
+  - Honest limitation (told to user): only catches changes that reach
+    Ticketmaster; IG-only delay posts are invisible to every public
+    API. Future: crowd-sourced delay reports from Melo users at the
+    venue.
+  - Verified: build clean, web boots clean (no console errors), iOS
+    synced, function deployed + smoke-tested (`shows:0` on a no-show
+    day).
+
 ## Open questions / follow-ups
 
 - Hype-card share: v1 is a canvas image share (house style). Could later
   add per-slide story templates.
 - Up Next could later show friends also going (needs show_attendees UI).
+- Doors times: TM doesn't expose them; showtime-watch covers start time
+  only. Crowd-sourced doors/delay reports are the long-term answer.
+- showtime-watch P2: per-user timezone instead of the UTC−6 heuristic.

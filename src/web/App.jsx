@@ -10,6 +10,7 @@ import { isGoing, daysUntil } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
 import HypeCard from './components/HypeCard';
+import RatePromptCard from './components/RatePromptCard';
 import ShowComparison from './components/ShowComparison';
 import UserProfileView from './pages/UserProfileView';
 import QuickLog from './components/QuickLog';
@@ -129,6 +130,26 @@ export default function App() {
     });
   }, [session.status, userId]);
 
+  // ---- Day stamp ----
+  // Re-derives on every foreground (visibilitychange fires when the
+  // webview resumes from the app switcher) so countdowns and the moment
+  // pop-ups roll over at midnight instead of freezing at mount time.
+  // Declared before the push effect below, which lists it as a dep.
+  const [dayStamp, setDayStamp] = useState(localDayKey);
+  useEffect(() => {
+    const refresh = () =>
+      setDayStamp((prev) => {
+        const k = localDayKey();
+        return prev === k ? prev : k;
+      });
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
+
+  // One moment pop-up (hype / rate prompt) max per day — any dismissal
+  // or push-tap snoozes both until dayStamp rolls over.
+  const [momentSnoozedDay, setMomentSnoozedDay] = useState(null);
+
   // ---- Notification-tap deep linking ----
   // A tap stashes the push payload here; the effect below resolves it
   // once the signed-in data is loaded (a cold-start tap fires before
@@ -147,12 +168,15 @@ export default function App() {
     const done = () => setPushNav(null);
     track('push_opened', { kind });
     // A push-opened session has the user's attention on a specific
-    // destination — keep the hype pop-up out of the way until tomorrow
-    // (or the next cold start).
-    setHypeSnoozedDay(localDayKey());
+    // destination — keep the moment pop-ups (hype / rate prompt) out of
+    // the way until tomorrow (or the next cold start). Always snooze
+    // with dayStamp (the day being RENDERED) so the snooze comparison
+    // can never disagree with the memos across midnight.
+    setMomentSnoozedDay(dayStamp);
 
-    // Pre-show reminders + post-show rate prompt → that exact show.
-    if (kind.startsWith('preshow') || kind === 'postshow_rate') {
+    // Pre-show reminders, showtime changes + post-show rate prompt →
+    // that exact show.
+    if (kind.startsWith('preshow') || kind === 'postshow_rate' || kind === 'showtime_change') {
       const show = shows.find((s) => s.id === pushNav.showId);
       setSubPage(null);
       setTab('home');
@@ -183,32 +207,17 @@ export default function App() {
       return done();
     }
     done();
-  }, [pushNav, session.status, dataLoading, profile, shows]);
+  }, [pushNav, session.status, dataLoading, profile, shows, dayStamp]);
 
-  // ---- Day stamp ----
-  // Re-derives on every foreground (visibilitychange fires when the
-  // webview resumes from the app switcher) so countdowns and the hype
-  // card roll over at midnight instead of freezing at mount time.
-  const [dayStamp, setDayStamp] = useState(localDayKey);
-  useEffect(() => {
-    const refresh = () =>
-      setDayStamp((prev) => {
-        const k = localDayKey();
-        return prev === k ? prev : k;
-      });
-    document.addEventListener('visibilitychange', refresh);
-    return () => document.removeEventListener('visibilitychange', refresh);
-  }, []);
+  // ---- Moment pop-ups (hype + post-show rate prompt) ----
+  // dayStamp + momentSnoozedDay are declared above the push effect.
+  // Per-show repeat-protection lives in localStorage; the day-level
+  // snooze re-arms when dayStamp rolls over.
 
-  // ---- Pre-show hype card ----
-  // When a Going show is 0–2 days out, pop the hype card once per show
-  // per countdown-day (persisted in localStorage so it never nags).
-  // `hypeSnoozedDay` suppresses it for the rest of the day in-session
-  // (dismissal, or a push tap that deep-links elsewhere) and naturally
-  // re-arms when dayStamp rolls over.
-  const [hypeSnoozedDay, setHypeSnoozedDay] = useState(null);
+  // Pre-show hype: a Going show 0–2 days out, once per show per
+  // countdown-day (`melo_hype_<id>_<d>`).
   const hype = useMemo(() => {
-    if (hypeSnoozedDay === dayStamp || session.status !== 'signedIn') return null;
+    if (momentSnoozedDay === dayStamp || session.status !== 'signedIn') return null;
     const candidates = shows
       .filter(isGoing)
       .map((s) => ({ show: s, d: daysUntil(s.date) }))
@@ -222,14 +231,46 @@ export default function App() {
       }
     }
     return null;
-  }, [shows, hypeSnoozedDay, dayStamp, session.status]);
+  }, [shows, momentSnoozedDay, dayStamp, session.status]);
 
   const dismissHype = useCallback(() => {
     if (hype) {
       try { localStorage.setItem(`melo_hype_${hype.show.id}_${hype.d}`, '1'); } catch {}
     }
-    setHypeSnoozedDay(localDayKey());
-  }, [hype]);
+    // Snooze with dayStamp (the rendered day) — localDayKey() here
+    // could disagree across midnight and leave an undismissable card.
+    setMomentSnoozedDay(dayStamp);
+  }, [hype, dayStamp]);
+
+  // Post-show rate prompt: a Going show whose date passed 1–3 days ago
+  // and still isn't rated. Once per day per show (`melo_rate_<id>_<day>`)
+  // until rated (rating flips status → attended, removing it) or it
+  // ages out. Takes priority over hype — locking in last night's score
+  // beats hyping the next one.
+  const ratePrompt = useMemo(() => {
+    if (momentSnoozedDay === dayStamp || session.status !== 'signedIn') return null;
+    const candidates = shows
+      .filter(isGoing)
+      .map((s) => ({ show: s, d: daysUntil(s.date) }))
+      .filter(({ d }) => d >= -3 && d <= -1)
+      .sort((a, b) => b.d - a.d); // most recent show first
+    for (const c of candidates) {
+      try {
+        if (!localStorage.getItem(`melo_rate_${c.show.id}_${dayStamp}`)) return c;
+      } catch {
+        return c;
+      }
+    }
+    return null;
+  }, [shows, momentSnoozedDay, dayStamp, session.status]);
+
+  const dismissRatePrompt = useCallback(() => {
+    if (ratePrompt) {
+      // Same dayStamp the memo reads — write and read keys always agree.
+      try { localStorage.setItem(`melo_rate_${ratePrompt.show.id}_${dayStamp}`, '1'); } catch {}
+    }
+    setMomentSnoozedDay(dayStamp);
+  }, [ratePrompt, dayStamp]);
 
   // ---- Tie analytics events to the signed-in user ----
   // identify() on sign-in so events attribute to a stable Supabase
@@ -523,9 +564,25 @@ export default function App() {
             onOpenFull={() => { setShowQuickLog(false); setShowLog(true); }}
           />
         )}
-        {/* Hype pop-up — only when nothing else is open and no
-            notification deep-link is about to land somewhere else. */}
-        {hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
+        {/* Moment pop-ups — only when nothing else is open and no
+            notification deep-link is about to land somewhere else.
+            Rate prompt outranks hype; one card max per day. */}
+        {ratePrompt && !pushNav && !selectedShow && !showLog && !logEditTarget &&
+          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && (
+          <RatePromptCard
+            show={ratePrompt.show}
+            daysAgo={-ratePrompt.d}
+            onRate={() => {
+              // No snooze on the action path: rating flips the show to
+              // attended (candidate disappears on its own), and a
+              // same-day "TONIGHT" hype card for a back-to-back show
+              // can still surface afterward.
+              setLogEditTarget(ratePrompt.show);
+            }}
+            onClose={dismissRatePrompt}
+          />
+        )}
+        {!ratePrompt && hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
           !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && (
           <HypeCard show={hype.show} daysLeft={hype.d} onClose={dismissHype} />
         )}
