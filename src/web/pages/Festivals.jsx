@@ -1,9 +1,23 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../App';
 import {
   formatDate, topArtists, inferHomeCity, SHOW_STATUS, generateId,
 } from '../store';
-import { fetchFestivals, fetchEventsByCity } from '../api';
+import { fetchFestivals, searchEvents } from '../api';
+
+// Discover "Shows" search modes. Genre values are Ticketmaster
+// classification names (verified against the Discovery API).
+const GENRES = [
+  { label: 'Rock', value: 'Rock' },
+  { label: 'Pop', value: 'Pop' },
+  { label: 'Hip-Hop', value: 'Hip-Hop/Rap' },
+  { label: 'Country', value: 'Country' },
+  { label: 'Electronic', value: 'Dance/Electronic' },
+  { label: 'R&B', value: 'R&B' },
+  { label: 'Metal', value: 'Metal' },
+  { label: 'Latin', value: 'Latin' },
+  { label: 'Folk', value: 'Folk' },
+];
 
 // Formats "May 15, 2026" or "May 15 – May 17, 2026" for a festival
 // that spans multiple days. If `endDate` is missing or equals `date`,
@@ -54,11 +68,19 @@ export default function Festivals() {
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ----- Shows (city search) view state -----
+  // ----- Shows search view state -----
+  // searchType: how the user is browsing — by 'city', 'artist', or
+  // 'genre'. Each has its own input; results + loading are shared.
+  const [searchType, setSearchType] = useState('city');
   const [cityQuery, setCityQuery] = useState(homeCity || '');
+  const [artistQuery, setArtistQuery] = useState('');
+  const [activeGenre, setActiveGenre] = useState('');
   const [cityEvents, setCityEvents] = useState([]);
   const [cityLoading, setCityLoading] = useState(false);
   const [citySearched, setCitySearched] = useState(false);
+  // What the current results represent — drives the empty-state copy so
+  // it can't claim "no shows in {city}" after an artist/genre search.
+  const [searchedLabel, setSearchedLabel] = useState('');
 
   useEffect(() => {
     if (view !== 'festivals') return;
@@ -69,17 +91,59 @@ export default function Festivals() {
       .finally(() => setLoading(false));
   }, [view, mode, homeCity]);
 
-  const runCitySearch = () => {
-    if (!cityQuery.trim()) return;
+  // Monotonic token so a slow response from a prior search (or a search
+  // in a mode the user has since left) can't land under the wrong tab.
+  const searchSeq = useRef(0);
+
+  // One search entry point for all three modes. `genreOverride` lets a
+  // genre chip search on tap without waiting for state to settle.
+  const runSearch = (genreOverride) => {
+    let req;
+    let label;
+    if (searchType === 'artist') {
+      const q = artistQuery.trim();
+      if (!q) return;
+      req = searchEvents({ keyword: q, size: 50 });
+      label = q;
+    } else if (searchType === 'genre') {
+      const g = genreOverride || activeGenre;
+      if (!g) return;
+      setActiveGenre(g);
+      // Genre is most useful filtered to where the user is; falls back
+      // to a national browse when we don't know their home city.
+      req = searchEvents({ genre: g, city: homeCity || undefined, size: 50 });
+      const lbl = GENRES.find((x) => x.value === g)?.label || g;
+      label = homeCity ? `${lbl} near ${homeCity}` : lbl;
+    } else {
+      const q = cityQuery.trim();
+      if (!q) return;
+      req = searchEvents({ city: q, size: 50 });
+      label = q;
+    }
+    const seq = ++searchSeq.current;
     setCityLoading(true);
     setCitySearched(false);
-    fetchEventsByCity(cityQuery.trim())
-      .then((list) => setCityEvents(list || []))
-      .catch(() => setCityEvents([]))
+    req
+      .then((list) => { if (searchSeq.current === seq) setCityEvents(list || []); })
+      .catch(() => { if (searchSeq.current === seq) setCityEvents([]); })
       .finally(() => {
+        if (searchSeq.current !== seq) return; // superseded — drop it
         setCityLoading(false);
         setCitySearched(true);
+        setSearchedLabel(label);
       });
+  };
+
+  // Switching mode clears prior results AND invalidates any in-flight
+  // request so a late response can't repopulate the new tab.
+  const switchSearchType = (t) => {
+    if (t === searchType) return;
+    searchSeq.current++;
+    setSearchType(t);
+    setCityEvents([]);
+    setCitySearched(false);
+    setCityLoading(false);
+    setActiveGenre('');
   };
 
   // Annotate each festival with the subset of its lineup that
@@ -189,32 +253,80 @@ export default function Festivals() {
         </button>
       </div>
 
-      {/* ===== SHOWS (city search) ===== */}
+      {/* ===== SHOWS (city / artist / genre search) ===== */}
       {view === 'shows' && (
         <>
-          <div className="discover-search">
-            <input
-              className="log-input"
-              placeholder="Search a city (e.g. Austin)"
-              value={cityQuery}
-              onChange={(e) => setCityQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') runCitySearch(); }}
-            />
+          {/* Search-mode toggle */}
+          <div className="discover-type-tabs">
             <button
-              className="discover-search-btn"
-              onClick={runCitySearch}
-              disabled={cityLoading || !cityQuery.trim()}
+              className={`discover-type-tab ${searchType === 'city' ? 'active' : ''}`}
+              onClick={() => switchSearchType('city')}
             >
-              {cityLoading ? '…' : 'Search'}
+              City
+            </button>
+            <button
+              className={`discover-type-tab ${searchType === 'artist' ? 'active' : ''}`}
+              onClick={() => switchSearchType('artist')}
+            >
+              Artist
+            </button>
+            <button
+              className={`discover-type-tab ${searchType === 'genre' ? 'active' : ''}`}
+              onClick={() => switchSearchType('genre')}
+            >
+              Genre
             </button>
           </div>
+
+          {searchType === 'genre' ? (
+            <div className="discover-genre-chips">
+              {GENRES.map((g) => (
+                <button
+                  key={g.value}
+                  className={`discover-genre-chip ${activeGenre === g.value ? 'active' : ''}`}
+                  onClick={() => runSearch(g.value)}
+                  disabled={cityLoading}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="discover-search">
+              <input
+                className="log-input"
+                placeholder={
+                  searchType === 'artist'
+                    ? 'Search an artist or band'
+                    : 'Search a city (e.g. Austin)'
+                }
+                value={searchType === 'artist' ? artistQuery : cityQuery}
+                onChange={(e) =>
+                  searchType === 'artist'
+                    ? setArtistQuery(e.target.value)
+                    : setCityQuery(e.target.value)
+                }
+                onKeyDown={(e) => { if (e.key === 'Enter') runSearch(); }}
+              />
+              <button
+                className="discover-search-btn"
+                onClick={() => runSearch()}
+                disabled={
+                  cityLoading ||
+                  (searchType === 'artist' ? !artistQuery.trim() : !cityQuery.trim())
+                }
+              >
+                {cityLoading ? '…' : 'Search'}
+              </button>
+            </div>
+          )}
 
           {cityLoading ? (
             <div className="upcoming-loading">Finding shows…</div>
           ) : citySearched && sortedCityEvents.length === 0 ? (
             <div className="shows-empty fade-in">
               <div className="shows-empty-icon">🎫</div>
-              <p>No upcoming shows found for "{cityQuery.trim()}". Try a bigger nearby city.</p>
+              <p>No upcoming shows found for "{searchedLabel}". Try another search.</p>
             </div>
           ) : sortedCityEvents.length > 0 ? (
             <div className="festival-list fade-in">
@@ -279,7 +391,13 @@ export default function Festivals() {
           ) : (
             <div className="shows-empty fade-in">
               <div className="shows-empty-icon">🎵</div>
-              <p>Search a city to see who's playing.</p>
+              <p>
+                {searchType === 'artist'
+                  ? 'Search an artist to see where they’re playing.'
+                  : searchType === 'genre'
+                    ? 'Pick a genre to see what’s coming up.'
+                    : 'Search a city to see who’s playing.'}
+              </p>
             </div>
           )}
         </>

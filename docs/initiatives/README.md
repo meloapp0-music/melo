@@ -25,6 +25,10 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-14-discover-artist-genre-search.md` — shipped (next build) ·
+  Discover Shows tab gains City / Artist / Genre search modes (was
+  city-only). Includes re-verification that the friend-shows stats leak
+  fix is complete — the on-device sighting is an unshipped-build issue.
 - `2026-06-11-friends-feed-and-show-sharing.md` — shipped (next build) ·
   Beli-style friends feed on Home ("Claire went to Mumford & Sons"),
   single-show share cards with the QR install loop, and the critical

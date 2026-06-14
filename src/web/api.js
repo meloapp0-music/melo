@@ -711,14 +711,51 @@ export async function fetchFestivals(opts = {}) {
 // events in a city, sorted by date. Captures price ranges + ticket URL
 // so users see what tickets cost and how to get them.
 // Per docs/initiatives/2026-05-21-trip-discovery.md (instant-search v1).
-export async function fetchEventsByCity(city, opts = {}) {
-  if (!city || !city.trim()) return [];
+// Shared mapper: a raw TM Discovery event → Melo's event shape.
+function mapTmDiscoveryEvent(ev) {
+  const venue = ev?._embedded?.venues?.[0] || {};
+  const attractions = ev?._embedded?.attractions || [];
+  const priceRange = ev?.priceRanges?.[0] || null;
+  return {
+    id: ev.id || '',
+    artist: attractions[0]?.name || ev.name || '',
+    name: ev.name || '',
+    venue: venue.name || '',
+    city: venue.city?.name || '',
+    state: venue.state?.stateCode || venue.state?.name || '',
+    country: venue.country?.countryCode || venue.country?.name || '',
+    date: ev?.dates?.start?.localDate || '',
+    ticketUrl: ev.url || '',
+    image:
+      (ev.images || []).find((i) => i.ratio === '16_9' && i.width >= 640)?.url ||
+      (ev.images || [])[0]?.url ||
+      '',
+    priceMin: priceRange?.min ?? null,
+    priceMax: priceRange?.max ?? null,
+    priceCurrency: priceRange?.currency || '',
+    lineup: attractions.map((a) => a.name).filter(Boolean),
+  };
+}
+
+// General Discover search — by city, artist (keyword), and/or genre.
+// Powers the City / Artist / Genre tabs on the Discover page. Pass any
+// combination; at least one of city/keyword/genre is required.
+//   * genre  → TM classificationName (e.g. 'Rock', 'Hip-Hop/Rap');
+//              keeps it a real music-genre filter.
+//   * keyword→ artist/band name match (TM keyword).
+//   * city   → metro filter (optionally with stateCode).
+// `classificationName` defaults to 'music' so non-genre searches stay
+// musical; a genre value replaces it (the genre name is itself under
+// the Music segment, so results remain music events).
+export async function searchEvents(opts = {}) {
+  const { city, keyword, genre, stateCode, startDateTime, endDateTime, size = 50 } = opts;
+  if (!city && !keyword && !genre) return [];
   const key = import.meta.env.VITE_TICKETMASTER_KEY;
   if (!key) {
     if (!_tmNoKeyWarned) {
       console.warn(
-        '[Melo] VITE_TICKETMASTER_KEY not set — Discover city search will ' +
-          'be empty. Add a free key to .env.local.'
+        '[Melo] VITE_TICKETMASTER_KEY not set — Discover search will be ' +
+          'empty. Add a free key to .env.local.'
       );
       _tmNoKeyWarned = true;
     }
@@ -728,49 +765,32 @@ export async function fetchEventsByCity(city, opts = {}) {
   try {
     const params = new URLSearchParams({
       apikey: key,
-      city: city.trim(),
-      classificationName: 'music',
+      classificationName: genre || 'music',
       sort: 'date,asc',
-      size: String(opts.size || 50),
+      size: String(size),
     });
-    if (opts.stateCode) params.set('stateCode', opts.stateCode);
-    if (opts.startDateTime) params.set('startDateTime', opts.startDateTime);
-    if (opts.endDateTime) params.set('endDateTime', opts.endDateTime);
+    if (keyword) params.set('keyword', keyword);
+    if (city) params.set('city', city);
+    if (stateCode) params.set('stateCode', stateCode);
+    if (startDateTime) params.set('startDateTime', startDateTime);
+    if (endDateTime) params.set('endDateTime', endDateTime);
 
     const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`;
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) throw new Error(`Ticketmaster ${res.status}`);
     const data = await res.json();
-
-    const events = data?._embedded?.events || [];
-    return events.map((ev) => {
-      const venue = ev?._embedded?.venues?.[0] || {};
-      const attractions = ev?._embedded?.attractions || [];
-      const priceRange = ev?.priceRanges?.[0] || null;
-      return {
-        id: ev.id || '',
-        artist: attractions[0]?.name || ev.name || '',
-        name: ev.name || '',
-        venue: venue.name || '',
-        city: venue.city?.name || '',
-        state: venue.state?.stateCode || venue.state?.name || '',
-        country: venue.country?.countryCode || venue.country?.name || '',
-        date: ev?.dates?.start?.localDate || '',
-        ticketUrl: ev.url || '',
-        image:
-          (ev.images || []).find((i) => i.ratio === '16_9' && i.width >= 640)?.url ||
-          (ev.images || [])[0]?.url ||
-          '',
-        priceMin: priceRange?.min ?? null,
-        priceMax: priceRange?.max ?? null,
-        priceCurrency: priceRange?.currency || '',
-        lineup: attractions.map((a) => a.name).filter(Boolean),
-      };
-    });
+    return (data?._embedded?.events || []).map(mapTmDiscoveryEvent);
   } catch (err) {
-    console.warn('[Melo] Ticketmaster city events fetch failed', err.message);
+    console.warn('[Melo] Ticketmaster search failed', err.message);
     return [];
   }
+}
+
+// Back-compat wrapper — city-only search (used by the original Discover
+// city box and any caller passing a bare city string).
+export async function fetchEventsByCity(city, opts = {}) {
+  if (!city || !city.trim()) return [];
+  return searchEvents({ city: city.trim(), ...opts });
 }
 
 // ===== MUSICBRAINZ — Artist Bio & Genres =====
