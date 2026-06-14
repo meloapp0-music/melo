@@ -40,6 +40,21 @@ export async function getProfileById(userId) {
   return fromRow(data);
 }
 
+// Batch profile lookup → Map(id → profile). RLS silently drops rows the
+// viewer can't see (e.g. a non-searchable non-friend), so callers must
+// tolerate missing ids — that's the privacy filter for co-attendees:
+// only discoverable people resolve to a tappable profile.
+export async function getProfilesByIds(ids) {
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .in('id', unique);
+  if (error) throw error;
+  return new Map((data || []).map((r) => [r.id, fromRow(r)]));
+}
+
 export async function updateMyProfile(patch) {
   const userId = (await supabase.auth.getUser()).data.user?.id;
   if (!userId) throw new Error('Not signed in');

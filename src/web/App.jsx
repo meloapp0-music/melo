@@ -174,9 +174,14 @@ export default function App() {
     // can never disagree with the memos across midnight.
     setMomentSnoozedDay(dayStamp);
 
-    // Pre-show reminders, showtime changes + post-show rate prompt →
-    // that exact show.
-    if (kind.startsWith('preshow') || kind === 'postshow_rate' || kind === 'showtime_change') {
+    // Show-targeted pushes (pre-show, showtime change, post-show rate,
+    // and likes/comments on your show) → open that exact show. The
+    // rate prompt opens the score editor; everything else opens the
+    // show (where the reactions/comments live).
+    if (
+      kind.startsWith('preshow') || kind === 'postshow_rate' ||
+      kind === 'showtime_change' || kind === 'show_comment' || kind === 'show_reaction'
+    ) {
       const show = shows.find((s) => s.id === pushNav.showId);
       setSubPage(null);
       setTab('home');

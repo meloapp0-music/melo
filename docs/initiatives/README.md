@@ -25,6 +25,13 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-14-social-feed-likes-comments.md` — shipped (next build) ·
+  The social layer: reactions + comments on shows (with moderation),
+  real-friend tagging → "going with" co-attendees in the feed (incl.
+  privacy-respecting friends-of-friends), "I'm going too", and
+  interaction push notifications. Migration 0011 + notify-interaction.
+  NEEDS: apply migration 0011. (3-lens review caught a tagging-consent
+  blocker — fixed.)
 - `2026-06-14-discover-artist-genre-search.md` — shipped (next build) ·
   Discover Shows tab gains City / Artist / Genre search modes (was
   city-only). Includes re-verification that the friend-shows stats leak

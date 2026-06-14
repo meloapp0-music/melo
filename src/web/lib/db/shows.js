@@ -18,6 +18,7 @@ function fromRow(row) {
   const status = deriveStatus(row);
   return {
     id: row.id,
+    userId: row.user_id,
     artist: row.artist,
     date: row.date,
     venue: row.venue || '',
@@ -153,6 +154,26 @@ export async function listAttendees(showId) {
     .eq('show_id', showId);
   if (error) throw error;
   return data || [];
+}
+
+// Batch: tagged attendees for a set of shows → Map(showId → [userId]).
+// RLS (0011 "attendees read for viewers") returns rows only for shows
+// the viewer can see. For the feed's "going with …" line.
+export async function attendeesForShows(showIds) {
+  const ids = [...new Set((showIds || []).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('show_attendees')
+    .select('show_id, user_id')
+    .in('show_id', ids);
+  if (error) throw error;
+  const map = new Map();
+  for (const r of data || []) {
+    const arr = map.get(r.show_id) || [];
+    arr.push(r.user_id);
+    map.set(r.show_id, arr);
+  }
+  return map;
 }
 
 export async function createShow(show, userId) {

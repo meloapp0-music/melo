@@ -5,6 +5,8 @@ import {
   SHOW_STATUS, getShowStatus,
 } from '../store';
 import { fetchSetlists, fetchUpcomingEvents, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs, searchPastShows } from '../api';
+import { listFriends } from '../lib/db/friendships';
+import { tagAttendee, untagAttendee, listAttendees } from '../lib/db/shows';
 import { track } from '../lib/analytics';
 import PhotoPicker from '../components/PhotoPicker';
 
@@ -53,6 +55,35 @@ export default function LogShow({ onClose, editingShow = null }) {
     editingShow?.setlist?.length ? editingShow.setlist : ['']
   );
   const [selBuddies, setSelBuddies] = useState(editingShow?.buddies || []);
+
+  // Real-friend tags (show_attendees) — distinct from the free-text
+  // `selBuddies`. These link to actual Melo users, power the feed's
+  // "going with …" line, and let friends-of-friends be discovered. Tags
+  // are written after the show row exists (it needs an id). Per
+  // docs/initiatives/2026-06-14-social-feed-likes-comments.md.
+  const [friends, setFriends] = useState([]);
+  const [taggedIds, setTaggedIds] = useState(new Set());
+  const originalTagsRef = useRef(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    listFriends().then((fr) => { if (!cancelled) setFriends(fr); }).catch(() => {});
+    if (editingShow?.id) {
+      listAttendees(editingShow.id).then((rows) => {
+        if (cancelled) return;
+        const ids = new Set((rows || []).map((r) => r.user_id));
+        setTaggedIds(ids);
+        originalTagsRef.current = new Set(ids);
+      }).catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [editingShow?.id]);
+
+  const toggleTag = (uid) =>
+    setTaggedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(uid)) n.delete(uid); else n.add(uid);
+      return n;
+    });
   const [newBuddyName, setNewBuddyName] = useState('');
   // Openers — opening acts on the bill. Auto-suggested from
   // Ticketmaster's `lineup` (upcoming shows) or a Setlist.fm co-act
@@ -340,6 +371,17 @@ export default function LogShow({ onClose, editingShow = null }) {
         ...payload,
         createdAt: new Date().toISOString(),
       });
+    }
+    // Reconcile real-friend tags now that the show row (and its id)
+    // exists. Diff against what was loaded so edits add/remove cleanly.
+    if (savedShow?.id) {
+      const orig = originalTagsRef.current;
+      const add = [...taggedIds].filter((id) => !orig.has(id));
+      const remove = [...orig].filter((id) => !taggedIds.has(id));
+      await Promise.all([
+        ...add.map((id) => tagAttendee(savedShow.id, id).catch(() => {})),
+        ...remove.map((id) => untagAttendee(savedShow.id, id).catch(() => {})),
+      ]);
     }
     if (showToast) {
       const verb = editingShow ? 'Updated' : 'Logged';
@@ -995,6 +1037,32 @@ export default function LogShow({ onClose, editingShow = null }) {
               <button className="log-add-btn" onClick={addSetlistItem}>
                 + Add Song
               </button>
+            </div>
+          )}
+
+          {/* Tag friends (real Melo users) — any status. Powers the
+              feed's "going with …" line + friends-of-friends discovery. */}
+          {friends.length > 0 && (
+            <div className="log-section">
+              <div className="log-section-title">
+                {isAttendedTab ? 'Who went with you?' : 'Who are you going with?'}
+              </div>
+              <div className="log-friend-tags">
+                {friends.map((f) => {
+                  const on = taggedIds.has(f.userId);
+                  const nm = f.displayName || f.username;
+                  return (
+                    <button
+                      key={f.userId}
+                      type="button"
+                      className={`log-friend-chip ${on ? 'active' : ''}`}
+                      onClick={() => toggleTag(f.userId)}
+                    >
+                      {on ? '✓ ' : ''}{nm}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

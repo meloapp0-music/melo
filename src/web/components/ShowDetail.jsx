@@ -6,6 +6,7 @@ import { shareShowCard } from '../lib/shareCard';
 import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
+import ShowSocial from './ShowSocial';
 
 // Rough "how long ago" label for the pre-show card. Years once it's
 // been 12+ months, otherwise months. Good enough for "you last saw
@@ -23,6 +24,13 @@ function timeAgoLabel(dateStr) {
 
 export default function ShowDetail({ show, onClose }) {
   const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile } = useApp();
+
+  // Whose show is this? fromRow always populates userId now, so this is
+  // a straight match. Non-owners get a view-only detail (no edit /
+  // delete / favorite / status controls) but full reactions + comments.
+  // The `|| !show.userId` fallback covers any hand-built show object
+  // (none today) defensively resolving to "mine".
+  const isOwner = !show.userId || show.userId === profile?.id;
 
   // Share this show — canvas card via the native share sheet. Status
   // (was-there vs going) is enum-only in analytics; never artist names.
@@ -114,7 +122,9 @@ export default function ShowDetail({ show, onClose }) {
     if (override) {
       setVenueUrl(override);
       setVenueLookupState('idle');
-      if (show.venueUrl !== override) {
+      // Persist only on your OWN show — a write to a friend's show row
+      // fails RLS and triggers a spurious refetch of your shows.
+      if (isOwner && show.venueUrl !== override) {
         try { updateShowRef.current(show.id, { venueUrl: override }); } catch {}
       }
       return;
@@ -134,11 +144,11 @@ export default function ShowDetail({ show, onClose }) {
       if (resolved) {
         setVenueUrl(resolved);
         setVenueLookupState('idle');
-        // Best-effort persist so the next open is instant. Failures
-        // (e.g. column doesn't exist because the migration hasn't been
-        // run) are logged by App.jsx's updateShow but never bubble up
-        // here — the in-memory pill still works for this session.
-        try { updateShowRef.current(show.id, { venueUrl: resolved }); } catch {}
+        // Best-effort persist (own show only — see override branch). The
+        // in-memory pill still works for friends' shows this session.
+        if (isOwner) {
+          try { updateShowRef.current(show.id, { venueUrl: resolved }); } catch {}
+        }
       } else {
         setVenueLookupState('not_found');
       }
@@ -237,16 +247,18 @@ export default function ShowDetail({ show, onClose }) {
               {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
             </div>
           )}
-          <button
-            className={`detail-fav ${isFavorite ? 'active' : ''}`}
-            onClick={toggleFavorite}
-            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            aria-pressed={isFavorite}
-          >
-            <svg viewBox="0 0 24 24">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-          </button>
+          {isOwner && (
+            <button
+              className={`detail-fav ${isFavorite ? 'active' : ''}`}
+              onClick={toggleFavorite}
+              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-pressed={isFavorite}
+            >
+              <svg viewBox="0 0 24 24">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
+          )}
           <button className="detail-close" onClick={onClose}>
             <svg viewBox="0 0 24 24">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -326,9 +338,9 @@ export default function ShowDetail({ show, onClose }) {
             </div>
           )}
 
-          {/* Wishlist → Going upgrade — "I bought tickets". Only on a
-              Wishlist show; once moved, it becomes a Going show. */}
-          {effectiveStatus === SHOW_STATUS.WISHLIST && (
+          {/* Wishlist → Going upgrade — "I bought tickets". Only on your
+              own Wishlist show; once moved, it becomes a Going show. */}
+          {isOwner && effectiveStatus === SHOW_STATUS.WISHLIST && (
             <button className="detail-upgrade-btn" onClick={markGoing}>
               <span aria-hidden="true">🎟️</span>
               <span>I got tickets — I'm Going</span>
@@ -341,6 +353,9 @@ export default function ShowDetail({ show, onClose }) {
             <span aria-hidden="true">📣</span>
             <span>{sharing ? 'Making your card…' : 'Share this show'}</span>
           </button>
+
+          {/* Reactions + comments — for your shows and friends' alike. */}
+          <ShowSocial show={show} />
 
           {/* Pre-show card — only on upcoming (Going / Wishlist) shows.
               Surfaces the user's last time seeing this artist. Per
@@ -523,28 +538,33 @@ export default function ShowDetail({ show, onClose }) {
             )}
           </div>
 
-          <button
-            className="detail-compare-btn"
-            onClick={() => { onClose(); setLogEditTarget(show); }}
-          >
-            Edit show
-          </button>
+          {/* Owner-only controls — hidden when viewing a friend's show. */}
+          {isOwner && (
+            <>
+              <button
+                className="detail-compare-btn"
+                onClick={() => { onClose(); setLogEditTarget(show); }}
+              >
+                Edit show
+              </button>
 
-          <button
-            className="detail-compare-btn"
-            onClick={() => { onClose(); setCompareShow(show); }}
-          >
-            ⚔️ Compare with another show
-          </button>
+              <button
+                className="detail-compare-btn"
+                onClick={() => { onClose(); setCompareShow(show); }}
+              >
+                ⚔️ Compare with another show
+              </button>
 
-          <button
-            className="detail-delete"
-            onClick={() => {
-              if (confirm('Delete this show?')) deleteShow(show.id);
-            }}
-          >
-            Delete Show
-          </button>
+              <button
+                className="detail-delete"
+                onClick={() => {
+                  if (confirm('Delete this show?')) deleteShow(show.id);
+                }}
+              >
+                Delete Show
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
