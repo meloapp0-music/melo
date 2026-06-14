@@ -130,6 +130,27 @@ export async function listUserShows(userId) {
   return (data || []).map(fromRow);
 }
 
+// Lightweight full-history pull for a set of friends — just the columns
+// the feed needs to compute ACCURATE milestones (Nth-show ordinals) and
+// year recaps. RLS filters to shows the viewer may see. One query for
+// all friends. Per docs/initiatives/2026-06-14-social-feed-likes-comments.md.
+export async function friendsShowStats(friendIds) {
+  const ids = [...new Set((friendIds || []).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('shows')
+    .select('id, user_id, date, status, wishlist, city')
+    .in('user_id', ids);
+  if (error) throw error;
+  const map = new Map();
+  for (const r of data || []) {
+    const arr = map.get(r.user_id) || [];
+    arr.push(r);
+    map.set(r.user_id, arr);
+  }
+  return map;
+}
+
 // ---- show attendees (tag a real friend on a show you own) ----
 export async function tagAttendee(showId, userId) {
   const { error } = await supabase

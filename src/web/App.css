@@ -8058,3 +8058,48 @@ h4 { font-size: 17px; }
   color: #fff;
 }
 .log-friend-chip:active { transform: scale(0.96); }
+
+/* ===== Feed: milestones + year-recap cards ===== */
+.feed-milestone {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(244,162,97,0.2), rgba(232,87,58,0.14));
+  border: 1px solid rgba(232, 87, 58, 0.25);
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 800;
+}
+.feed-recap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(244,162,97,0.16), rgba(232,87,58,0.10));
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.feed-recap:active { transform: scale(0.985); }
+.feed-recap-icon { font-size: 26px; line-height: 1; }
+.feed-recap-body { flex: 1; min-width: 0; }
+.feed-recap-title {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--brown);
+  letter-spacing: -0.01em;
+}
+.feed-recap-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--orange);
+  margin-top: 1px;
+}
+.feed-recap-arrow { color: var(--brown-muted); font-size: 18px; }

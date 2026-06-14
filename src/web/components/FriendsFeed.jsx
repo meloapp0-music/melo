@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../App';
 import { listFriends } from '../lib/db/friendships';
-import { listFriendsShows, attendeesForShows } from '../lib/db/shows';
+import { listFriendsShows, attendeesForShows, friendsShowStats } from '../lib/db/shows';
 import { reactionSummary, commentCounts } from '../lib/db/social';
 import { getProfilesByIds } from '../lib/db/profiles';
 import { getArtistGradient, formatDate, isAttended, isGoing, isWishlist, daysUntil, SHOW_STATUS, generateId } from '../store';
@@ -13,6 +13,10 @@ let feedCache = null;
 
 const MAX_PER_FRIEND = 4;
 const MAX_ITEMS = 20;
+// Show-count milestones worth celebrating in the feed.
+const MILESTONES = new Set([10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750, 1000]);
+const RECAP_MIN = 5;   // shows this year before a friend earns a recap card
+const MAX_RECAPS = 2;  // cap recap cards so they don't crowd the feed
 
 // Friends activity feed — the Beli-style home stream. Each item is a
 // friend's show ("Claire went to Mumford & Sons") with:
@@ -53,12 +57,25 @@ export default function FriendsFeed() {
         }
 
         const showIds = picked.map((s) => s.id);
-        // Batch the social + co-attendee lookups in parallel.
-        const [reactions, comments, attendees] = await Promise.all([
+        // Batch the social + co-attendee + full-history lookups together.
+        const [reactions, comments, attendees, stats] = await Promise.all([
           reactionSummary(showIds).catch(() => new Map()),
           commentCounts(showIds).catch(() => new Map()),
           attendeesForShows(showIds).catch(() => new Map()),
+          friendsShowStats(friends.map((f) => f.userId)).catch(() => new Map()),
         ]);
+
+        // Per-friend attended dates (sorted, for Nth-show ordinals) and
+        // this-year totals (for recap cards).
+        const thisYear = String(new Date().getFullYear());
+        const attendedRows = new Map(); // uid → [{id, date}] of attended shows
+        const yearStat = new Map();
+        for (const [uid, rs] of stats) {
+          const att = rs.filter(isAttended).filter((r) => r.date);
+          attendedRows.set(uid, att);
+          const yr = att.filter((r) => r.date.startsWith(thisYear));
+          yearStat.set(uid, { count: yr.length, cities: new Set(yr.map((r) => r.city).filter(Boolean)).size });
+        }
 
         // Resolve co-attendee profiles (RLS drops non-discoverable
         // non-friends → they stay anonymous "+N").
@@ -68,7 +85,7 @@ export default function FriendsFeed() {
         const coProfiles = coIds.length ? await getProfilesByIds(coIds).catch(() => new Map()) : new Map();
 
         if (cancelled) return;
-        const feed = picked.map((s) => {
+        const showItems = picked.map((s) => {
           // Drop the show owner AND the viewer from co-attendees (the
           // viewer shows up as "You were there too", not in "with …").
           const tagged = (attendees.get(s.id) || []).filter((uid) => uid !== s.userId && uid !== meId);
@@ -79,15 +96,37 @@ export default function FriendsFeed() {
             if (p) named.push({ userId: uid, name: p.displayName || p.username || 'Someone' });
             else anon += 1;
           }
+          // Milestone: this show's rank in the friend's attended history.
+          // Rank by (date, id) so same-date shows get UNIQUE ordinals
+          // (a date-only count would double-badge or skip a milestone).
+          let milestone = null;
+          if (isAttended(s)) {
+            const ordinal = (attendedRows.get(s.userId) || []).filter(
+              (r) => r.date < s.date || (r.date === s.date && r.id <= s.id)
+            ).length;
+            if (MILESTONES.has(ordinal)) milestone = ordinal;
+          }
           return {
+            type: 'show',
             show: s,
             friend: byId[s.userId],
             reactions: reactions.get(s.id) || null,
             comments: comments.get(s.id) || 0,
             coAttendees: named,
             coAnon: anon,
+            milestone,
           };
         });
+
+        // Year-recap cards — friends having a big year, capped + deduped.
+        const recaps = friends
+          .map((f) => ({ friend: f, ...(yearStat.get(f.userId) || { count: 0, cities: 0 }) }))
+          .filter((r) => r.count >= RECAP_MIN)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, MAX_RECAPS)
+          .map((r) => ({ type: 'recap', friend: r.friend, count: r.count, cities: r.cities, year: thisYear }));
+
+        const feed = [...recaps, ...showItems];
         feedCache = feed;
         setItems(feed);
         prefetchImages([...new Set(picked.map((s) => s.artist).filter(Boolean))]);
@@ -131,7 +170,30 @@ export default function FriendsFeed() {
     <div className="feed-section fade-in">
       <div className="home-section-title"><h3>Friends</h3></div>
       <div className="feed-list">
-        {items.map(({ show, friend, reactions, comments, coAttendees, coAnon }) => {
+        {items.map((item) => {
+          // Year-recap card ("Claire's 2026 so far").
+          if (item.type === 'recap') {
+            const rn = item.friend.displayName || item.friend.username;
+            return (
+              <button
+                key={`recap-${item.friend.userId}`}
+                type="button"
+                className="feed-recap"
+                onClick={() => setSelectedUserId(item.friend.userId)}
+              >
+                <div className="feed-recap-icon" aria-hidden="true">🎉</div>
+                <div className="feed-recap-body">
+                  <div className="feed-recap-title">{rn}’s {item.year} so far</div>
+                  <div className="feed-recap-sub">
+                    {item.count} shows{item.cities > 0 ? ` · ${item.cities} ${item.cities === 1 ? 'city' : 'cities'}` : ''}
+                  </div>
+                </div>
+                <span className="feed-recap-arrow" aria-hidden="true">→</span>
+              </button>
+            );
+          }
+
+          const { show, friend, reactions, comments, coAttendees, coAnon, milestone } = item;
           const img = getArtistImage(show.artist);
           const thumbStyle = img
             ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -174,6 +236,10 @@ export default function FriendsFeed() {
                   {[show.venue, show.city].filter(Boolean).join(', ')}
                   {show.date ? ` · ${formatDate(show.date)}` : ''}
                 </div>
+
+                {milestone && (
+                  <div className="feed-milestone">🎉 Their {milestone}th show!</div>
+                )}
 
                 {(coAttendees.length > 0 || coAnon > 0) && (() => {
                   const shownNames = Math.min(coAttendees.length, 2);
