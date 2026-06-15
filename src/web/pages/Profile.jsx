@@ -115,7 +115,9 @@ export default function Profile() {
   };
 
   return (
-    <div className="page" style={{ padding: 0 }}>
+    // Zero only top/sides so the hero bleeds edge-to-edge; KEEP the
+    // class's padding-bottom so the last cards clear the floating nav bar.
+    <div className="page" style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0 }}>
       <div className="profile-hero">
         <button
           type="button"

@@ -149,7 +149,9 @@ export default function Songs() {
   };
 
   return (
-    <div className="page" style={{ padding: 0 }}>
+    // Zero only top/sides for the full-bleed hero; KEEP the class's
+    // padding-bottom so the last content clears the floating nav bar.
+    <div className="page" style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0 }}>
       {/* Hero — artist-photo collage backdrop with the title + a one-line
           summary overlaid on a darkening gradient. Falls back to a
           branded gradient when the user has no artist images yet. */}
