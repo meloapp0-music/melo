@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../App';
 import { listFriends } from '../lib/db/friendships';
 import { listFriendsShows, attendeesForShows, friendsShowStats } from '../lib/db/shows';
-import { reactionSummary, commentCounts } from '../lib/db/social';
+import { reactionSummary, commentCounts, setReaction, notifyInteraction } from '../lib/db/social';
 import { getProfilesByIds } from '../lib/db/profiles';
 import { getArtistGradient, formatDate, isAttended, isGoing, isWishlist, daysUntil, SHOW_STATUS, generateId } from '../store';
 
@@ -17,6 +17,26 @@ const MAX_ITEMS = 20;
 const MILESTONES = new Set([10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750, 1000]);
 const RECAP_MIN = 5;   // shows this year before a friend earns a recap card
 const MAX_RECAPS = 2;  // cap recap cards so they don't crowd the feed
+
+// Compact relative time for the activity recency ("2d", "3h").
+function relTime(iso) {
+  if (!iso) return '';
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
+  const h = Math.floor(s / 3600);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w}w`;
+  return `${Math.floor(d / 30)}mo`;
+}
+
+// Trim a note to a feed-sized snippet.
+function snippet(text, max = 90) {
+  const t = (text || '').trim().replace(/\s+/g, ' ');
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
 
 // Friends activity feed — the Beli-style home stream. Each item is a
 // friend's show ("Claire went to Mumford & Sons") with:
@@ -150,6 +170,42 @@ export default function FriendsFeed() {
   );
   const showKey = (s) => `${(s.artist || '').toLowerCase().trim()}|${s.date}`;
 
+  // Patch one show item's reaction summary in both live state and the
+  // session cache (so navigating away and back keeps the like).
+  const patchReactions = (showId, reactions) => {
+    setItems((cur) => {
+      if (!cur) return cur;
+      const next = cur.map((it) => (it.type === 'show' && it.show.id === showId ? { ...it, reactions } : it));
+      feedCache = next;
+      return next;
+    });
+  };
+
+  // One-tap ❤️ from the feed (optimistic; reverts on failure).
+  const toggleLike = async (ev, item) => {
+    ev.stopPropagation();
+    const showId = item.show.id;
+    const prev = item.reactions || { count: 0, byEmoji: {}, mine: null };
+    const dec = (m, e) => { const n = { ...m }; n[e] = Math.max(0, (n[e] || 1) - 1); if (!n[e]) delete n[e]; return n; };
+    const inc = (m, e) => ({ ...m, [e]: (m[e] || 0) + 1 });
+    let next;
+    if (prev.mine === '❤️') {
+      next = { count: Math.max(0, prev.count - 1), byEmoji: dec(prev.byEmoji, '❤️'), mine: null };
+    } else if (prev.mine) {
+      // swap a different reaction → ❤️ (count unchanged)
+      next = { count: prev.count, byEmoji: inc(dec(prev.byEmoji, prev.mine), '❤️'), mine: '❤️' };
+    } else {
+      next = { count: prev.count + 1, byEmoji: inc(prev.byEmoji, '❤️'), mine: '❤️' };
+    }
+    patchReactions(showId, next);
+    try {
+      const result = await setReaction(showId, '❤️');
+      if (result) notifyInteraction(showId, 'reaction');
+    } catch {
+      patchReactions(showId, prev); // revert
+    }
+  };
+
   const goToo = (ev, show) => {
     ev.stopPropagation();
     if (addedIds.has(show.id) || myShowKeys.has(showKey(show))) return;
@@ -194,106 +250,137 @@ export default function FriendsFeed() {
           }
 
           const { show, friend, reactions, comments, coAttendees, coAnon, milestone } = item;
-          const img = getArtistImage(show.artist);
-          const thumbStyle = img
-            ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-            : { background: getArtistGradient(show.artist) };
           const name = friend.displayName || friend.username;
-          const verb = isAttended(show) ? 'went to' : 'is going to';
-          const together = isAttended(show) &&
-            mine.has(`${(show.artist || '').toLowerCase().trim()}|${show.date}`);
+          const attended = isAttended(show);
+          const verb = attended ? 'went to' : 'is going to';
+          const together = attended && mine.has(showKey(show));
           const alreadyHave = myShowKeys.has(showKey(show));
           const upcoming = isGoing(show) && daysUntil(show.date) >= 0 && !alreadyHave;
           const added = addedIds.has(show.id);
 
+          // Hero is photo-first: the friend's own concert photo (the
+          // show-photos bucket is public), else the artist image, else a
+          // gradient. Always visual.
+          const heroPhoto = show.photos?.[0] || null;
+          const artistImg = getArtistImage(show.artist);
+          const heroStyle = (heroPhoto || artistImg)
+            ? { backgroundImage: `url(${heroPhoto || artistImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : { background: getArtistGradient(show.artist) };
+
+          const liked = reactions?.mine === '❤️';
+          const likeCount = reactions?.count || 0;
+          const noteText = attended ? snippet(show.notes) : '';
+          const vibeList = attended ? (show.vibes || []).slice(0, 3) : [];
+          const d = daysUntil(show.date);
+          const countdown = d === 0 ? 'Tonight' : d === 1 ? 'Tomorrow' : `In ${d} days`;
+
           return (
             <div
               key={show.id}
-              className="feed-card"
+              className="feed-card-v2"
               role="button"
               tabIndex={0}
               onClick={() => setSelectedShow(show)}
               onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(show); }}
             >
-              <button
-                className="feed-avatar"
-                aria-label={`View ${name}`}
-                onClick={(e) => { e.stopPropagation(); setSelectedUserId(friend.userId); }}
-                style={
-                  friend.avatarUrl
-                    ? { backgroundImage: `url(${friend.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : { background: friend.avatarColor || '#E8573A' }
-                }
-              >
-                {!friend.avatarUrl && (name || '?')[0].toUpperCase()}
-              </button>
-
-              <div className="feed-body">
-                <div className="feed-text">
-                  <b>{name}</b> {verb} <b>{show.artist}</b>
-                </div>
-                <div className="feed-meta">
-                  {[show.venue, show.city].filter(Boolean).join(', ')}
-                  {show.date ? ` · ${formatDate(show.date)}` : ''}
-                </div>
-
-                {milestone && (
-                  <div className="feed-milestone">🎉 Their {milestone}th show!</div>
+              <div className="feedv2-hero" style={heroStyle}>
+                <div className="feedv2-hero-overlay" />
+                {attended && show.score > 0 && (
+                  <div className="feedv2-score">
+                    {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
+                  </div>
                 )}
+                {upcoming && <div className="feedv2-countdown">{countdown}</div>}
+                {together && <div className="feedv2-together">🎸 You were there too</div>}
+              </div>
 
-                {(coAttendees.length > 0 || coAnon > 0) && (() => {
-                  const shownNames = Math.min(coAttendees.length, 2);
-                  const hidden = (coAttendees.length + coAnon) - shownNames;
-                  if (shownNames === 0) {
-                    // Only anonymous (non-discoverable) co-attendees.
-                    return <div className="feed-with">with {coAnon} {coAnon === 1 ? 'other' : 'others'}</div>;
+              <div className="feedv2-foot">
+                <button
+                  className="feed-avatar"
+                  aria-label={`View ${name}`}
+                  onClick={(e) => { e.stopPropagation(); setSelectedUserId(friend.userId); }}
+                  style={
+                    friend.avatarUrl
+                      ? { backgroundImage: `url(${friend.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      : { background: friend.avatarColor || '#E8573A' }
                   }
-                  return (
-                    <div className="feed-with">
-                      with{' '}
-                      {coAttendees.slice(0, shownNames).map((c, i) => (
-                        <span key={c.userId}>
-                          <button
-                            className="feed-with-name"
-                            onClick={(e) => { e.stopPropagation(); setSelectedUserId(c.userId); }}
-                          >
-                            {c.name}
-                          </button>
-                          {i < shownNames - 1 ? ', ' : ''}
+                >
+                  {!friend.avatarUrl && (name || '?')[0].toUpperCase()}
+                </button>
+
+                <div className="feed-body">
+                  <div className="feed-text">
+                    <b>{name}</b> {verb} <b>{show.artist}</b>
+                  </div>
+                  <div className="feed-meta">
+                    {[show.venue, show.city].filter(Boolean).join(', ')}
+                    {show.date ? ` · ${formatDate(show.date)}` : ''}
+                    {show.createdAt ? ` · ${relTime(show.createdAt)}` : ''}
+                  </div>
+
+                  {milestone && <div className="feed-milestone">🎉 Their {milestone}th show!</div>}
+
+                  {(coAttendees.length > 0 || coAnon > 0) && (() => {
+                    const shownNames = Math.min(coAttendees.length, 2);
+                    const hidden = (coAttendees.length + coAnon) - shownNames;
+                    if (shownNames === 0) {
+                      return <div className="feed-with">with {coAnon} {coAnon === 1 ? 'other' : 'others'}</div>;
+                    }
+                    return (
+                      <div className="feed-with">
+                        with{' '}
+                        {coAttendees.slice(0, shownNames).map((c, i) => (
+                          <span key={c.userId}>
+                            <button className="feed-with-name" onClick={(e) => { e.stopPropagation(); setSelectedUserId(c.userId); }}>
+                              {c.name}
+                            </button>
+                            {i < shownNames - 1 ? ', ' : ''}
+                          </span>
+                        ))}
+                        {hidden > 0 && ` +${hidden}`}
+                      </div>
+                    );
+                  })()}
+
+                  {(noteText || vibeList.length > 0) && (
+                    <div className="feedv2-take">
+                      {noteText && <span className="feedv2-note">“{noteText}”</span>}
+                      {vibeList.length > 0 && (
+                        <span className="feedv2-vibes">
+                          {vibeList.map((v) => <span key={v} className="feedv2-vibe">{v}</span>)}
                         </span>
-                      ))}
-                      {hidden > 0 && ` +${hidden}`}
+                      )}
                     </div>
-                  );
-                })()}
-
-                {together && <div className="feed-together">🎸 You were there too</div>}
-
-                <div className="feed-actions">
-                  {reactions && reactions.count > 0 && (
-                    <span className="feed-stat">
-                      {Object.keys(reactions.byEmoji)[0] || '❤️'} {reactions.count}
-                    </span>
-                  )}
-                  {comments > 0 && <span className="feed-stat">💬 {comments}</span>}
-                  {upcoming && (
-                    <button
-                      className={`feed-gotoo ${added ? 'added' : ''}`}
-                      onClick={(e) => goToo(e, show)}
-                      disabled={added}
-                    >
-                      {added ? '✓ Going' : "+ I'm going too"}
-                    </button>
                   )}
                 </div>
               </div>
 
-              {isAttended(show) && show.score > 0 && (
-                <div className="feed-score">
-                  {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
-                </div>
-              )}
-              <div className="feed-thumb" style={thumbStyle} aria-hidden="true" />
+              <div className="feedv2-bar">
+                <button
+                  className={`feedv2-like ${liked ? 'active' : ''}`}
+                  onClick={(e) => toggleLike(e, item)}
+                  aria-label={liked ? 'Remove your like' : 'Like this show'}
+                >
+                  <span className="feedv2-like-emoji">{liked ? '❤️' : '🤍'}</span>
+                  {likeCount > 0 && <span>{likeCount}</span>}
+                </button>
+                <button
+                  className="feedv2-cmt"
+                  onClick={(e) => { e.stopPropagation(); setSelectedShow(show); }}
+                  aria-label="Comment"
+                >
+                  💬{comments > 0 ? ` ${comments}` : ''}
+                </button>
+                {(upcoming || added) && (
+                  <button
+                    className={`feed-gotoo ${added ? 'added' : ''}`}
+                    onClick={(e) => goToo(e, show)}
+                    disabled={added}
+                  >
+                    {added ? '✓ Going' : "+ I'm going too"}
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

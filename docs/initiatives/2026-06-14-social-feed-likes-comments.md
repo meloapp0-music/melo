@@ -65,6 +65,17 @@ User requests (2026-06-14):
   "{name}'s {year} so far · N shows · C cities" recap cards at the top.
   Reviewed (1 should-fix found + fixed: the same-date ordinal collision).
 
+- 2026-06-15: **Feed redesign — photo-first + take + inline like.**
+  User felt the feed was "a list of facts, not the experience." Rebuilt
+  the card (`feed-card-v2`): the friend's own concert photo as a big
+  hero (show-photos bucket is public → loads for friends; falls back to
+  artist image, then gradient), rating badge on the photo, a "take" line
+  (note snippet + vibe chips), an activity timestamp ("2d"), and a
+  **one-tap ❤️ right in the feed** (optimistic, reverts on failure,
+  fires notify-interaction) + a comment shortcut. Reviewed (general
+  agent) — no bugs; optimistic-like math, stopPropagation, null-safety
+  all clean. Old text-row card CSS left as harmless dead rules.
+
 ## NEEDS USER ACTION
 - **Apply migration 0011** (Supabase dashboard → SQL Editor, paste
   `supabase/migrations/0011_social.sql`, run). Until then, reactions/
