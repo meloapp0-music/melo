@@ -8,8 +8,15 @@ import { getArtistGradient, formatDate, isAttended, isGoing, isWishlist, daysUnt
 
 // Session-lived cache so the feed renders synchronously on every Home
 // remount (no layout pop-in above the fold) and refreshes in the
-// background.
+// background. Keyed by owner so a sign-out → different-user sign-in on
+// the same device can't flash account A's feed to account B.
 let feedCache = null;
+let feedCacheOwner = null;
+
+export function resetFeedCache() {
+  feedCache = null;
+  feedCacheOwner = null;
+}
 
 const MAX_PER_FRIEND = 4;
 const MAX_ITEMS = 20;
@@ -48,10 +55,12 @@ function snippet(text, max = 90) {
 export default function FriendsFeed() {
   const {
     shows, profile, selectedUserId, setSelectedUserId, setSelectedShow,
-    getArtistImage, prefetchImages, addShow, showToast,
+    getArtistImage, prefetchImages, addShow, showToast, navigate,
   } = useApp();
   const meId = profile?.id;
-  const [items, setItems] = useState(feedCache);
+  // Only trust the cache if it belongs to the current user.
+  const [items, setItems] = useState(feedCacheOwner === meId ? feedCache : null);
+  const [noFriends, setNoFriends] = useState(false);
   const [addedIds, setAddedIds] = useState(() => new Set());
 
   useEffect(() => {
@@ -60,7 +69,12 @@ export default function FriendsFeed() {
     (async () => {
       try {
         const friends = await listFriends();
-        if (friends.length === 0) { feedCache = []; if (!cancelled) setItems([]); return; }
+        if (friends.length === 0) {
+          feedCache = []; feedCacheOwner = meId;
+          if (!cancelled) { setItems([]); setNoFriends(true); }
+          return;
+        }
+        if (!cancelled) setNoFriends(false);
         const byId = Object.fromEntries(friends.map((f) => [f.userId, f]));
         const rows = await listFriendsShows(friends.map((f) => f.userId), 100);
 
@@ -148,6 +162,7 @@ export default function FriendsFeed() {
 
         const feed = [...recaps, ...showItems];
         feedCache = feed;
+        feedCacheOwner = meId;
         setItems(feed);
         prefetchImages([...new Set(picked.map((s) => s.artist).filter(Boolean))]);
       } catch {
@@ -219,6 +234,23 @@ export default function FriendsFeed() {
     setAddedIds((prev) => new Set(prev).add(show.id));
     showToast?.({ message: `🎟️ Added ${show.artist} to your shows` });
   };
+
+  // No friends yet → a discoverable prompt instead of a dead-end null,
+  // so the whole social feature isn't invisible from Home.
+  if (noFriends) {
+    return (
+      <div className="feed-section fade-in">
+        <button type="button" className="feed-find-friends" onClick={() => navigate('buddies')}>
+          <div className="feed-find-icon" aria-hidden="true">👋</div>
+          <div className="feed-find-body">
+            <div className="feed-find-title">Find your friends on Melo</div>
+            <div className="feed-find-sub">See their shows, ratings & who they’re going with.</div>
+          </div>
+          <span className="feed-find-arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+    );
+  }
 
   if (!items || items.length === 0) return null;
 
@@ -312,10 +344,12 @@ export default function FriendsFeed() {
                   <div className="feed-text">
                     <b>{name}</b> {verb} <b>{show.artist}</b>
                   </div>
-                  <div className="feed-meta">
-                    {[show.venue, show.city].filter(Boolean).join(', ')}
-                    {show.date ? ` · ${formatDate(show.date)}` : ''}
-                    {show.createdAt ? ` · ${relTime(show.createdAt)}` : ''}
+                  <div className="feed-meta-row">
+                    <span className="feed-meta">
+                      {[show.venue, show.city].filter(Boolean).join(', ')}
+                      {show.date ? ` · ${formatDate(show.date)}` : ''}
+                    </span>
+                    {show.createdAt && <span className="feed-when">{relTime(show.createdAt)}</span>}
                   </div>
 
                   {milestone && <div className="feed-milestone">🎉 Their {milestone}th show!</div>}

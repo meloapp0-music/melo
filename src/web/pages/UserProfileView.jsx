@@ -89,10 +89,14 @@ export default function UserProfileView({ userId, onClose }) {
       <div className="detail-backdrop" onClick={onClose} />
       <div className="detail-sheet" style={{ maxHeight: '90vh', overflow: 'auto' }}>
         <div className="log-header" style={{ padding: '20px 20px 8px', position: 'relative' }}>
-          <button className="detail-close" onClick={onClose}>×</button>
+          {/* top:12 overrides .detail-close/.detail-fav's safe-area-top
+              offset — this sheet already sits below the status bar, so
+              the offset (≈59px on notch phones) pushed them onto the
+              avatar. */}
+          <button className="detail-close" style={{ top: 12 }} onClick={onClose}>×</button>
           <button
             className="detail-fav"
-            style={{ right: 60 }}
+            style={{ right: 60, top: 12 }}
             onClick={() => setMenuOpen((o) => !o)}
             aria-label="More options"
           >
@@ -162,7 +166,11 @@ export default function UserProfileView({ userId, onClose }) {
                 <p className="settings-desc">
                   {rel === 'friends'
                     ? 'No shows visible — they keep their history private.'
-                    : 'Add them as a friend to see their concert history.'}
+                    : rel === 'outgoing'
+                      ? "Friend request sent — you'll see their shows once they accept."
+                      : rel === 'incoming'
+                        ? 'Accept their request to see their concert history.'
+                        : 'Add them as a friend to see their concert history.'}
                 </p>
               ) : (
                 <div className="shows-list">

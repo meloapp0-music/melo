@@ -25,6 +25,11 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-16-preship-qa-pass.md` — shipped (next build) · 6-agent
+  pre-ship QA sweep: fixed a friendship-forge RLS hole (migration 0012),
+  cold-start infinite splash, friends-feed cross-account leak, missing
+  EULA at sign-up, a cluster of safe-area/nav-bar layout bugs, legal
+  draft banners + UGC clause, unblock UI, and a find-friends prompt.
 - `2026-06-14-social-feed-likes-comments.md` — shipped (next build) ·
   The social layer: reactions + comments on shows (with moderation),
   real-friend tagging → "going with" co-attendees in the feed (incl.

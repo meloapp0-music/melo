@@ -153,12 +153,6 @@ function Source({ name, purpose, license, href }) {
 function Privacy() {
   return (
     <div className="legal-section fade-in">
-      <p className="legal-draft-note">
-        <strong>Draft — pending legal review.</strong> The text below is
-        a developer-drafted starting point for App Store submission and
-        does not constitute legal advice.
-      </p>
-
       <h3>What we collect</h3>
       <p>
         When you create an account, we collect the email address you
@@ -241,12 +235,6 @@ function Privacy() {
 function Terms() {
   return (
     <div className="legal-section fade-in">
-      <p className="legal-draft-note">
-        <strong>Draft — pending legal review.</strong> The text below is
-        a developer-drafted starting point for App Store submission and
-        does not constitute legal advice.
-      </p>
-
       <h3>1. Use of the service</h3>
       <p>
         Melo is a personal concert-tracking app. By creating an account,
@@ -267,7 +255,19 @@ function Terms() {
         at any time.
       </p>
 
-      <h3>3. Third-party content</h3>
+      <h3>3. Community standards & objectionable content</h3>
+      <p>
+        Melo has <strong>zero tolerance for objectionable content and
+        abusive behavior.</strong> Comments, names, photos, and other
+        content must not be illegal, hateful, harassing, threatening,
+        sexually explicit, or infringing. You can report any comment and
+        block any user directly in the app. We review reports and will
+        remove violating content and suspend or terminate offending
+        accounts — typically within 24 hours. Using Melo to harass others
+        or post objectionable content will result in removal.
+      </p>
+
+      <h3>4. Third-party content</h3>
       <p>
         Setlists, lineup data, artist bios, song previews, and ticket
         listings come from the partners listed in the Attributions tab
@@ -275,7 +275,7 @@ function Terms() {
         this data and cannot guarantee it is accurate or current.
       </p>
 
-      <h3>4. Tickets and purchases</h3>
+      <h3>5. Tickets and purchases</h3>
       <p>
         When you tap "Tickets" on an event in Melo, you leave the app
         and complete the purchase on Ticketmaster's site. Melo is not a
@@ -283,7 +283,7 @@ function Terms() {
         transaction, refund, or dispute.
       </p>
 
-      <h3>5. No warranty</h3>
+      <h3>6. No warranty</h3>
       <p>
         Melo is provided "as is." We do our best to keep it running and
         accurate, but we don't warrant uninterrupted service or perfect
@@ -291,26 +291,26 @@ function Terms() {
         warranties.
       </p>
 
-      <h3>6. Limitation of liability</h3>
+      <h3>7. Limitation of liability</h3>
       <p>
         To the maximum extent allowed by law, Melo and its operators
         are not liable for indirect, incidental, or consequential
         damages arising from your use of the service.
       </p>
 
-      <h3>7. Termination</h3>
+      <h3>8. Termination</h3>
       <p>
         You may stop using Melo and delete your account at any time. We
         may suspend or terminate accounts that violate these terms.
       </p>
 
-      <h3>8. Changes</h3>
+      <h3>9. Changes</h3>
       <p>
         We may update these terms from time to time. Continued use of
         Melo after a change constitutes acceptance of the new terms.
       </p>
 
-      <h3>9. Contact</h3>
+      <h3>10. Contact</h3>
       <p>
         Questions? Email{' '}
         <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.

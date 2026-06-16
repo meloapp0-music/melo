@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, getYear, calculateStreak, isAttended, getWrappedYears, wrappedLabel } from '../store';
 import { MeloIcon } from '../components/MeloLogo';
@@ -19,6 +19,10 @@ export default function Profile() {
   const fileInputRef = useRef(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
+  // Fall back to the Melo logo if the avatar URL 404s (deleted object /
+  // flaky load) instead of a broken-image icon. Reset on URL change.
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => { setAvatarFailed(false); }, [profile?.avatarUrl]);
   const userId = session?.user?.id || null;
 
   const onAvatarPick = () => {
@@ -126,8 +130,13 @@ export default function Profile() {
           aria-label={profile?.avatarUrl ? 'Change profile picture' : 'Upload profile picture'}
           disabled={avatarUploading}
         >
-          {profile?.avatarUrl ? (
-            <img className="profile-avatar-img" src={profile.avatarUrl} alt="" />
+          {profile?.avatarUrl && !avatarFailed ? (
+            <img
+              className="profile-avatar-img"
+              src={profile.avatarUrl}
+              alt=""
+              onError={() => setAvatarFailed(true)}
+            />
           ) : (
             <MeloIcon size={80} rounded={true} />
           )}

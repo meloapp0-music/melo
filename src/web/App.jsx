@@ -5,6 +5,7 @@ import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
 import { registerForPush, onPushTap } from './lib/push';
+import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
 import { isGoing, daysUntil } from './store';
 import NavBar from './components/NavBar';
@@ -80,15 +81,22 @@ export default function App() {
   const hasCleanedLegacyRef = useRef(false);
 
   // ---- Load cloud data once signed in ----
+  // loadError + loadRetry drive a real error screen (instead of an
+  // infinite splash) when the initial fetch fails on a flaky network.
+  const [loadError, setLoadError] = useState(false);
+  const [loadRetry, setLoadRetry] = useState(0);
   useEffect(() => {
     if (session.status !== 'signedIn' || !userId) {
       setShows([]);
       setSettings({ setlistFmKey: '', hasSetlistFmKey: false });
       setProfile(null);
+      setLoadError(false);
+      resetFeedCache(); // don't leak A's friends feed to the next account
       return;
     }
     let cancelled = false;
     setDataLoading(true);
+    setLoadError(false);
     (async () => {
       try {
         const [p, s, sh] = await Promise.all([
@@ -111,12 +119,13 @@ export default function App() {
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[Melo] Failed to load cloud data', err);
+        if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setDataLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [session.status, userId]);
+  }, [session.status, userId, loadRetry]);
 
   // ---- Register for push notifications (iOS native only) ----
   // Fire once per signed-in session. registerForPush() no-ops on web
@@ -516,6 +525,21 @@ export default function App() {
     );
   }
 
+  // Initial fetch failed (flaky network) — show a real error + retry
+  // instead of stranding the user on the splash forever.
+  if (!profile && loadError && !dataLoading) {
+    return (
+      <div className="app-error">
+        <MeloIcon size={64} />
+        <h2 className="app-error-title">Couldn’t connect</h2>
+        <p className="app-error-sub">Check your connection and try again.</p>
+        <button className="app-error-retry" onClick={() => setLoadRetry((n) => n + 1)}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   // Profile still loading — the initial fetch hasn't returned yet
   if (!profile) {
     return <AppSplash />;
@@ -579,11 +603,13 @@ export default function App() {
             show={ratePrompt.show}
             daysAgo={-ratePrompt.d}
             onRate={() => {
-              // No snooze on the action path: rating flips the show to
-              // attended (candidate disappears on its own), and a
-              // same-day "TONIGHT" hype card for a back-to-back show
-              // can still surface afterward.
-              setLogEditTarget(ratePrompt.show);
+              // Snooze for the day on the action path too, so canceling
+              // out of the editor (without saving) doesn't immediately
+              // re-surface this same prompt. Rating still removes the
+              // candidate permanently; this only covers the cancel case.
+              const s = ratePrompt.show;
+              dismissRatePrompt();
+              setLogEditTarget(s);
             }}
             onClose={dismissRatePrompt}
           />

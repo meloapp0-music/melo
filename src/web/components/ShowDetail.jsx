@@ -347,12 +347,15 @@ export default function ShowDetail({ show, onClose }) {
             </button>
           )}
 
-          {/* Share this show — send the card to anyone; the footer QR
-              is their one-scan path to install + connect. */}
-          <button className="detail-share-btn" onClick={shareShow} disabled={sharing}>
-            <span aria-hidden="true">📣</span>
-            <span>{sharing ? 'Making your card…' : 'Share this show'}</span>
-          </button>
+          {/* Share this show — own shows only (the card says "I was
+              there / my rating", so sharing a friend's show would
+              misattribute it). The footer QR is the install loop. */}
+          {isOwner && (
+            <button className="detail-share-btn" onClick={shareShow} disabled={sharing}>
+              <span aria-hidden="true">📣</span>
+              <span>{sharing ? 'Making your card…' : 'Share this show'}</span>
+            </button>
+          )}
 
           {/* Reactions + comments — for your shows and friends' alike. */}
           <ShowSocial show={show} />

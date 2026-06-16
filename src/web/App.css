@@ -16,6 +16,7 @@
   --font-heading: 'Outfit', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --nav-height: 80px;
+  --green: #00A88C; /* the one "going / added" success green */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -1250,7 +1251,7 @@ h4 { font-size: 17px; }
    MY SHOWS
    ============================================ */
 .shows-header {
-  padding-top: 60px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
   margin-bottom: 16px;
 }
 
@@ -1642,8 +1643,11 @@ h4 { font-size: 17px; }
    ============================================ */
 .rank-battle {
   background: linear-gradient(165deg, #1a1218 0%, #2d1f2a 100%);
-  margin: -0px -20px;
-  padding: 60px 20px 30px;
+  /* Pull up to cancel the parent .page-top padding so the dark hero
+     still bleeds to the very top; its own safe-area padding clears the
+     status bar / Dynamic Island on all devices. */
+  margin: calc(-1 * (env(safe-area-inset-top, 0px) + 20px)) -20px 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 30px;
   position: relative;
   overflow: hidden;
 }
@@ -1858,7 +1862,7 @@ h4 { font-size: 17px; }
    CONCERT MAP
    ============================================ */
 .map-container {
-  padding-top: 60px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
   padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
 }
 
@@ -1867,8 +1871,10 @@ h4 { font-size: 17px; }
 }
 
 .map-wrap {
-  /* 210px accounts for the back button (~30px) now in .map-title. */
-  height: calc(100dvh - 210px);
+  /* Reserve the top chrome (safe-area + back/title ≈ 150px) AND the
+     floating nav bar + home indicator, so the map's bottom isn't hidden
+     behind the nav bar. */
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - 150px - var(--nav-height) - var(--safe-bottom));
   border-radius: 20px;
   overflow: hidden;
   margin: 0 20px;
@@ -3525,8 +3531,8 @@ h4 { font-size: 17px; }
   border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
-  background: rgba(45, 138, 86, 0.1);
-  color: var(--green, #2D8A56);
+  background: rgba(0, 168, 140, 0.1);
+  color: var(--green);
   letter-spacing: -0.01em;
 }
 
@@ -8228,3 +8234,109 @@ h4 { font-size: 17px; }
 .feedv2-like-emoji { font-size: 19px; line-height: 1; }
 .feedv2-like.active { color: var(--orange); }
 .feedv2-bar .feed-gotoo { margin-left: auto; }
+
+/* ===== Pre-ship QA: new states (find-friends, feed recency, app error,
+   auth agreement, blocked accounts) — 2026-06-16 ===== */
+.feed-find-friends {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px dashed rgba(232, 87, 58, 0.3);
+  border-radius: 16px;
+  background: rgba(232, 87, 58, 0.05);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.feed-find-friends:active { transform: scale(0.985); }
+.feed-find-icon { font-size: 26px; }
+.feed-find-body { flex: 1; min-width: 0; }
+.feed-find-title { font-family: var(--font-heading); font-weight: 800; font-size: 15px; color: var(--brown); }
+.feed-find-sub { font-size: 13px; color: var(--brown-muted); margin-top: 1px; }
+.feed-find-arrow { color: var(--orange); font-size: 18px; font-weight: 700; }
+
+/* Feed meta line: venue/date truncates, recency never does */
+.feed-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.feed-meta-row .feed-meta {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.feed-when {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brown-muted);
+}
+
+/* Cold-start connection-error screen */
+.app-error {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+.app-error-title {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brown);
+  margin: 14px 0 0;
+}
+.app-error-sub { color: var(--brown-muted); font-size: 14px; margin: 0; }
+.app-error-retry {
+  margin-top: 14px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sign-up terms/privacy agreement line */
+.auth-agree {
+  margin: 12px 4px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--brown-muted);
+  text-align: center;
+}
+.auth-agree a { color: var(--brown-light); font-weight: 600; text-decoration: underline; }
+
+/* Settings → Blocked accounts */
+.settings-blocked-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(61, 44, 30, 0.06);
+}
+.settings-blocked-row:last-child { border-bottom: none; }
+.settings-blocked-name { font-weight: 600; color: var(--brown); }
+.settings-unblock-btn {
+  border: 1px solid rgba(232, 87, 58, 0.3);
+  background: rgba(232, 87, 58, 0.06);
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

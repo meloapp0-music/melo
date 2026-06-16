@@ -88,7 +88,7 @@ export default function Rankings() {
   };
 
   return (
-    <div className="page">
+    <div className="page page-top">
       {/* Battle Section */}
       {attended.length >= 2 && pair && (
         <div className="rank-battle">

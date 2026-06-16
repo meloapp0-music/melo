@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { deleteMyAccount } from '../lib/db/account';
-import { checkUsernameAvailable } from '../lib/db/profiles';
+import { checkUsernameAvailable, getProfilesByIds } from '../lib/db/profiles';
+import { listBlocked, unblockUser } from '../lib/db/friendships';
 import { showsToCsv, showsToJson, deliverFile } from '../lib/exportShows';
 import { track } from '../lib/analytics';
 
@@ -382,6 +383,8 @@ export default function Settings() {
         </div>
       </div>
 
+      <BlockedAccounts />
+
       <div className="settings-section">
         <div className="settings-section-title">Your Data</div>
         <div className="settings-card">
@@ -518,6 +521,53 @@ export default function Settings() {
             Permanently removes your account and all data. Cannot be undone.
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Blocked accounts — the unblock surface (blocking lives in
+// UserProfileView; without this it was a one-way trap). Renders only
+// when you've blocked someone. Per the 2026-06-16 pre-ship QA pass.
+function BlockedAccounts() {
+  const [blocked, setBlocked] = useState(null); // null = loading
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const ids = await listBlocked();
+        if (ids.length === 0) { if (!cancelled) setBlocked([]); return; }
+        const profs = await getProfilesByIds(ids);
+        if (!cancelled) setBlocked(ids.map((id) => ({ id, profile: profs.get(id) || null })));
+      } catch {
+        if (!cancelled) setBlocked([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const unblock = async (id) => {
+    setBlocked((cur) => (cur || []).filter((b) => b.id !== id));
+    try { await unblockUser(id); } catch { /* best-effort */ }
+  };
+
+  if (!blocked || blocked.length === 0) return null;
+
+  return (
+    <div className="settings-section">
+      <div className="settings-section-title">Blocked accounts</div>
+      <div className="settings-card">
+        {blocked.map((b) => (
+          <div key={b.id} className="settings-blocked-row">
+            <span className="settings-blocked-name">
+              {b.profile?.displayName || b.profile?.username || 'Blocked user'}
+            </span>
+            <button className="settings-unblock-btn" onClick={() => unblock(b.id)}>
+              Unblock
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

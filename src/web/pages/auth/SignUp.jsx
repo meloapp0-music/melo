@@ -111,6 +111,13 @@ export default function SignUp({ onToggle }) {
           {busy ? 'Creating account…' : 'Create Account'}
         </button>
 
+        <p className="auth-agree">
+          By creating an account you agree to our{' '}
+          <a href="https://melo.show/terms" target="_blank" rel="noopener noreferrer">Terms</a>
+          {' '}and{' '}
+          <a href="https://melo.show/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+        </p>
+
         <div className="auth-footer">
           <button type="button" className="auth-link" onClick={onToggle}>
             Already have an account? <b>Sign in</b>
