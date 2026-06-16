@@ -324,6 +324,16 @@ export default function LogShow({ onClose, editingShow = null }) {
     // Don't close the dropdown — let the spinner show while we re-fetch.
   };
 
+  // Accept whatever the user typed as the band — the universal escape
+  // hatch so ANY artist (small/local/pop-up, in no database) can be
+  // selected, not just ones Setlist.fm/Deezer/Ticketmaster know about.
+  const pickTyped = () => {
+    setArtist(titleCase(artist.trim()));
+    setArtistOpen(false);
+    setShowResults([]);
+    setArtistMatches([]);
+  };
+
   const handleSubmit = async () => {
     if (!artist.trim()) return;
     const payload = {
@@ -765,6 +775,20 @@ export default function LogShow({ onClose, editingShow = null }) {
                       </span>
                     </div>
                   ) : null}
+                  {/* Universal "use what I typed" — always selectable so
+                      ANY band can be logged, even one in no database. */}
+                  <div
+                    className="log-show-item log-use-typed"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={pickTyped}
+                  >
+                    <span className="log-use-typed-check" aria-hidden="true">✓</span>
+                    <div className="log-show-item-main">
+                      <div className="log-show-item-title">Use “{titleCase(artist.trim())}”</div>
+                      <div className="log-show-item-meta">Log this band as you typed it</div>
+                    </div>
+                  </div>
+
                   <div className="log-show-attr">
                     Powered by {isFutureTab ? 'Deezer + Ticketmaster' : 'Setlist.fm'}
                   </div>

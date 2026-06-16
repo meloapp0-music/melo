@@ -8340,3 +8340,26 @@ h4 { font-size: 17px; }
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ===== LogShow: universal "use what I typed" artist row ===== */
+.log-use-typed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(232, 87, 58, 0.06);
+  border-top: 1px solid rgba(232, 87, 58, 0.12);
+}
+.log-use-typed-check {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+}
+.log-use-typed .log-show-item-title { color: var(--brown); font-weight: 700; }
