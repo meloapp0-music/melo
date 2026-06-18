@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { updateMyProfile, checkUsernameAvailable } from '../../lib/db/profiles';
 import { MeloIcon } from '../../components/MeloLogo';
+import TasteEditor from '../../components/TasteEditor';
 // Note: ImportFromCalendar import removed in v1.0 — the calendar
 // onboarding step is hidden until the underlying Capacitor plugin
 // (@ebarooni/capacitor-calendar) iOS bridge issue is resolved. The
@@ -16,9 +17,11 @@ export default function Onboarding({ onComplete }) {
   // Single-step flow in v1.0: profile only. Calendar import is
   // deferred to v1.1 (see note above).
 
+  const [step, setStep] = useState('profile'); // 'profile' | 'taste'
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [taste, setTaste] = useState({ genres: [], artists: [], city: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [available, setAvailable] = useState(null); // null | true | false
@@ -45,14 +48,24 @@ export default function Onboarding({ onComplete }) {
     return () => clearTimeout(t);
   }, [username]);
 
-  const canSubmit =
+  const canContinue =
     available === true &&
     displayName.trim().length > 0 &&
     !busy;
 
-  const submit = async (e) => {
+  // Step 1 just advances to the taste step — nothing is saved yet,
+  // because saving the (non-temp) username is what flips the user OUT
+  // of onboarding in App.jsx. So we save everything together at the end.
+  const goToTaste = (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canContinue) return;
+    setError('');
+    setStep('taste');
+  };
+
+  // Final save (with or without taste — Skip passes the empty taste).
+  const finish = async () => {
+    if (busy) return;
     setError('');
     setBusy(true);
     try {
@@ -60,9 +73,12 @@ export default function Onboarding({ onComplete }) {
         username: username.trim().toLowerCase(),
         displayName: displayName.trim(),
         avatarColor,
+        favGenres: taste.genres,
+        favArtists: taste.artists,
+        homeCity: taste.city,
       });
-      // App.jsx will re-fetch the profile (no longer a temp username)
-      // and unmount this page.
+      // App.jsx re-fetches the profile (no longer a temp username) and
+      // unmounts this page.
       onComplete?.();
     } catch (err) {
       setError(err.message || 'Could not save profile');
@@ -70,13 +86,43 @@ export default function Onboarding({ onComplete }) {
     }
   };
 
+  // ----- Step 2: music taste -----
+  if (step === 'taste') {
+    return (
+      <div className="page auth-page">
+        <div className="auth-brand" style={{ justifyContent: 'center' }}>
+          <MeloIcon size={64} />
+        </div>
+        <div className="auth-form">
+          <h1 className="auth-title">Your music taste</h1>
+          <p className="auth-sub">
+            So we can tell you when artists you love play your city — and
+            tune your Discover feed. You can change this anytime.
+          </p>
+
+          <TasteEditor value={taste} onChange={setTaste} />
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button className="settings-save-btn" type="button" onClick={finish} disabled={busy}>
+            {busy ? 'Saving…' : 'Finish'}
+          </button>
+          <button className="auth-link" type="button" onClick={finish} disabled={busy} style={{ marginTop: 10 }}>
+            Skip for now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----- Step 1: handle + name -----
   return (
     <div className="page auth-page">
       <div className="auth-brand" style={{ justifyContent: 'center' }}>
         <MeloIcon size={64} />
       </div>
 
-      <form className="auth-form" onSubmit={submit}>
+      <form className="auth-form" onSubmit={goToTaste}>
         <h1 className="auth-title">Pick your handle</h1>
         <p className="auth-sub">Friends will find you by username. You can change it later.</p>
 
@@ -131,8 +177,8 @@ export default function Onboarding({ onComplete }) {
 
         {error && <div className="auth-error">{error}</div>}
 
-        <button className="settings-save-btn" type="submit" disabled={!canSubmit}>
-          {busy ? 'Saving…' : 'Continue'}
+        <button className="settings-save-btn" type="submit" disabled={!canContinue}>
+          Continue
         </button>
       </form>
     </div>

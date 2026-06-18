@@ -14,6 +14,9 @@ function fromRow(row) {
     bio: row.bio || '',
     isSearchable: row.is_searchable !== false,
     showsVisibility: row.shows_visibility || 'friends',
+    favGenres: row.fav_genres || [],
+    favArtists: row.fav_artists || [],
+    homeCity: row.home_city || '',
     createdAt: row.created_at,
   };
 }
@@ -67,6 +70,9 @@ export async function updateMyProfile(patch) {
   if ('bio' in patch) row.bio = patch.bio || '';
   if ('isSearchable' in patch) row.is_searchable = !!patch.isSearchable;
   if ('showsVisibility' in patch) row.shows_visibility = patch.showsVisibility;
+  if ('favGenres' in patch) row.fav_genres = Array.isArray(patch.favGenres) ? patch.favGenres : [];
+  if ('favArtists' in patch) row.fav_artists = Array.isArray(patch.favArtists) ? patch.favArtists : [];
+  if ('homeCity' in patch) row.home_city = (patch.homeCity || '').trim() || null;
 
   const { data, error } = await supabase
     .from('profiles')

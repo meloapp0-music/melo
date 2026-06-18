@@ -92,17 +92,45 @@ serve(async (_req) => {
     agg.set(r.user_id, a);
   }
 
+  // Explicit taste from onboarding/settings. This is what lets a
+  // BRAND-NEW user (zero logged shows) still get "artist in your city"
+  // alerts from day one, and lets any user's chosen home city override
+  // the city we'd otherwise infer from their attended shows.
+  const { data: profRows } = await admin
+    .from('profiles')
+    .select('id, fav_artists, home_city');
+  const prefs = new Map<string, { favArtists: string[]; homeCity: string }>();
+  for (const p of profRows || []) {
+    const fav = Array.isArray(p.fav_artists) ? p.fav_artists.filter(Boolean) : [];
+    const hc = (p.home_city || '').trim();
+    if (fav.length > 0 || hc) prefs.set(p.id, { favArtists: fav, homeCity: hc });
+  }
+
   // Resolve each user's home city + finalize watch list + going shows.
-  // byUser: user_id -> { homeCity, artists, going }
+  // byUser: user_id -> { homeCity, artists, going }. Union of users with
+  // shows-derived signal and users with explicit taste.
   const byUser = new Map<string, { homeCity: string; artists: string[]; going: GoingShow[] }>();
-  for (const [u, a] of agg) {
-    if (a.watch.size === 0 && a.going.length === 0) continue;
-    let homeCity = '';
+  for (const u of new Set<string>([...agg.keys(), ...prefs.keys()])) {
+    const a = agg.get(u);
+    const p = prefs.get(u);
+    let inferredCity = '';
     let best = 0;
-    for (const [c, n] of a.cityCounts) {
-      if (n > best) { best = n; homeCity = c; }
+    if (a) {
+      for (const [c, n] of a.cityCounts) {
+        if (n > best) { best = n; inferredCity = c; }
+      }
     }
-    byUser.set(u, { homeCity, artists: [...a.watch], going: a.going });
+    const homeCity = p?.homeCity || inferredCity;
+    // Taste-derived favorites only power "artist in YOUR CITY" alerts —
+    // so only watch them when we actually have a city. Otherwise they'd
+    // fire global "just announced a tour" pushes for passively-liked
+    // artists. Shows-derived `watch` (wishlist/going/loved) keeps its
+    // existing global behavior since those are explicit actions.
+    const favForWatch = homeCity ? (p?.favArtists || []) : [];
+    const artists = [...new Set([...(a?.watch || []), ...favForWatch])];
+    const going = a?.going || [];
+    if (artists.length === 0 && going.length === 0) continue;
+    byUser.set(u, { homeCity, artists, going });
   }
 
   // Pull device tokens once.

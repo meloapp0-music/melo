@@ -19,7 +19,21 @@ const today = () => {
 };
 
 export default function Home() {
-  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
+  const { shows, dayStamp, profile, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
+
+  // One-time nudge to set music taste (existing users never saw the
+  // onboarding step). Drives the "artist in your city" alerts + Discover.
+  const [tasteDismissed, setTasteDismissed] = useState(() => {
+    try { return !!localStorage.getItem('melo_taste_dismissed'); } catch { return false; }
+  });
+  const showTastePrompt = !!profile &&
+    (profile.favGenres?.length || 0) === 0 &&
+    (profile.favArtists?.length || 0) === 0 &&
+    !tasteDismissed;
+  const dismissTaste = () => {
+    try { localStorage.setItem('melo_taste_dismissed', '1'); } catch {}
+    setTasteDismissed(true);
+  };
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
   const artists = new Set(attended.map((s) => s.artist));
@@ -143,6 +157,17 @@ export default function Home() {
 
   return (
     <div className="page">
+      {showTastePrompt && (
+        <div className="taste-prompt fade-in">
+          <button className="taste-prompt-x" onClick={dismissTaste} aria-label="Dismiss">×</button>
+          <div className="taste-prompt-icon" aria-hidden="true">🎧</div>
+          <div className="taste-prompt-body">
+            <div className="taste-prompt-title">Tell us your music taste</div>
+            <div className="taste-prompt-sub">Get a heads-up when artists you love play your city.</div>
+          </div>
+          <button className="taste-prompt-cta" onClick={() => navigate('settings')}>Set it up →</button>
+        </div>
+      )}
       <div className="home-hero">
         <div className="home-brand-row">
           <MeloIcon size={32} />

@@ -8363,3 +8363,149 @@ h4 { font-size: 17px; }
   font-size: 14px;
 }
 .log-use-typed .log-show-item-title { color: var(--brown); font-weight: 700; }
+
+/* ===== Music taste editor (onboarding + settings) ===== */
+.taste-editor { margin: 6px 0 4px; }
+.taste-label {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--brown);
+  margin: 16px 0 8px;
+}
+.taste-editor .taste-label:first-child { margin-top: 4px; }
+.taste-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.taste-genre {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(61, 44, 30, 0.14);
+  background: #fff;
+  color: var(--brown);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.taste-genre.active {
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  border-color: transparent;
+  color: #fff;
+}
+.taste-genre:active { transform: scale(0.96); }
+
+.taste-artist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.taste-artist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 999px;
+  background: rgba(232, 87, 58, 0.1);
+  color: var(--brown);
+  font-weight: 600;
+  font-size: 13px;
+}
+.taste-artist-chip button {
+  border: none;
+  background: rgba(61, 44, 30, 0.12);
+  color: var(--brown);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.taste-artist-search { position: relative; }
+.taste-artist-results {
+  margin-top: 6px;
+  border: 1px solid rgba(61, 44, 30, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+.taste-artist-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid rgba(61, 44, 30, 0.05);
+  background: #fff;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brown);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.taste-artist-result:last-child { border-bottom: none; }
+.taste-artist-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  flex: 0 0 30px;
+}
+.taste-use-typed { color: var(--orange); }
+.taste-hint {
+  font-size: 12px;
+  color: var(--brown-muted);
+  margin: 8px 0 0;
+}
+
+/* ===== Home: music-taste re-prompt card ===== */
+.taste-prompt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(244,162,97,0.16), rgba(232,87,58,0.1));
+  box-shadow: var(--shadow-sm);
+}
+.taste-prompt-x {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: none;
+  color: var(--brown-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.taste-prompt-icon { font-size: 26px; }
+.taste-prompt-body { flex: 1; min-width: 0; padding-right: 14px; }
+.taste-prompt-title { font-family: var(--font-heading); font-weight: 800; font-size: 15px; color: var(--brown); }
+.taste-prompt-sub { font-size: 13px; color: var(--brown-light); margin-top: 1px; }
+.taste-prompt-cta {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
