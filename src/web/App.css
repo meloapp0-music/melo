@@ -8597,6 +8597,7 @@ h4 { font-size: 17px; }
 .sc-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 25px; height: 25px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(61,44,30,0.25); transition: transform .2s cubic-bezier(0.34,1.56,0.64,1); }
 .sc-sw.on { background: var(--orange); }
 .sc-sw.on::after { transform: translateX(21px); }
+.sc-sw:disabled { opacity: 0.4; cursor: default; }
 
 .sc-modal-scrim { position: absolute; inset: 0; z-index: 7; background: rgba(12,8,5,0.55); animation: scFade .2s ease; }
 .sc-modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; border-radius: 22px; overflow-y: auto; background: var(--bg); padding: 20px 22px 22px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); animation: scPop .24s cubic-bezier(0.22,1,0.36,1); }

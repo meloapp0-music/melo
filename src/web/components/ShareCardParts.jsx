@@ -2,6 +2,7 @@
 // Ported from the design handoff; the QR is a real code (qrcode lib) not a mock.
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { vibeStyle } from '../store';
 
 const OUTFIT = "'Outfit', sans-serif";
 // Same install target the existing exporter uses (lib/shareCard.js).
@@ -68,6 +69,48 @@ export function MoreLink({ n, label, color, size, pad, ls = '0.03em', onMore }) 
       paddingTop: pad, cursor: onMore ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent' }}>
       + {n} {label}
       <span style={{ fontSize: '1.05em', opacity: 0.7 }}>›</span>
+    </div>
+  );
+}
+
+// Solid / tinted vibe chips.
+export function VibeRow({ vibes, solid, size = 30, style = {} }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, ...style }}>
+      {(vibes || []).map((v) => {
+        const s = vibeStyle(v);
+        const color = s.color || '#E8573A';
+        return (
+          <span key={v} style={{
+            fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: size,
+            padding: `${Math.round(size * 0.42)}px ${Math.round(size * 0.78)}px`, borderRadius: 999,
+            color: solid ? '#fff' : color,
+            background: solid ? color : (s.bg || 'rgba(255,255,255,0.14)'),
+            border: solid ? 'none' : `2px solid ${color}`,
+            boxShadow: solid ? `0 8px 22px ${color}55` : 'none',
+            whiteSpace: 'nowrap',
+          }}>{v}</span>
+        );
+      })}
+    </div>
+  );
+}
+
+// Footer lockup: QR + scan copy. compact variant for corners.
+export function ScanLockup({ size = 150, dark = '#3D2C1E', textColor = '#3D2C1E',
+                            sub = 'rgba(61,44,30,0.6)', align = 'row', handle }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 22,
+                  flexDirection: align === 'col' ? 'column' : 'row' }}>
+      <QrCode size={size} dark={dark} />
+      <div style={{ textAlign: align === 'col' ? 'center' : 'left' }}>
+        <div style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: 28,
+                      color: textColor, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+          Scan to get Melo
+        </div>
+        <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: 23,
+                      color: sub, marginTop: 4 }}>melo.show{handle ? ` · @${handle}` : ''}</div>
+      </div>
     </div>
   );
 }

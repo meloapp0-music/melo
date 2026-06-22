@@ -1,16 +1,26 @@
 // Share-view shell — the full-screen "share your show" experience.
-// Auto-generates a card, scales the fixed 1080 canvas to fit, and floats a dock
-// (Customize + Share to your story) clear of the card's QR. Phase 1: Vibe style.
+// Auto-picks a style, scales the fixed 1080 canvas to fit, floats a dock clear of
+// the card's QR, and exports the real card to a PNG for share-to-story.
 import { useEffect, useRef, useState } from 'react';
+import { toPng } from 'html-to-image';
+import { shareBlob } from '../lib/shareCard';
+import { getShareFontCss } from '../lib/shareCardKit';
 import ShareCardVibe from './ShareCardVibe';
-import { shareShowCard } from '../lib/shareCard';
+import ShareCardPoster from './ShareCardPoster';
+import ShareCardMarquee from './ShareCardMarquee';
+import ShareCardPlayer from './ShareCardPlayer';
+import ShareCardTicket from './ShareCardTicket';
 
+const CARD = {
+  vibe: ShareCardVibe, poster: ShareCardPoster, marquee: ShareCardMarquee,
+  player: ShareCardPlayer, ticket: ShareCardTicket,
+};
 const STYLES = [
   { key: 'vibe', name: 'Vibe', mini: 'Mood + setlist' },
-  { key: 'poster', name: 'Poster', mini: 'Soon' },
-  { key: 'marquee', name: 'Marquee', mini: 'Soon' },
-  { key: 'player', name: 'Player', mini: 'Soon' },
-  { key: 'ticket', name: 'Ticket', mini: 'Soon' },
+  { key: 'poster', name: 'Poster', mini: 'Photo gig' },
+  { key: 'marquee', name: 'Marquee', mini: 'In lights' },
+  { key: 'player', name: 'Player', mini: 'Now playing' },
+  { key: 'ticket', name: 'Ticket', mini: 'Collectible' },
 ];
 const THEMES = [
   { key: 'vibe', name: 'Vibe', sw: 'linear-gradient(135deg,#4B7BE5,#D65DB1)' },
@@ -23,11 +33,21 @@ const FLAG_DEFS = [
   { key: 'date', label: 'Date' }, { key: 'venue', label: 'Venue' }, { key: 'rating', label: 'Rating' },
 ];
 
+// Smart auto-pick: a show with photos opens photo-forward (Poster); otherwise the
+// generative Vibe card, tinted by the show's own logged vibes.
+function autoPick(show) {
+  const hasPhotos = (show.photos || []).length > 0;
+  return hasPhotos
+    ? { style: 'poster', photos: true, theme: 'artist' }
+    : { style: 'vibe', photos: false, theme: 'vibe' };
+}
+
 export default function ShareCardView({ show, handle, onShared, onClose }) {
-  // Smart auto-pick (Phase 1 = the no-photo Vibe path, tinted by the show's vibes).
-  const [style, setStyle] = useState('vibe');
+  const pick = autoPick(show);
+  const [style, setStyle] = useState(pick.style);
   const [format, setFormat] = useState('9x16');
-  const [theme, setTheme] = useState('vibe');
+  const [theme, setTheme] = useState(pick.theme);
+  const [photos, setPhotos] = useState(pick.photos);
   const [anim, setAnim] = useState(true);
   const [flags, setFlags] = useState({ vibes: true, setlist: true, date: true, venue: true, rating: false });
   const [scale, setScale] = useState(0.32);
@@ -36,8 +56,11 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
   const [sharing, setSharing] = useState(false);
   const [toast, setToast] = useState('');
   const stageRef = useRef(null);
+  const exportRef = useRef(null);
 
   const cardW = 1080, cardH = format === '9x16' ? 1920 : 1080;
+  const Card = CARD[style] || ShareCardVibe;
+  const hasPhotos = (show.photos || []).length > 0;
 
   useEffect(() => {
     const el = stageRef.current; if (!el) return;
@@ -59,11 +82,21 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
     if (sharing) return;
     setSharing(true);
     try {
-      // Interim: the existing canvas exporter. New-card raster export is a follow-up.
-      const ok = await shareShowCard(show, handle);
+      const node = exportRef.current;
+      let ok = false;
+      if (node) {
+        // Rasterize the real card from a hidden full-size (1080) copy, with the
+        // brand fonts pre-embedded so the PNG isn't system-font fallback.
+        const fontEmbedCSS = await getShareFontCss();
+        const dataUrl = await toPng(node, { width: cardW, height: cardH, pixelRatio: 1,
+          backgroundColor: '#110C07', fontEmbedCSS });
+        const blob = await (await fetch(dataUrl)).blob();
+        const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
+        ok = await shareBlob(blob, `melo-${slug}.png`, `${show.artist} — I was there`);
+      }
       if (ok) { onShared?.(); setToast('Shared to your story ✨'); }
     } catch {
-      setToast('Could not share — try again');
+      setToast('Could not make the image — try again');
     } finally {
       setSharing(false);
       setTimeout(() => setToast(''), 2200);
@@ -71,8 +104,16 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
   };
 
   // Re-mount the card on these so entrance animations replay.
-  const cardKey = style + theme + format + anim + JSON.stringify(flags);
+  const cardKey = style + theme + format + photos + anim + JSON.stringify(flags);
   const setlist = show.setlist || [];
+
+  // The card (shared by preview + the hidden export node). Export uses anim=false
+  // so the captured frame is the final, fully-revealed state.
+  const renderCard = (forExport) => (
+    <Card show={show} theme={theme} format={format} photos={photos} flags={flags}
+      anim={forExport ? false : anim} handle={handle}
+      onMore={forExport ? undefined : () => setFullList(true)} />
+  );
 
   return (
     <div className="sc-overlay">
@@ -87,8 +128,7 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
         <div className="sc-frame" style={{ width: cardW * scale, height: cardH * scale }}>
           <div style={{ width: cardW, height: cardH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
             <div key={cardKey} style={{ position: 'absolute', inset: 0 }}>
-              <ShareCardVibe show={show} theme={theme} format={format} flags={flags}
-                anim={anim} handle={handle} onMore={() => setFullList(true)} />
+              {renderCard(false)}
             </div>
           </div>
         </div>
@@ -99,7 +139,7 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
             <span style={{ fontSize: 17 }}>✨</span> Customize
           </button>
           <button className="sc-primary" onClick={doShare} disabled={sharing}>
-            {sharing ? 'Sharing…' : 'Share to your story'}
+            {sharing ? 'Making your card…' : 'Share to your story'}
           </button>
         </div>
 
@@ -141,10 +181,23 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
                 <div className="sc-seg col3">
                   {STYLES.map((s) => (
                     <button key={s.key} className={'sc-seg-btn' + (s.key === style ? ' on' : '')}
-                      disabled={s.key !== 'vibe'} onClick={() => s.key === 'vibe' && setStyle(s.key)}>
+                      onClick={() => setStyle(s.key)}>
                       {s.name}<span className="mini">{s.mini}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div className="sc-group">
+                <div className="sc-switch-row">
+                  <div>
+                    <div className="t">Use my photos</div>
+                    <div className="d">{hasPhotos
+                      ? (photos ? 'Showing your show photos' : 'Off — generative artwork')
+                      : 'No photos on this show'}</div>
+                  </div>
+                  <button className={'sc-sw' + (photos ? ' on' : '')} disabled={!hasPhotos}
+                    onClick={() => hasPhotos && setPhotos((p) => !p)} aria-label="Toggle photos" />
                 </div>
               </div>
 
@@ -196,6 +249,13 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
         )}
 
         {toast && <div className="sc-toast">{toast}</div>}
+      </div>
+
+      {/* hidden full-size (1080) copy used only for PNG export */}
+      <div ref={exportRef} aria-hidden="true"
+        style={{ position: 'fixed', left: -99999, top: 0, width: cardW, height: cardH,
+                 pointerEvents: 'none', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0 }}>{renderCard(true)}</div>
       </div>
     </div>
   );

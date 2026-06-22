@@ -372,8 +372,8 @@ export async function shareShowCard(show, handle) {
 
 // --- Share plumbing (shared) ---
 // Native share sheet (Web Share API with a file) on iOS; download
-// fallback elsewhere.
-async function shareBlob(blob, filename, title) {
+// fallback elsewhere. Exported so the redesigned share card can reuse it.
+export async function shareBlob(blob, filename, title) {
   if (!blob) return false;
   const file = new File([blob], filename, { type: 'image/png' });
 

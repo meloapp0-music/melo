@@ -7,7 +7,7 @@ type: project
 # Share Card Redesign
 
 - Started: 2026-06-22
-- Status: in-progress
+- Status: shipped
 - Last updated: 2026-06-22
 
 ## Context
@@ -67,6 +67,19 @@ new-card raster export.
   preview (Vibe card + customize sheet render correctly); `npm run build` clean.
   Interim: "Share to your story" calls the existing `shareShowCard` exporter until
   new-card raster export lands.
+- 2026-06-22: **All five styles + real export shipped.** Added `ShareCardPoster`,
+  `ShareCardMarquee`, `ShareCardPlayer`, `ShareCardTicket`, and `ShareCardPhotos`
+  (renders `show.photos` in hero/stack/grid with a generative fallback).
+  `ShareCardView` now switches all five styles, has a "Use my photos" toggle, and
+  real smart auto-pick (photos → Poster/artist, else → Vibe). Replaced the interim
+  exporter with **real raster export**: `html-to-image` rasterizes a hidden
+  full-size (1080) copy of the card, and `getShareFontCss()` pre-embeds Outfit/DM
+  Sans (woff2 inlined as data-URIs) so the PNG uses the real fonts instead of a
+  system fallback — then `shareBlob` posts it. Exported `shareBlob` from
+  `lib/shareCard.js`; added `html-to-image` dep. All five verified rendering in the
+  dev preview incl. photo paths; export runs clean (no console errors, fonts
+  fetchable + embedded). `npm run build` clean. Feature is functionally complete;
+  photos come from the show's existing `photos[]` (no in-card upload needed).
 
 ## Open questions / follow-ups
 - New-card raster export (dom-to-image vs an off-screen canvas re-render) — needed

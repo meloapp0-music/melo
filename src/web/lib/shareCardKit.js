@@ -70,3 +70,29 @@ export function themeField(theme, show) {
       };
   }
 }
+
+// Build a self-contained @font-face stylesheet (woff2 inlined as data-URIs) for
+// the share-card fonts, so html-to-image embeds the real Outfit/DM Sans into the
+// exported PNG. We fetch Google Fonts ourselves (CORS-allowed) instead of letting
+// html-to-image read document.styleSheets (cross-origin cssRules is blocked).
+let _shareFontCss = null;
+export async function getShareFontCss() {
+  if (_shareFontCss != null) return _shareFontCss;
+  const url = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Outfit:wght@300;400;700;800&display=swap';
+  try {
+    const css = await (await fetch(url)).text();
+    const urls = [...new Set([...css.matchAll(/url\((https:\/\/[^)]+\.woff2)\)/g)].map((m) => m[1]))];
+    const inline = {};
+    await Promise.all(urls.map(async (u) => {
+      const buf = await (await fetch(u)).arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      inline[u] = `data:font/woff2;base64,${btoa(bin)}`;
+    }));
+    _shareFontCss = css.replace(/url\((https:\/\/[^)]+\.woff2)\)/g, (_, u) => `url(${inline[u] || u})`);
+  } catch {
+    _shareFontCss = ''; // fall back to system fonts rather than failing the export
+  }
+  return _shareFontCss;
+}
