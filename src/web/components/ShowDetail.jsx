@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl, fetchShowWeather, fetchEventStartTime, appleMapsUrl, venuePolicySearchUrl } from '../api';
-import { shareShowCard } from '../lib/shareCard';
 import { track } from '../lib/analytics';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 import ShowSocial from './ShowSocial';
+import ShareCardView from './ShareCardView';
 
 // Rough "how long ago" label for the pre-show card. Years once it's
 // been 12+ months, otherwise months. Good enough for "you last saw
@@ -33,20 +33,10 @@ export default function ShowDetail({ show, onClose }) {
   const isOwner = !show.userId || show.userId === profile?.id;
 
   // Share this show — canvas card via the native share sheet. Status
-  // (was-there vs going) is enum-only in analytics; never artist names.
-  const [sharing, setSharing] = useState(false);
-  const shareShow = async () => {
-    if (sharing) return;
-    setSharing(true);
-    try {
-      // shareBlob returns false when the user dismisses the share
-      // sheet — only count completed shares.
-      const ok = await shareShowCard(show, profile?.username);
-      if (ok) track('show_card_shared', { status: getShowStatus(show) });
-    } finally {
-      setSharing(false);
-    }
-  };
+  // The redesigned share flow opens the full-screen ShareCardView builder, which
+  // owns the export + share-to-story. The share event (status enum only, never
+  // artist names) is logged via onShared when a post completes.
+  const [shareCardOpen, setShareCardOpen] = useState(false);
 
   // Status upgrade — local mirror so the button reflects the change
   // instantly (the parent holds `selectedShow` as a separate object).
@@ -351,10 +341,18 @@ export default function ShowDetail({ show, onClose }) {
               there / my rating", so sharing a friend's show would
               misattribute it). The footer QR is the install loop. */}
           {isOwner && (
-            <button className="detail-share-btn" onClick={shareShow} disabled={sharing}>
+            <button className="detail-share-btn" onClick={() => setShareCardOpen(true)}>
               <span aria-hidden="true">📣</span>
-              <span>{sharing ? 'Making your card…' : 'Share this show'}</span>
+              <span>Share this show</span>
             </button>
+          )}
+          {isOwner && shareCardOpen && (
+            <ShareCardView
+              show={show}
+              handle={profile?.username}
+              onShared={() => track('show_card_shared', { status: getShowStatus(show) })}
+              onClose={() => setShareCardOpen(false)}
+            />
           )}
 
           {/* Reactions + comments — for your shows and friends' alike. */}
