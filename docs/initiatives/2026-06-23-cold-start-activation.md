@@ -44,8 +44,13 @@ Design verified against the approved mockup: progress bar, green-tick done rows
 - ✅ **First-show reward** (shipped 2026-06-23): after the very first `addShow`,
   the share card auto-opens with a celebratory "Your first Melo card 🎉" header —
   the Showgoer "you collected a stub" dopamine, and the start of the sharing loop.
-- **Smart empty states** (not built): teach instead of showing blank feed/Up Next.
-- **One-time pulse** on the + (Log) tab (not built) so the first action is unmissable.
+- ✅ **Smart empty states** (2026-06-23): the friends feed already had a "Find your
+  friends on Melo" teaching card (FriendsFeed `noFriends` branch). Gated it on
+  `shows.length > 0` so brand-new users aren't double-prompted — Get Started owns the
+  "add friends" nudge until they've logged a show, then the feed card earns its place.
+- ✅ **One-time + pulse** (2026-06-23): the Log (+) nav button gently pulses an ember
+  ring (3×, reduced-motion-safe, on a `::after` so the drop shadow is preserved) until
+  the user logs their first show.
 
 ## Changes made
 - 2026-06-23: Initiative created. Built the Get Started checklist.

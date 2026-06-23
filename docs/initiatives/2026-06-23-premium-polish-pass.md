@@ -77,6 +77,10 @@ The handoff is an HTML/JSX prototype assuming one shared `ShowCard` +
   ~57–60°, so a few name-hashes (e.g. Tame Impala, Vampire Weekend) render olive-gold
   rather than ember. Kept as-is per the handoff's "match the math exactly" directive;
   tighten the h2 ceiling if an all-red/orange look is preferred. Not committed yet.
+- 2026-06-23: **Resolved** — capped `h2` at 44° (`Math.min(…, 44)`) so the
+  formerly-olive high-hash artists (Tame Impala, Vampire Weekend) now read warm
+  amber-gold; this also makes the implementation match the README's stated 8–44°
+  intent. Verified in preview.
 
 ## Open questions / follow-ups
 - The letter-art watermark + photo-base layering is applied to the main poster

@@ -238,6 +238,10 @@ export default function FriendsFeed() {
   // No friends yet → a discoverable prompt instead of a dead-end null,
   // so the whole social feature isn't invisible from Home.
   if (noFriends) {
+    // Brand-new users (no shows yet) get the "add friends" nudge from the
+    // Home Get Started checklist — don't double-prompt here. Once they've
+    // logged a show, the feed is relevant and this teaching card earns its place.
+    if (shows.length === 0) return null;
     return (
       <div className="feed-section fade-in">
         <button type="button" className="feed-find-friends" onClick={() => navigate('buddies')}>

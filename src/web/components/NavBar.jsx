@@ -49,8 +49,10 @@ const tabs = [
 ];
 
 export default function NavBar() {
-  const { tab, subPage, navigate } = useApp();
+  const { tab, subPage, navigate, shows } = useApp();
   const activeKey = subPage || tab;
+  // First-run nudge: gently pulse the + until the user logs their first show.
+  const firstTime = (shows?.length || 0) === 0;
 
   return (
     <nav className="nav-bar">
@@ -58,7 +60,7 @@ export default function NavBar() {
         {tabs.map((t) =>
           t.id === 'plus' ? (
             <div key="plus" className="nav-plus-slot">
-              <button className="nav-plus" onClick={() => navigate('log')} aria-label="Log a show">
+              <button className={`nav-plus${firstTime ? ' nav-plus-pulse' : ''}`} onClick={() => navigate('log')} aria-label="Log a show">
                 <svg viewBox="0 0 24 24">
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />

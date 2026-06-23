@@ -109,8 +109,8 @@ export function getArtistGradient(name = '') {
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const h1 = 8 + Math.abs(hash % 36);                 // 8–44°: ember red → gold
-  const h2 = h1 + 8 + Math.abs((hash >> 8) % 10);     // a touch warmer 2nd stop
+  const h1 = 8 + Math.abs(hash % 36);                 // 8–43°: ember red → gold
+  const h2 = Math.min(h1 + 8 + Math.abs((hash >> 8) % 10), 44); // warmer 2nd stop, capped before olive/yellow
   const s1 = 46 + Math.abs((hash >> 4) % 26);         // 46–72%: rich, never neon
   const l1 = 30 + Math.abs((hash >> 6) % 12);         // 30–42%: deep for legibility
   return `linear-gradient(150deg, hsl(${h1} ${s1}% ${l1}%), hsl(${h2} ${Math.min(s1 + 8, 82)}% ${Math.max(l1 - 9, 20)}%))`;
