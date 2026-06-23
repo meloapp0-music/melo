@@ -3,6 +3,16 @@
 Running log of the major pieces of work on Melo. Newest first. One line per
 initiative. See `CLAUDE.md` in the repo root for the full process.
 
+## Current roadmap (as of 2026-06-23)
+
+| Build | Theme | Scope |
+|---|---|---|
+| **v1.2.2** ✅ live | demo-account / login fix | shipped to the App Store |
+| **v1.3** ⏳ ready to build | new-user experience — "ready to market" | share-card redesign · Get Started onboarding + first-show reward · premium polish pass (all built). Plan: `2026-06-23-v1-3-release.md`. |
+| **v1.4** 📋 planned | stickier & more accessible | comparative-rating · going social loops (invite-on-going + friends-going push) · home-screen widget · Live Activities (Show Day) · Sign in with Apple/Google · dark mode · Add to Calendar · public share pages · accessibility (Dynamic Type) |
+
+_The "Release sequence (as of 2026-05-08)" table below is historical — kept for reference; the roadmap above supersedes it._
+
 ## Release sequence (as of 2026-05-08)
 
 | Version | Theme | Initiatives | ETA |
@@ -25,6 +35,13 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-23-v1-3-release.md` — in-progress · the 1.3 build plan: ships the already-built new-user experience (share cards, Get Started, first-show reward, polish); comparative-rating + going loops deferred to 1.4. Includes the ship checklist (version bump + backend deploys).
+- `2026-06-23-social-auth.md` — planned (1.4) · Sign in with Apple/Google to kill the email + 8-digit-OTP signup friction. The biggest accessibility/conversion win for new users.
+- `2026-06-23-going-social-loops.md` — planned (1.4) · invite-on-going (SMS invite when you mark Going) + "friends going this weekend" push — the network-effect wedge Showgoer lacks; held from the lean 1.3.
+- `2026-06-23-public-share-pages.md` — planned (1.4) · public web pages for shared shows/profiles (OG previews + install CTA) so the share loop becomes reach + SEO. RLS-safe read surface only; also the home for the share-card QR deep-link.
+- `2026-06-23-live-activities-show-day.md` — planned (1.4) · iOS Live Activity / Dynamic Island countdown on Show Day. Native ActivityKit; pairs with the home-screen widget.
+- `2026-06-23-add-to-calendar.md` — planned (1.4) · one-tap Add to Calendar for Going shows via a generated .ics + share sheet (the Capacitor calendar plugin has an iOS bug).
+- `2026-06-23-accessibility-dynamic-type.md` — planned (1.4) · Dynamic Type (text currently fixed-px) + VoiceOver labels + contrast/touch-target pass.
 - `2026-06-23-cold-start-activation.md` — in-progress · first-run "starting navigation": a Get Started checklist on Home (log a show → add friends → turn on alerts) that ticks off against real state and hides when done. Replaces the old zero-show block + taste prompt. Borrows Showgoer's "obvious first move," adapted to Melo's social wedge.
 - `2026-06-23-premium-polish-pass.md` — shipped · finish-level visual upgrade (color/depth/imagery/motion, no layout change): warm-only fallback gradient app-wide, letter-art watermark + shadow on posters, photo-over-gradient base, richer home hero, sign-in ember halo + transform-only entrance motion.
 - `2026-06-22-share-card-redesign.md` — shipped · redesigned "share your show" card: 5 styles (Vibe/Poster/Marquee/Player/Ticket) + a Share-view builder (smart auto-pick, customize sheet, photos, +N-more popover) + real PNG export (html-to-image with embedded Outfit/DM Sans). Opens from a show's Share button.
