@@ -25,6 +25,8 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-06-23-cold-start-activation.md` — in-progress · first-run "starting navigation": a Get Started checklist on Home (log a show → add friends → turn on alerts) that ticks off against real state and hides when done. Replaces the old zero-show block + taste prompt. Borrows Showgoer's "obvious first move," adapted to Melo's social wedge.
+- `2026-06-23-premium-polish-pass.md` — shipped · finish-level visual upgrade (color/depth/imagery/motion, no layout change): warm-only fallback gradient app-wide, letter-art watermark + shadow on posters, photo-over-gradient base, richer home hero, sign-in ember halo + transform-only entrance motion.
 - `2026-06-22-share-card-redesign.md` — shipped · redesigned "share your show" card: 5 styles (Vibe/Poster/Marquee/Player/Ticket) + a Share-view builder (smart auto-pick, customize sheet, photos, +N-more popover) + real PNG export (html-to-image with embedded Outfit/DM Sans). Opens from a show's Share button.
 - `2026-06-16-preship-qa-pass.md` — shipped (next build) · 6-agent
   pre-ship QA sweep: fixed a friendship-forge RLS hole (migration 0012),

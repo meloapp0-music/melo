@@ -98,16 +98,22 @@ export function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-export function getArtistGradient(name) {
+// Deterministic per-name fallback gradient for un-photographed shows,
+// avatars, and detail heroes. The hue is constrained to the warm brand
+// band (8–44°: ember red → amber → gold) so a wall of fallback posters
+// stays in-family with the cream palette instead of reading as a
+// saturated rainbow of placeholders. Saturation stays rich-but-not-neon
+// and lightness deep enough for white text + the dark scrim.
+export function getArtistGradient(name = '') {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const h1 = Math.abs(hash % 360);
-  const h2 = (h1 + 35 + Math.abs((hash >> 8) % 20)) % 360;
-  const s1 = 55 + Math.abs((hash >> 4) % 25);
-  const l1 = 35 + Math.abs((hash >> 6) % 15);
-  return `linear-gradient(135deg, hsl(${h1}, ${s1}%, ${l1}%), hsl(${h2}, ${s1 + 10}%, ${l1 - 5}%))`;
+  const h1 = 8 + Math.abs(hash % 36);                 // 8–44°: ember red → gold
+  const h2 = h1 + 8 + Math.abs((hash >> 8) % 10);     // a touch warmer 2nd stop
+  const s1 = 46 + Math.abs((hash >> 4) % 26);         // 46–72%: rich, never neon
+  const l1 = 30 + Math.abs((hash >> 6) % 12);         // 30–42%: deep for legibility
+  return `linear-gradient(150deg, hsl(${h1} ${s1}% ${l1}%), hsl(${h2} ${Math.min(s1 + 8, 82)}% ${Math.max(l1 - 9, 20)}%))`;
 }
 
 // Build a Ticketmaster search URL for a logged show (Wishlist or Going).

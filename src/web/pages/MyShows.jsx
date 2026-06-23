@@ -43,9 +43,12 @@ export default function MyShows() {
 
   const bgStyle = (artist) => {
     const img = getArtistImage(artist);
+    const grad = getArtistGradient(artist);
+    // Gradient is always the base layer so a slow or failed photo never
+    // leaves a blank card; the artist photo (if any) sits on top of it.
     return img
-      ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { background: getArtistGradient(artist) };
+      ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
+      : { background: grad };
   };
 
   return (
@@ -155,6 +158,11 @@ export default function MyShows() {
               onClick={() => setSelectedShow(show)}
             >
               <div className="show-poster-bg" style={bgStyle(show.artist)} />
+              {!getArtistImage(show.artist) && (
+                <div className="poster-letter" aria-hidden="true">
+                  {(show.artist || '?').trim().charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="show-poster-overlay" />
               {show.isFavorite && (
                 <div className="show-poster-fav" aria-hidden="true">★</div>

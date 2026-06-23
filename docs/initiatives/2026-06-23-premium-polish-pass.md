@@ -1,0 +1,87 @@
+---
+name: Premium Polish Pass
+description: Finish-level visual upgrade (color/depth/imagery/motion only — no layout or data changes) to move the app from "flat placeholder" to "premium ticket-stub drawer." From the design_handoff_melo_polish handoff.
+type: project
+---
+
+# Premium Polish Pass
+
+- Started: 2026-06-23
+- Status: shipped
+- Last updated: 2026-06-23
+
+## Context
+A design handoff (`~/Downloads/design_handoff_melo_polish/`) specifies a
+finish-level visual upgrade to the home + poster surfaces. **No layout,
+navigation, or data-model changes** — color, depth, imagery, and motion only.
+Goal: move the app from "flat placeholder" to "premium ticket-stub drawer."
+This is the polish step the user wanted done *before* building the Showgoer-style
+first-run "starting navigation" (see [[cold-start-activation]]).
+
+Five changes in the handoff README:
+1. **Warm-only fallback gradient** (the headline — recolors every poster/avatar/
+   hero app-wide from one helper).
+2. **Letter-art watermark + soft shadow** on fallback poster cards.
+3. **Real photos layered over the gradient as a base layer** (a slow/failed image
+   never leaves a blank card).
+4. **Richer home hero** (warm corner glow + the stat card overlapping the wash).
+5. **Two touches**: ember halo behind the sign-in lockup; gentle transform-only
+   entrance motion; button label `white-space: nowrap`.
+
+## How it maps to the real app (confirmed by exploration)
+The handoff is an HTML/JSX prototype assuming one shared `ShowCard` +
+`nameGradient`. The real app differs:
+- The fallback gradient helper is **`getArtistGradient(name)` in `src/web/store.js`**
+  (not `nameGradient`). One edit there recolors every surface (Home, MyShows,
+  Profile, Artists, Songs, Rankings, Map, Wrapped, ShowDetail hero, friend feed…).
+- There is **no shared `ShowCard`** — each page inlines the poster pattern with a
+  local `bgStyle(artist)` helper + CSS classes (`.home-show-card`, `.home-top-card`,
+  `.show-poster`, `.upnext-card`, …). So Changes 2 & 3 are applied to the primary
+  poster surfaces (Home rail + Top Rated + My Shows grid) rather than one component.
+- Tokens that exist: `--card-radius`, `--shadow-sm/md/lg`, `--bg`, `--orange`,
+  `--amber`, `--brown*`. The handoff's `--gradient-hero` / `--scrim-poster` /
+  `--ease-out` do **not** exist → inline the literal values, layered over the app's
+  existing washes.
+- The README's "detail-hero crashed on a missing `nameGradient`" bug does **not**
+  exist here — `ShowDetail.jsx` already uses `getArtistGradient(show.artist)`. Change 1
+  improves it for free.
+
+## Changes made
+- 2026-06-23: Initiative created. Implementing all five changes.
+- 2026-06-23: **All five shipped (in code).** Verified via `npm run build` (clean)
+  and the dev preview.
+  - **Change 1** — `store.js` `getArtistGradient` rewritten to the warm-band math
+    (hue 8–44°, `linear-gradient(150deg, …)`). Recolors every fallback poster,
+    avatar, and detail hero app-wide. Verified: sample name-hashes all resolve to
+    warm hues (h ≈ 13–58°) — no more full-spectrum rainbow. Left the share-card
+    `nameStops` (shareCardKit.js) alone — it intentionally uses full-spectrum mesh.
+  - **Change 2** — letter-art watermark + soft shadow. New shared `.poster-letter`
+    / `.poster-letter--lg` CSS (no z-index, sits above the bg layer and below the
+    scrim in both z-indexed Home cards and plain-stacking My Shows posters). Added
+    the ghosted initial to `.home-show-card` (Home rail), `.home-top-card` (Top
+    Rated), and `.show-poster` (My Shows grid) when the show has no photo. Added
+    `box-shadow: var(--shadow-sm)` to `.home-show-card` (was none); `.show-poster`
+    already had `--shadow-md`.
+  - **Change 3** — photo over gradient base. `bgStyle()` in Home.jsx + MyShows.jsx
+    now returns `background: url(photo) center/cover, <gradient>` so the warm
+    gradient is always the base layer and a slow/failed image never blanks a card.
+  - **Change 4** — richer home hero. `.home-hero`: added the warm corner-glow
+    radial over the existing wash + bottom padding 36→52px. `.home-stats`: overlap
+    margin-top −18→−34px so the stat card laps up into the wash.
+  - **Change 5** — `.auth-page` ember-halo radial (verified on the sign-in screen);
+    `@keyframes melo-rise` (transform-only) + a `prefers-reduced-motion`-gated
+    staggered entrance on `.page > *`; `white-space: nowrap` on `.settings-save-btn`.
+  - Tokens that didn't exist in the real app (`--gradient-hero`, `--scrim-poster`,
+    `--ease-out`) were inlined as literals layered over the app's existing washes.
+- 2026-06-23: **Caveat** — the handoff's exact h2 math (`h1 + 8 + [0..9]`) can reach
+  ~57–60°, so a few name-hashes (e.g. Tame Impala, Vampire Weekend) render olive-gold
+  rather than ember. Kept as-is per the handoff's "match the math exactly" directive;
+  tighten the h2 ceiling if an all-red/orange look is preferred. Not committed yet.
+
+## Open questions / follow-ups
+- The letter-art watermark + photo-base layering is applied to the main poster
+  surfaces (Home `.home-show-card` + `.home-top-card`, MyShows `.show-poster`).
+  Other inline cards (Artists/Songs/Rankings/Profile/Map grids) still get the new
+  warm gradient (Change 1) but not the watermark — extend later if wanted.
+- Next: build the cold-start "starting navigation" (the reason this polish was
+  sequenced first).

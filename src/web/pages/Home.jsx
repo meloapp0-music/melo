@@ -9,6 +9,7 @@ import {
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
 import { MeloIcon } from '../components/MeloLogo';
 import FriendsFeed from '../components/FriendsFeed';
+import GetStarted from '../components/GetStarted';
 
 // Day-precision local midnight; safer than `new Date()` for relative
 // "is this date in the past" comparisons against `YYYY-MM-DD` strings.
@@ -19,21 +20,8 @@ const today = () => {
 };
 
 export default function Home() {
-  const { shows, dayStamp, profile, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
+  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
 
-  // One-time nudge to set music taste (existing users never saw the
-  // onboarding step). Drives the "artist in your city" alerts + Discover.
-  const [tasteDismissed, setTasteDismissed] = useState(() => {
-    try { return !!localStorage.getItem('melo_taste_dismissed'); } catch { return false; }
-  });
-  const showTastePrompt = !!profile &&
-    (profile.favGenres?.length || 0) === 0 &&
-    (profile.favArtists?.length || 0) === 0 &&
-    !tasteDismissed;
-  const dismissTaste = () => {
-    try { localStorage.setItem('melo_taste_dismissed', '1'); } catch {}
-    setTasteDismissed(true);
-  };
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
   const artists = new Set(attended.map((s) => s.artist));
@@ -139,9 +127,12 @@ export default function Home() {
 
   const bgStyle = (artist) => {
     const img = getArtistImage(artist);
+    const grad = getArtistGradient(artist);
+    // Gradient is always the base layer so a slow or failed photo never
+    // leaves a blank card; the artist photo (if any) sits on top of it.
     return img
-      ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { background: getArtistGradient(artist) };
+      ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
+      : { background: grad };
   };
 
   const handleAddWishlist = (ev, e) => {
@@ -157,17 +148,6 @@ export default function Home() {
 
   return (
     <div className="page">
-      {showTastePrompt && (
-        <div className="taste-prompt fade-in">
-          <button className="taste-prompt-x" onClick={dismissTaste} aria-label="Dismiss">×</button>
-          <div className="taste-prompt-icon" aria-hidden="true">🎧</div>
-          <div className="taste-prompt-body">
-            <div className="taste-prompt-title">Tell us your music taste</div>
-            <div className="taste-prompt-sub">Get a heads-up when artists you love play your city.</div>
-          </div>
-          <button className="taste-prompt-cta" onClick={() => navigate('settings')}>Set it up →</button>
-        </div>
-      )}
       <div className="home-hero">
         <div className="home-brand-row">
           <MeloIcon size={32} />
@@ -180,52 +160,10 @@ export default function Home() {
         </p>
       </div>
 
-      {/* First-run guidance — only renders for users with zero shows of
-          any status. Disappears the moment they log anything. Three
-          parallel paths so different mental models all find a way in:
-          log one manually, bulk-import past shows from Calendar (iOS
-          only), or browse upcoming festivals to wishlist. */}
-      {shows.length === 0 && (
-        <div className="home-firstrun fade-in">
-          <h2 className="home-firstrun-title">Pick your way in</h2>
-          <p className="home-firstrun-sub">
-            Melo gets better with every show you log. Start anywhere.
-          </p>
-          <div className="home-firstrun-cards">
-            <button
-              type="button"
-              className="home-firstrun-card"
-              onClick={() => navigate('log')}
-            >
-              <div className="home-firstrun-icon" aria-hidden="true">🎤</div>
-              <div className="home-firstrun-card-title">Log a show</div>
-              <div className="home-firstrun-card-desc">
-                Past or future. Score it, add a photo, save the story.
-              </div>
-            </button>
-
-            {/* Calendar-import card hidden in v1.0 — the underlying
-                Capacitor plugin (@ebarooni/capacitor-calendar 8.0.1)
-                fails on iOS with "requestReadOnlyCalendarAccess is not
-                implemented" even with all Info.plist permission strings
-                in place. Re-enable for v1.1 after swapping plugins or
-                upgrading to a fixed version. The page + JS lib are
-                still in the repo, just unreachable from the UI. */}
-
-            <button
-              type="button"
-              className="home-firstrun-card"
-              onClick={() => navigate('festivals')}
-            >
-              <div className="home-firstrun-icon" aria-hidden="true">🎪</div>
-              <div className="home-firstrun-card-title">Browse festivals</div>
-              <div className="home-firstrun-card-desc">
-                See what’s coming up near you and stake out your wishlist.
-              </div>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* First-run "starting navigation" — a 3-step activation checklist
+          that ticks off against real state and vanishes once complete.
+          Subsumes the old zero-show block + the music-taste prompt. */}
+      <GetStarted />
 
       {/* Up Next — going shows within the week. Full-width hero cards,
           countdown-first, with Tickets + Details. The imminent shows
@@ -448,9 +386,16 @@ export default function Home() {
             <button className="home-see-all" onClick={() => navigate('shows')}>See All</button>
           </div>
           <div className="home-scroll">
-            {recent.map((show) => (
+            {recent.map((show) => {
+              const img = getArtistImage(show.artist);
+              return (
               <div key={show.id} className="home-show-card" onClick={() => setSelectedShow(show)}>
                 <div className="home-show-card-bg" style={bgStyle(show.artist)} />
+                {!img && (
+                  <div className="poster-letter" aria-hidden="true">
+                    {(show.artist || '?').trim().charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="home-show-card-overlay" />
                 <div className="home-show-card-score">{Math.round(show.score)}</div>
                 <div className="home-show-card-info">
@@ -458,7 +403,8 @@ export default function Home() {
                   <div className="home-show-card-venue">{show.venue}</div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -501,6 +447,11 @@ export default function Home() {
           <div className="home-section-title"><h3>Top Rated</h3></div>
           <div className="home-top-card" onClick={() => setSelectedShow(topRated)}>
             <div className="gradient-bg" style={bgStyle(topRated.artist)} />
+            {!getArtistImage(topRated.artist) && (
+              <div className="poster-letter poster-letter--lg" aria-hidden="true">
+                {(topRated.artist || '?').trim().charAt(0).toUpperCase()}
+              </div>
+            )}
             <div className="home-top-overlay" />
             <div className="home-top-score">{Math.round(topRated.score)}</div>
             <div className="home-top-info">

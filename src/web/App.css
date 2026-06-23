@@ -240,8 +240,10 @@ h4 { font-size: 17px; }
   /* Top padding = status bar height + breathing room, so the cream
      gradient extends edge-to-edge but the MeloIcon + greeting clear
      the time/dynamic island. */
-  padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 36px;
-  background: linear-gradient(165deg, rgba(244, 162, 97, 0.15) 0%, rgba(232, 87, 58, 0.08) 50%, transparent 100%);
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 52px;
+  background:
+    radial-gradient(120% 90% at 16% 0%, rgba(232, 87, 58, 0.12), transparent 58%),
+    linear-gradient(165deg, rgba(244, 162, 97, 0.15) 0%, rgba(232, 87, 58, 0.08) 50%, transparent 100%);
   position: relative;
   overflow: hidden;
 }
@@ -348,7 +350,9 @@ h4 { font-size: 17px; }
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-md);
   padding: 18px 8px;
-  margin: -18px 4px 24px;
+  /* Pull the stat card up so it overlaps the bottom of the hero wash
+     (premium layered feel) instead of sitting in a separate band. */
+  margin: -34px 4px 24px;
   position: relative;
   z-index: 2;
 }
@@ -428,6 +432,7 @@ h4 { font-size: 17px; }
   overflow: hidden;
   cursor: pointer;
   scroll-snap-align: start;
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -3749,6 +3754,7 @@ h4 { font-size: 17px; }
   font-family: var(--font-heading);
   font-weight: 700;
   font-size: 15px;
+  white-space: nowrap;
   cursor: pointer;
   margin-top: 10px;
   transition: all 0.2s ease;
@@ -4979,7 +4985,11 @@ h4 { font-size: 17px; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(180deg, #FFFBF5 0%, #FDF3E7 100%);
+  /* Soft ember halo behind the lockup so the first screen reads as
+     designed, not a flat cream wall. */
+  background:
+    radial-gradient(120% 52% at 50% 2%, rgba(232, 87, 58, 0.14), rgba(244, 162, 97, 0.05) 42%, transparent 62%),
+    linear-gradient(180deg, #FFFBF5 0%, #FDF3E7 100%);
 }
 
 .auth-brand {
@@ -8622,3 +8632,164 @@ h4 { font-size: 17px; }
 @keyframes scUp { from { transform: translateY(40px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
 @keyframes scPop { from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes scToast { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* ── Premium polish pass (2026-06-23) ──────────────────────────────────
+   Ghosted artist-initial "letter art" behind the scrim on fallback
+   (no-photo) poster cards — premium texture à la Apple Music. Rendered
+   right after the card's background layer and carries NO z-index of its
+   own so it lands above the gradient but below the dark scrim in both
+   the z-indexed Home cards and the plain-stacking My Shows posters. */
+.poster-letter {
+  position: absolute;
+  right: -4px;
+  bottom: 26px;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 124px;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.poster-letter--lg {
+  right: -8px;
+  bottom: 34px;
+  font-size: 210px;
+}
+
+/* Gentle staggered entrance for screen content — transform only, never
+   opacity, so content stays visible even if the animation is throttled.
+   Skipped entirely under prefers-reduced-motion. */
+@keyframes melo-rise { from { transform: translateY(12px); } to { transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .page > * { animation: melo-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .page > *:nth-child(2) { animation-delay: 0.05s; }
+  .page > *:nth-child(3) { animation-delay: 0.10s; }
+  .page > *:nth-child(4) { animation-delay: 0.15s; }
+  .page > *:nth-child(5) { animation-delay: 0.20s; }
+  .page > *:nth-child(n+6) { animation-delay: 0.24s; }
+}
+
+/* ── Get Started — first-run activation checklist on Home ──────────────
+   One unified card (replaces the old zero-show block + taste prompt).
+   Steps tick off against real state; the whole card hides when done. */
+.gs-card {
+  position: relative;
+  margin: 4px 0 24px;
+  padding: 18px 18px 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(244, 162, 97, 0.08));
+  border: 1px solid rgba(232, 87, 58, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(232, 87, 58, 0.08);
+}
+.gs-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  font-size: 21px;
+  line-height: 1;
+  color: var(--brown-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gs-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-right: 26px;
+}
+.gs-title {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--brown);
+}
+.gs-count {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--brown-muted);
+}
+.gs-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(61, 44, 30, 0.08);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.gs-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber), var(--orange));
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gs-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.gs-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(232, 87, 58, 0.10);
+  border-radius: 14px;
+  transition: opacity 0.3s ease;
+}
+.gs-step.done { opacity: 0.55; }
+.gs-step-icon {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: rgba(232, 87, 58, 0.10);
+}
+.gs-step.done .gs-step-icon {
+  background: var(--green);
+  color: #fff;
+  font-weight: 800;
+}
+.gs-step-body { flex: 1; min-width: 0; }
+.gs-step-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
+  color: var(--brown);
+}
+.gs-step.done .gs-step-title { text-decoration: line-through; }
+.gs-step-desc {
+  font-size: 12px;
+  color: var(--brown-muted);
+  line-height: 1.35;
+  margin-top: 1px;
+}
+.gs-step-cta {
+  flex: 0 0 auto;
+  border: none;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.gs-step-cta:active { transform: scale(0.97); }
