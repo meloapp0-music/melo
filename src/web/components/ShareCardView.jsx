@@ -42,7 +42,7 @@ function autoPick(show) {
     : { style: 'vibe', photos: false, theme: 'vibe' };
 }
 
-export default function ShareCardView({ show, handle, onShared, onClose }) {
+export default function ShareCardView({ show, handle, onShared, onClose, firstRun = false }) {
   const pick = autoPick(show);
   const [style, setStyle] = useState(pick.style);
   const [format, setFormat] = useState('9x16');
@@ -120,7 +120,7 @@ export default function ShareCardView({ show, handle, onShared, onClose }) {
       <div className="sc-stage" ref={stageRef}>
         <div className="sc-topbar">
           <button className="sc-close" onClick={onClose} aria-label="Close">✕</button>
-          <span className="sc-title">Share your show</span>
+          <span className="sc-title">{firstRun ? 'Your first Melo card 🎉' : 'Share your show'}</span>
           <span style={{ width: 38 }} />
         </div>
 

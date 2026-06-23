@@ -40,13 +40,12 @@ and the standalone music-taste prompt). Three steps, each ticking off against
 Design verified against the approved mockup: progress bar, green-tick done rows
 (strikethrough + dimmed), ember CTA pills, Melo cream/ember styling.
 
-### Follow-ups deferred from this first cut (not built yet)
-- **First-show reward**: after the very first log, auto-open the share card
-  ("here's your first Melo card") — the Showgoer "you collected a stub" dopamine,
-  which doubles as the viral loop. (Share card already exists — see
-  [[share-card-redesign]].)
-- **Smart empty states**: teach instead of showing blank feed/Up Next.
-- **One-time pulse** on the + (Log) tab so the first action is unmissable.
+### Follow-ups
+- ✅ **First-show reward** (shipped 2026-06-23): after the very first `addShow`,
+  the share card auto-opens with a celebratory "Your first Melo card 🎉" header —
+  the Showgoer "you collected a stub" dopamine, and the start of the sharing loop.
+- **Smart empty states** (not built): teach instead of showing blank feed/Up Next.
+- **One-time pulse** on the + (Log) tab (not built) so the first action is unmissable.
 
 ## Changes made
 - 2026-06-23: Initiative created. Built the Get Started checklist.
@@ -60,6 +59,14 @@ Design verified against the approved mockup: progress bar, green-tick done rows
   Added `.gs-*` styles to `App.css`. `npm run build` clean; card verified rendering
   against the real CSS in the dev preview. (Festival-discovery entry point is
   preserved by the existing "Discover shows" CTA lower on Home.)
+- 2026-06-23: **First-show reward shipped (in code).** `App.jsx` `addShow` now
+  detects the user's very first logged show (captured before the await; guarded by
+  a `melo_first_card_shown` localStorage flag so it fires once ever) and, 700ms
+  later (after the log UI settles), opens `ShareCardView` with a new `firstRun`
+  prop → "Your first Melo card 🎉" header. Mounted globally beside ShowDetail;
+  the rate-prompt/hype moment-cards are gated with `!firstCardShow` so nothing
+  collides. Fires `first_show_logged` + `first_show_card_shared` analytics. Build
+  clean; HMR clean.
 
 ## Open questions / follow-ups
 - Build the three deferred follow-ups above (first-show reward is the highest-value).

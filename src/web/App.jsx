@@ -10,6 +10,7 @@ import { identify, resetAnalytics, track } from './lib/analytics';
 import { isGoing, daysUntil } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
+import ShareCardView from './components/ShareCardView';
 import HypeCard from './components/HypeCard';
 import RatePromptCard from './components/RatePromptCard';
 import ShowComparison from './components/ShowComparison';
@@ -69,6 +70,8 @@ export default function App() {
   // lands directly in the score/vibes editor with all fields prefilled.
   const [logEditTarget, setLogEditTarget] = useState(null);
   const [selectedShow, setSelectedShow] = useState(null);
+  // The very-first-logged-show celebration: auto-opens the share card once.
+  const [firstCardShow, setFirstCardShow] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [subPage, setSubPage] = useState(null);
   const [artistImages, setArtistImages] = useState({});
@@ -337,9 +340,23 @@ export default function App() {
   // ---- Mutation helpers (optimistic; reconcile with server result) ----
   const addShow = async (show) => {
     if (!userId) return null;
+    // Capture before the await: is this the user's very first show?
+    const isFirstEver = shows.length === 0;
     try {
       const created = await showsDb.createShow(show, userId);
       setShows((prev) => [created, ...prev]);
+      // Celebrate the first logged show with its share card — the "here's
+      // your first Melo card" moment (and the start of the sharing loop).
+      // Fires exactly once per user, after the log UI has settled.
+      if (isFirstEver && created) {
+        let shown = false;
+        try { shown = !!localStorage.getItem('melo_first_card_shown'); } catch {}
+        if (!shown) {
+          try { localStorage.setItem('melo_first_card_shown', '1'); } catch {}
+          track('first_show_logged');
+          setTimeout(() => setFirstCardShow(created), 700);
+        }
+      }
       return created;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -576,6 +593,15 @@ export default function App() {
         {selectedShow && (
           <ShowDetail show={selectedShow} onClose={() => setSelectedShow(null)} />
         )}
+        {firstCardShow && (
+          <ShareCardView
+            show={firstCardShow}
+            handle={profile?.username}
+            firstRun
+            onShared={() => track('first_show_card_shared')}
+            onClose={() => setFirstCardShow(null)}
+          />
+        )}
         {selectedUserId && (
           <UserProfileView
             userId={selectedUserId}
@@ -598,7 +624,7 @@ export default function App() {
             notification deep-link is about to land somewhere else.
             Rate prompt outranks hype; one card max per day. */}
         {ratePrompt && !pushNav && !selectedShow && !showLog && !logEditTarget &&
-          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && (
+          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
           <RatePromptCard
             show={ratePrompt.show}
             daysAgo={-ratePrompt.d}
@@ -615,7 +641,7 @@ export default function App() {
           />
         )}
         {!ratePrompt && hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
-          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && (
+          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
           <HypeCard show={hype.show} daysLeft={hype.d} onClose={dismissHype} />
         )}
         <NavBar />
