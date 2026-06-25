@@ -65,7 +65,7 @@ export function QrCode({ size = 168, dark = '#3D2C1E', light = '#fff', radius = 
 export function MoreLink({ n, label, color, size, pad, ls = '0.03em', onMore }) {
   return (
     <div onClick={onMore} style={{ display: 'inline-flex', alignItems: 'center', gap: 7,
-      fontFamily: OUTFIT, fontWeight: 700, fontSize: size, color, letterSpacing: ls,
+      fontFamily: OUTFIT, fontWeight: 700, fontSize: size, color, letterSpacing: 'normal',
       paddingTop: pad, cursor: onMore ? 'pointer' : 'default', WebkitTapHighlightColor: 'transparent' }}>
       + {n} {label}
       <span style={{ fontSize: '1.05em', opacity: 0.7 }}>›</span>

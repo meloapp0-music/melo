@@ -107,6 +107,16 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
     return () => ro.disconnect();
   }, [cardW, cardH]);
 
+  // Pre-warm every brand-font weight the instant the share view opens, so they're
+  // all cached long before the user taps Share. html2canvas paints any not-yet-
+  // loaded face in a fallback → mis-aligned / collapsed text on export.
+  useEffect(() => {
+    if (!document.fonts?.load) return;
+    ['600 1em Outfit', '700 1em Outfit', '800 1em Outfit',
+     '500 1em "DM Sans"', '600 1em "DM Sans"', '700 1em "DM Sans"']
+      .forEach((f) => { document.fonts.load(f).catch(() => {}); });
+  }, []);
+
   const toggleFlag = (k) => setFlags((f) => ({ ...f, [k]: !f[k] }));
 
   const doShare = async () => {
@@ -134,6 +144,10 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
           img.complete ? null
             : img.decode ? img.decode().catch(() => {})
             : new Promise((r) => { img.onload = img.onerror = r; })));
+        // Give the iOS webview a beat to actually PAINT the freshly-loaded fonts
+        // before we rasterize — document.fonts.load can resolve a frame too early
+        // there, and html2canvas reads glyph metrics straight from the live layout.
+        await new Promise((r) => { requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))); });
         // Rasterize with html2canvas (NOT html-to-image): it paints the DOM to a
         // canvas directly, without the SVG <foreignObject> that the iOS WKWebView
         // renders blank — so the user's actual chosen card STYLE exports on device.
