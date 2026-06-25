@@ -90,6 +90,15 @@ The handoff is an HTML/JSX prototype assuming one shared `ShowCard` +
   (left an explanatory note in App.css). The rest of Change 5 (auth/sign-in ember
   halo, button `nowrap`) and every other change are unaffected. ⚠️ The animation
   also shipped in the **in-review 1.3 build**, so this fix must ride a new build.
+- 2026-06-24: **Real NavBar fix (the `.page > *` removal did NOT fix it).** On
+  device the bottom nav still floated into the middle on scroll; it tests fine in
+  desktop Chromium, so the bug is **iOS WKWebView-specific**. Actual fix: (1)
+  **portal the NavBar to `document.body`** (out of `.app`, which has
+  `overflow-x: hidden` — iOS mis-positions fixed elements inside overflow/scroll
+  ancestors), and (2) **remove the nav's `backdrop-filter`** (a `position:fixed`
+  element with backdrop-filter is another known iOS detach trigger) — the bar is
+  now near-solid cream (`rgba(250,248,245,0.96)`) instead of frosted. Pending
+  device confirmation; restore the frosted look later if it proves stable.
 
 ## Open questions / follow-ups
 - The letter-art watermark + photo-base layering is applied to the main poster

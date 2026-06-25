@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useApp } from '../App';
 
 const tabs = [
@@ -54,7 +55,12 @@ export default function NavBar() {
   // First-run nudge: gently pulse the + until the user logs their first show.
   const firstTime = (shows?.length || 0) === 0;
 
-  return (
+  // Render the fixed bottom bar at <body> level (a portal), OUTSIDE the .app
+  // wrapper. iOS WKWebView detaches position:fixed elements when an ancestor
+  // has overflow / backdrop-filter (.app has overflow-x:hidden), making the bar
+  // float into the middle on scroll. Portaling to body removes that ancestor
+  // interference so it stays pinned to the viewport bottom.
+  return createPortal(
     <nav className="nav-bar">
       <div className="nav-tabs">
         {tabs.map((t) =>
@@ -81,6 +87,7 @@ export default function NavBar() {
           )
         )}
       </div>
-    </nav>
+    </nav>,
+    document.body,
   );
 }
