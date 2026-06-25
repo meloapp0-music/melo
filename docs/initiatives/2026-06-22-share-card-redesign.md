@@ -134,6 +134,22 @@ new-card raster export.
   instantly there — so the fix targets the confirmed mechanism rather than a repro'd
   failure.)
 
+- 2026-06-25: **Made font loading bulletproof for export (build 28).** After build 27,
+  device exports still showed the font race in *other* spots — collapsed setlist rows
+  (a fallback face's line box shrinks, so adjacent rows overlap) and a raised letter in
+  "+18 more" (letter-spaced text renders glyph-by-glyph). Confirmed it's NOT a
+  deterministic html2canvas bug by rendering the Poster in the dev preview: pixel-clean,
+  even rows, clean "+18 more" — so the glitch only happens when fonts aren't loaded at
+  capture, i.e. the iOS race (never reproduces in Chromium). Reinforced `doShare`:
+  (1) pre-warm every weight on share-view *mount* (head start before the tap);
+  (2) after `document.fonts.load()` + `ready`, wait 2 rAF + 200ms so the iOS webview
+  actually paints the faces before html2canvas reads glyph metrics; (3) dropped the
+  letter-spacing on the MoreLink "+N more" (build 27 missed it). Commit 9ad6159.
+  ⚠️ **Unverifiable on desktop** (no race in Chromium). If build 28 *still* glitches on
+  device, html2canvas + iOS font timing is effectively intractable, and the fallback is
+  to draw the shared card with the native-canvas renderer (`renderShowCard` in
+  `lib/shareCard.js` — no font race, but simpler styling than the 5 html2canvas styles).
+
 ## Open questions / follow-ups
 - New-card raster export (dom-to-image vs an off-screen canvas re-render) — needed
   before "Share to your story" posts the actual new design. Until then it falls
