@@ -8,7 +8,7 @@ type: project
 
 - Started: 2026-06-22
 - Status: shipped
-- Last updated: 2026-06-22
+- Last updated: 2026-06-25
 
 ## Context
 A design handoff (`~/Downloads/design_handoff_share_card/`) replaces the old flat
@@ -80,6 +80,25 @@ new-card raster export.
   dev preview incl. photo paths; export runs clean (no console errors, fonts
   fetchable + embedded). `npm run build` clean. Feature is functionally complete;
   photos come from the show's existing `photos[]` (no in-card upload needed).
+
+- 2026-06-25: **Fixed: on iOS the export always fell back to the plain card.**
+  `html-to-image` rasterizes via an SVG `<foreignObject>`, which the iOS WKWebView
+  paints blank — so the on-device blank-detect (`isBlankImage`, added with the
+  black-screen fix) always tripped and every share fell back to the simple
+  canvas card (`renderShowCard`), never the user's chosen style (reported from a
+  TestFlight build with a screenshot of the plain "I WAS THERE" fallback). Swapped
+  the rasterizer in `ShareCardView.doShare` to **`html2canvas`** (paints the DOM to
+  canvas directly — no foreignObject) and dropped the now-unused `getShareFontCss`
+  font-embed. Verified in the dev preview that html2canvas reproduces the real
+  `ShareCardVibe` **pixel-faithfully at 1080×1920**: rendered the live component into
+  an off-screen native-size node (the exact shape of the hidden export node) and
+  diffed the raster against the live DOM — indistinguishable. (A first attempt
+  captured a `transform: scale()`-wrapped node and squashed; html2canvas mis-measures
+  scaled ancestors — the real export node has no transform, so this is a non-issue.)
+  Kept the blank-detect → `renderShowCard` fallback as a safety net so a share is
+  never a black screen. Rides **build 24**. Commit af4b1e7. Note: photo styles
+  (Player/Poster) need the photo to be CORS-loadable (`useCORS: true`); the no-photo
+  styles (Vibe/Marquee/Ticket) are guaranteed.
 
 ## Open questions / follow-ups
 - New-card raster export (dom-to-image vs an off-screen canvas re-render) — needed
