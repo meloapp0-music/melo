@@ -2,9 +2,8 @@
 // Auto-picks a style, scales the fixed 1080 canvas to fit, floats a dock clear of
 // the card's QR, and exports the real card to a PNG for share-to-story.
 import { useEffect, useRef, useState } from 'react';
-import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { shareBlob, renderShowCard } from '../lib/shareCard';
-import { getShareFontCss } from '../lib/shareCardKit';
 import ShareCardVibe from './ShareCardVibe';
 import ShareCardPoster from './ShareCardPoster';
 import ShareCardMarquee from './ShareCardMarquee';
@@ -117,24 +116,27 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
       const node = exportRef.current;
       let ok = false;
       if (node) {
-        // Rasterize the real card from a hidden full-size (1080) copy, with the
-        // brand fonts pre-embedded so the PNG isn't system-font fallback.
-        const fontEmbedCSS = await getShareFontCss();
-        // iOS Safari/WKWebView renders html-to-image's foreignObject blank on the
-        // first pass (font/image decode race), so wait for fonts + the card's
-        // images, then warm the rasterizer up before the real capture.
+        // Wait for the brand fonts + the card's images before rasterizing.
         try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* noop */ }
         await Promise.all([...node.querySelectorAll('img')].map((img) =>
           img.complete ? null
             : img.decode ? img.decode().catch(() => {})
             : new Promise((r) => { img.onload = img.onerror = r; })));
-        const opts = { width: cardW, height: cardH, pixelRatio: 1,
-          backgroundColor: '#110C07', fontEmbedCSS };
-        await toPng(node, opts).catch(() => {}); // warm-up pass (discarded)
-        const dataUrl = await toPng(node, opts);
-        // If the WKWebView still returns an all-black frame, fall back to the
-        // reliable canvas-drawn card so a share is never a black screen.
-        const blob = (await isBlankImage(dataUrl))
+        // Rasterize with html2canvas (NOT html-to-image): it paints the DOM to a
+        // canvas directly, without the SVG <foreignObject> that the iOS WKWebView
+        // renders blank — so the user's actual chosen card STYLE exports on device.
+        let dataUrl = '';
+        try {
+          const canvas = await html2canvas(node, {
+            backgroundColor: '#110C07', useCORS: true, scale: 1,
+            width: cardW, height: cardH, windowWidth: cardW, windowHeight: cardH,
+            logging: false,
+          });
+          dataUrl = canvas.toDataURL('image/png');
+        } catch { /* fall through to the canvas-drawn card below */ }
+        // Safety net: if the capture failed or came back blank, use the reliable
+        // canvas-drawn card so a share is never a black screen.
+        const blob = (!dataUrl || await isBlankImage(dataUrl))
           ? await renderShowCard(show, handle)
           : await (await fetch(dataUrl)).blob();
         const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
