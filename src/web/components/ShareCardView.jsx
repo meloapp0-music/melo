@@ -3,7 +3,7 @@
 // the card's QR, and exports the real card to a PNG for share-to-story.
 import { useEffect, useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { shareBlob } from '../lib/shareCard';
+import { shareBlob, renderShowCard } from '../lib/shareCard';
 import { getShareFontCss } from '../lib/shareCardKit';
 import ShareCardVibe from './ShareCardVibe';
 import ShareCardPoster from './ShareCardPoster';
@@ -40,6 +40,32 @@ function autoPick(show) {
   return hasPhotos
     ? { style: 'poster', photos: true, theme: 'artist' }
     : { style: 'vibe', photos: false, theme: 'vibe' };
+}
+
+// iOS Safari / WKWebView sometimes hands html-to-image an all-black frame (a
+// foreignObject + external-image limitation). Detect it by sampling the PNG
+// small, so we can fall back to the canvas-drawn card instead of a black share.
+function isBlankImage(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = 48, h = 85;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const cx = c.getContext('2d');
+        cx.drawImage(img, 0, 0, w, h);
+        const d = cx.getImageData(0, 0, w, h).data;
+        let lit = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i] > 28 || d[i + 1] > 28 || d[i + 2] > 28) lit++;
+        }
+        resolve(lit < w * h * 0.01); // <1% non-dark pixels → a blank capture
+      } catch { resolve(false); }
+    };
+    img.onerror = () => resolve(true);
+    img.src = dataUrl;
+  });
 }
 
 export default function ShareCardView({ show, handle, onShared, onClose, firstRun = false }) {
@@ -94,9 +120,23 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
         // Rasterize the real card from a hidden full-size (1080) copy, with the
         // brand fonts pre-embedded so the PNG isn't system-font fallback.
         const fontEmbedCSS = await getShareFontCss();
-        const dataUrl = await toPng(node, { width: cardW, height: cardH, pixelRatio: 1,
-          backgroundColor: '#110C07', fontEmbedCSS });
-        const blob = await (await fetch(dataUrl)).blob();
+        // iOS Safari/WKWebView renders html-to-image's foreignObject blank on the
+        // first pass (font/image decode race), so wait for fonts + the card's
+        // images, then warm the rasterizer up before the real capture.
+        try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* noop */ }
+        await Promise.all([...node.querySelectorAll('img')].map((img) =>
+          img.complete ? null
+            : img.decode ? img.decode().catch(() => {})
+            : new Promise((r) => { img.onload = img.onerror = r; })));
+        const opts = { width: cardW, height: cardH, pixelRatio: 1,
+          backgroundColor: '#110C07', fontEmbedCSS };
+        await toPng(node, opts).catch(() => {}); // warm-up pass (discarded)
+        const dataUrl = await toPng(node, opts);
+        // If the WKWebView still returns an all-black frame, fall back to the
+        // reliable canvas-drawn card so a share is never a black screen.
+        const blob = (await isBlankImage(dataUrl))
+          ? await renderShowCard(show, handle)
+          : await (await fetch(dataUrl)).blob();
         const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
         ok = await shareBlob(blob, `melo-${slug}.png`, `${show.artist} — I was there`);
       }
