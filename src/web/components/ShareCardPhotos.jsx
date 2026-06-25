@@ -59,7 +59,7 @@ export default function ShareCardPhotos({ show, layout, on, theme, anim, radius 
           grad="linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.35))" />
       </div>
       <div style={{ position: 'absolute', inset: 0,
-                    background: 'radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,0.35), transparent 60%)' }} />
+                    background: 'radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,0.35), rgba(0,0,0,0) 60%)' }} />
     </div>
   );
 }

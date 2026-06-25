@@ -35,7 +35,7 @@ export default function ShareCardVibe({ show, theme = 'vibe', format = '9x16',
       </div>
       {/* bottom scrim */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(to top, rgba(10,6,16,0.85) 0%, rgba(10,6,16,0.5) 22%, rgba(10,6,16,0.08) 46%, transparent 62%)' }} />
+        background: 'linear-gradient(to top, rgba(10,6,16,0.85) 0%, rgba(10,6,16,0.5) 22%, rgba(10,6,16,0.08) 46%, rgba(10,6,16,0) 62%)' }} />
 
       {/* content — artist + setlist lead; the mood is a bold bottom band */}
       <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column',

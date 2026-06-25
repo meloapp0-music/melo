@@ -23,7 +23,7 @@ export default function ShareCardMarquee({ show, format = '9x16', flags, anim, h
   );
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden',
-      background: 'radial-gradient(110% 55% at 50% 0%, rgba(232,87,58,0.4), transparent 55%), linear-gradient(165deg,#2A1D13,#140C07)' }}>
+      background: 'radial-gradient(110% 55% at 50% 0%, rgba(232,87,58,0.4), rgba(232,87,58,0) 55%), linear-gradient(165deg,#2A1D13,#140C07)' }}>
       <div style={{ position: 'absolute', inset: tall ? 40 : 30, border: `3px solid ${amber}`, borderRadius: 30,
         boxShadow: '0 0 45px rgba(244,162,97,0.4), inset 0 0 55px rgba(244,162,97,0.12)' }} />
       <div style={{ position: 'absolute', left: tall ? 72 : 56, right: tall ? 72 : 56, top: tall ? 56 : 44 }}><Bulbs n={tall ? 15 : 11} /></div>

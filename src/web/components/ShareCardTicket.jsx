@@ -27,11 +27,10 @@ export default function ShareCardTicket({ show, theme = 'ember', format = '9x16'
     <div style={{ position: 'absolute', inset: 0, background: field.base, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: tall ? 30 : 26, background: '#FAF8F5',
                     borderRadius: 44, overflow: 'hidden', display: 'flex', flexDirection: 'column',
-                    padding: tall ? '58px 56px 48px' : '40px 46px 36px',
-                    boxShadow: '0 30px 80px rgba(61,44,30,0.4)' }}>
+                    padding: tall ? '58px 56px 48px' : '40px 46px 36px' }}>
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.5,
-          background: 'radial-gradient(120% 60% at 50% -10%, rgba(232,87,58,0.10), transparent 60%),'
-                    + 'radial-gradient(80% 50% at 110% 110%, rgba(244,162,97,0.10), transparent 60%)' }} />
+          background: 'radial-gradient(120% 60% at 50% -10%, rgba(232,87,58,0.10), rgba(232,87,58,0) 60%),'
+                    + 'radial-gradient(80% 50% at 110% 110%, rgba(244,162,97,0.10), rgba(244,162,97,0) 60%)' }} />
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Wordmark size={tall ? 44 : 38} color="#3D2C1E" />

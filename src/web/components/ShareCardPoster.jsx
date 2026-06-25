@@ -26,7 +26,7 @@ export default function ShareCardPoster({ show, theme = 'artist', format = '9x16
         ? 'linear-gradient(180deg, rgba(20,12,7,0.78) 0%, rgba(20,12,7,0.28) 34%, rgba(20,12,7,0.45) 64%, rgba(20,12,7,0.92) 100%)'
         : 'linear-gradient(180deg, rgba(20,12,7,0.62) 0%, rgba(20,12,7,0.12) 32%, rgba(20,12,7,0.30) 60%, rgba(20,12,7,0.9) 100%)' }} />
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'overlay',
-        background: 'radial-gradient(140% 90% at 50% 0%, rgba(255,255,255,0.12), transparent 55%)' }} />
+        background: 'radial-gradient(140% 90% at 50% 0%, rgba(255,255,255,0.12), rgba(255,255,255,0) 55%)' }} />
       {!hasPhotos && (
         <div className={anim ? 'mc-float' : ''} style={{ position: 'absolute', inset: 0,
               display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
