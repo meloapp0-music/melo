@@ -2,8 +2,8 @@
 // Auto-picks a style, scales the fixed 1080 canvas to fit, floats a dock clear of
 // the card's QR, and exports the real card to a PNG for share-to-story.
 import { useEffect, useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
 import { shareBlob, renderShowCard } from '../lib/shareCard';
+import { renderStyledCard } from '../lib/shareCardCanvas';
 import ShareCardVibe from './ShareCardVibe';
 import ShareCardPoster from './ShareCardPoster';
 import ShareCardMarquee from './ShareCardMarquee';
@@ -41,35 +41,12 @@ function autoPick(show) {
     : { style: 'vibe', photos: false, theme: 'vibe' };
 }
 
-// iOS Safari / WKWebView sometimes hands html-to-image an all-black frame (a
-// foreignObject + external-image limitation). Detect it by sampling the PNG
-// small, so we can fall back to the canvas-drawn card instead of a black share.
-function isBlankImage(dataUrl) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const w = 48, h = 85;
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        const cx = c.getContext('2d');
-        cx.drawImage(img, 0, 0, w, h);
-        const d = cx.getImageData(0, 0, w, h).data;
-        let lit = 0;
-        for (let i = 0; i < d.length; i += 4) {
-          if (d[i] > 28 || d[i + 1] > 28 || d[i + 2] > 28) lit++;
-        }
-        resolve(lit < w * h * 0.01); // <1% non-dark pixels → a blank capture
-      } catch { resolve(false); }
-    };
-    img.onerror = () => resolve(true);
-    img.src = dataUrl;
-  });
-}
-
 export default function ShareCardView({ show, handle, onShared, onClose, firstRun = false }) {
   const pick = autoPick(show);
-  const [style, setStyle] = useState(pick.style);
+  // Interim: Ticket is the only style ported to the reliable canvas renderer, so
+  // default to it (every share is bulletproof). Restore `pick.style` once
+  // Poster/Vibe/Marquee/Player are ported. See 2026-06-25-share-cards-native-canvas.
+  const [style, setStyle] = useState('ticket');
   const [format, setFormat] = useState('9x16');
   const [theme, setTheme] = useState(pick.theme);
   const [photos, setPhotos] = useState(pick.photos);
@@ -123,51 +100,14 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
     if (sharing) return;
     setSharing(true);
     try {
-      const node = exportRef.current;
-      let ok = false;
-      if (node) {
-        // Wait for the brand fonts + the card's images before rasterizing.
-        // html2canvas paints any glyph whose web-font hasn't finished loading in a
-        // FALLBACK face — which lands part of a word on the wrong baseline mid-title.
-        // document.fonts.ready alone resolves too eagerly in the iOS webview, so
-        // explicitly load every weight the cards use before capturing.
-        try {
-          if (document.fonts?.load) {
-            await Promise.all(
-              ['600 1em Outfit', '700 1em Outfit', '800 1em Outfit',
-               '500 1em "DM Sans"', '600 1em "DM Sans"', '700 1em "DM Sans"']
-                .map((f) => document.fonts.load(f).catch(() => {})));
-          }
-          if (document.fonts?.ready) await document.fonts.ready;
-        } catch { /* noop */ }
-        await Promise.all([...node.querySelectorAll('img')].map((img) =>
-          img.complete ? null
-            : img.decode ? img.decode().catch(() => {})
-            : new Promise((r) => { img.onload = img.onerror = r; })));
-        // Give the iOS webview a beat to actually PAINT the freshly-loaded fonts
-        // before we rasterize — document.fonts.load can resolve a frame too early
-        // there, and html2canvas reads glyph metrics straight from the live layout.
-        await new Promise((r) => { requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))); });
-        // Rasterize with html2canvas (NOT html-to-image): it paints the DOM to a
-        // canvas directly, without the SVG <foreignObject> that the iOS WKWebView
-        // renders blank — so the user's actual chosen card STYLE exports on device.
-        let dataUrl = '';
-        try {
-          const canvas = await html2canvas(node, {
-            backgroundColor: '#110C07', useCORS: true, scale: 1,
-            width: cardW, height: cardH, windowWidth: cardW, windowHeight: cardH,
-            logging: false,
-          });
-          dataUrl = canvas.toDataURL('image/png');
-        } catch { /* fall through to the canvas-drawn card below */ }
-        // Safety net: if the capture failed or came back blank, use the reliable
-        // canvas-drawn card so a share is never a black screen.
-        const blob = (!dataUrl || await isBlankImage(dataUrl))
-          ? await renderShowCard(show, handle)
-          : await (await fetch(dataUrl)).blob();
-        const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
-        ok = await shareBlob(blob, `melo-${slug}.png`, `${show.artist} — I was there`);
-      }
+      // Draw the chosen style with the native-canvas renderer — identical output on
+      // web and the iOS webview, with none of html2canvas's text/font/gradient
+      // gremlins. A style not yet ported to canvas returns null → the reliable
+      // simple canvas card, so a share is never broken.
+      const blob = await renderStyledCard(show, { style, theme, format, flags, photos, handle })
+        || await renderShowCard(show, handle);
+      const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
+      const ok = await shareBlob(blob, `melo-${slug}.png`, `${show.artist} — I was there`);
       if (ok) { onShared?.(); setToast('Shared to your story ✨'); }
     } catch {
       setToast('Could not make the image — try again');
