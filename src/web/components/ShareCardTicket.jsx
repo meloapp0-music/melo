@@ -80,7 +80,7 @@ export default function ShareCardTicket({ show, theme = 'ember', format = '9x16'
                   <span style={{ fontFamily: OUTFIT, fontWeight: 800, fontSize: tall ? 24 : 19,
                                  color: '#E8573A', minWidth: tall ? 42 : 32 }}>{String(i + 1).padStart(2, '0')}</span>
                   <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 37 : 27,
-                                 letterSpacing: '-0.02em', color: '#3D2C1E', lineHeight: 1.08 }}>{t}</span>
+                                 color: '#3D2C1E', lineHeight: 1.08 }}>{t}</span>
                 </div>
               ))}
               {setlist.length > tracks.length && (

@@ -59,7 +59,7 @@ export default function ShareCardPoster({ show, theme = 'artist', format = '9x16
                 <span style={{ fontFamily: OUTFIT, fontWeight: 800, fontSize: tall ? 30 : 23,
                                color: 'rgba(255,255,255,0.5)', minWidth: tall ? 56 : 44 }}>{String(i + 1).padStart(2, '0')}</span>
                 <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 46 : 34,
-                               letterSpacing: '-0.02em', lineHeight: 1.05 }}>{t}</span>
+                               lineHeight: 1.05 }}>{t}</span>
               </div>
             ))}
             {setlist.length > tracks.length && (

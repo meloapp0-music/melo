@@ -117,7 +117,19 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
       let ok = false;
       if (node) {
         // Wait for the brand fonts + the card's images before rasterizing.
-        try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* noop */ }
+        // html2canvas paints any glyph whose web-font hasn't finished loading in a
+        // FALLBACK face — which lands part of a word on the wrong baseline mid-title.
+        // document.fonts.ready alone resolves too eagerly in the iOS webview, so
+        // explicitly load every weight the cards use before capturing.
+        try {
+          if (document.fonts?.load) {
+            await Promise.all(
+              ['600 1em Outfit', '700 1em Outfit', '800 1em Outfit',
+               '500 1em "DM Sans"', '600 1em "DM Sans"', '700 1em "DM Sans"']
+                .map((f) => document.fonts.load(f).catch(() => {})));
+          }
+          if (document.fonts?.ready) await document.fonts.ready;
+        } catch { /* noop */ }
         await Promise.all([...node.querySelectorAll('img')].map((img) =>
           img.complete ? null
             : img.decode ? img.decode().catch(() => {})

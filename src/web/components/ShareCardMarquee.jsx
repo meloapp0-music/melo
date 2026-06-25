@@ -56,7 +56,7 @@ export default function ShareCardMarquee({ show, format = '9x16', flags, anim, h
                           color: amber, marginBottom: tall ? 16 : 10 }}>— THE BILL —</div>
             {tracks.map((t, i) => (
               <div key={i} style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 38 : 28,
-                letterSpacing: '-0.02em', color: '#fff', padding: tall ? '7px 0' : '5px 0' }}>{t}</div>
+                color: '#fff', padding: tall ? '7px 0' : '5px 0' }}>{t}</div>
             ))}
             {setlist.length > tracks.length && (
               <MoreLink n={setlist.length - tracks.length} label="more"

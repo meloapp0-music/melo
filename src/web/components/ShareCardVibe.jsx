@@ -74,7 +74,7 @@ export default function ShareCardVibe({ show, theme = 'vibe', format = '9x16',
                 <span style={{ fontFamily: OUTFIT, fontWeight: 800, fontSize: tall ? 26 : 21,
                                color: accent, minWidth: tall ? 46 : 34 }}>{String(i + 1).padStart(2, '0')}</span>
                 <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 42 : 31,
-                               letterSpacing: '-0.02em', color: '#fff', lineHeight: 1.04 }}>{t}</span>
+                               color: '#fff', lineHeight: 1.04 }}>{t}</span>
               </div>
             ))}
             {setlist.length > cap && (
