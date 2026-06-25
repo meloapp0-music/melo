@@ -116,6 +116,24 @@ new-card raster export.
   that *may* bleed too, but are far less visible there — left as-is; revisit if a
   user hits one.
 
+- 2026-06-25: **Fixed setlist titles breaking mid-word on export (build 27).** With
+  the haze gone (build 26), device exports showed setlist titles with part of a word
+  on a different baseline ("Aw·ake My Soul", "Li·ttle Lion Man") — intermittent, a
+  different line each render. Cause: html2canvas paints any glyph whose `@font-face`
+  isn't loaded yet in a **fallback face** (different metrics → baseline jump), and the
+  iOS webview resolves `document.fonts.ready` too eagerly, so titles sometimes
+  rasterized before Outfit finished loading. Reproduced the *clean* case in the dev
+  preview (the same titles render perfectly once fonts are present — even with
+  letter-spacing), which isolated it to a font-load race, not the CSS. **Fix:** in
+  `doShare`, before capture, explicitly `document.fonts.load()` every weight the cards
+  use (Outfit 600/700/800, DM Sans 500/600/700) then await ready. Also removed the
+  `-0.02em` letter-spacing on song titles: with letter-spacing html2canvas lays text
+  out glyph-by-glyph (so a font hiccup misaligns *mid-word*); without it a whole title
+  shifts as one unit — a much softer failure mode. Artist-name tracking untouched.
+  Commit 359e23d. (Couldn't reproduce the iOS race in desktop Chromium — fonts load
+  instantly there — so the fix targets the confirmed mechanism rather than a repro'd
+  failure.)
+
 ## Open questions / follow-ups
 - New-card raster export (dom-to-image vs an off-screen canvas re-render) — needed
   before "Share to your story" posts the actual new design. Until then it falls
