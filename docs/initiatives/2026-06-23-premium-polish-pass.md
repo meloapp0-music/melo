@@ -81,6 +81,15 @@ The handoff is an HTML/JSX prototype assuming one shared `ShowCard` +
   formerly-olive high-hash artists (Tame Impala, Vampire Weekend) now read warm
   amber-gold; this also makes the implementation match the README's stated 8–44°
   intent. Verified in preview.
+- 2026-06-24: **Reverted Change 5's entrance motion (bug fix).** The `melo-rise`
+  keyframe + `.page > *` staggered transform animation caused the fixed bottom
+  NavBar to detach from the viewport and scroll up into the middle of the screen
+  on **iOS (WKWebView)** — transform animations on page content are a known
+  trigger for `position: fixed` breakage there, and the bug appeared exactly when
+  this animation was added (606d413). Removed the keyframe + the `.page > *` rule
+  (left an explanatory note in App.css). The rest of Change 5 (auth/sign-in ember
+  halo, button `nowrap`) and every other change are unaffected. ⚠️ The animation
+  also shipped in the **in-review 1.3 build**, so this fix must ride a new build.
 
 ## Open questions / follow-ups
 - The letter-art watermark + photo-base layering is applied to the main poster
