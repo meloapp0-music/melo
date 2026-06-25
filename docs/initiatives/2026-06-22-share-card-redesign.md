@@ -100,6 +100,22 @@ new-card raster export.
   (Player/Poster) need the photo to be CORS-loadable (`useCORS: true`); the no-photo
   styles (Vibe/Marquee/Ticket) are guaranteed.
 
+- 2026-06-25: **Fixed two html2canvas export artifacts (build 26).** On device the
+  Ticket style exported with a grey haze over its cream panel. **Cause #1:**
+  html2canvas bleeds the cream panel's large drop-shadow (`0 30px 80px
+  rgba(61,44,30,0.4)`) *over* the fill instead of behind it — the exported cream
+  measured exactly that shadow composited over `#FAF8F5` (rgb 174,166,159 vs the
+  intended 250,248,245). Dropped the shadow (the ember frame already separates the
+  ticket). **Cause #2:** html2canvas renders the CSS keyword `transparent` inside
+  gradients as opaque **black** — invisible on the dark cards but it darkens
+  light/photo surfaces; replaced every `transparent` gradient end-stop with an
+  explicit `rgba(...,0)` of the same colour across Ticket/Marquee/Photos/Poster/Vibe.
+  Verified in the dev preview by rasterizing the *real* card component and sampling
+  pixels: cream back to 250,248,245 at every point. Commit 7ae96f1. ⚠️ Other styles
+  have box-shadows on dark/photo surfaces (Player album art, Photos polaroid frames)
+  that *may* bleed too, but are far less visible there — left as-is; revisit if a
+  user hits one.
+
 ## Open questions / follow-ups
 - New-card raster export (dom-to-image vs an off-screen canvas re-render) — needed
   before "Share to your story" posts the actual new design. Until then it falls
