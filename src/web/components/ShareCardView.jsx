@@ -65,9 +65,15 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
   useEffect(() => {
     const el = stageRef.current; if (!el) return;
     const fit = () => {
-      const top = 58, bottom = 112, side = 16;
-      const aw = el.clientWidth - side * 2;
-      const ah = el.clientHeight - top - bottom;
+      // Reserve space from the stage's ACTUAL padding (which now includes the
+      // device safe-area at top + bottom) so the card never collides with the
+      // status bar / Dynamic Island or the dock.
+      const cs = getComputedStyle(el);
+      const padX = parseFloat(cs.paddingLeft) || 0;
+      const padT = parseFloat(cs.paddingTop) || 0;
+      const padB = parseFloat(cs.paddingBottom) || 0;
+      const aw = el.clientWidth - padX * 2;
+      const ah = el.clientHeight - padT - padB;
       setScale(Math.max(0.1, Math.min(aw / cardW, ah / cardH, 0.62)));
     };
     fit();

@@ -8525,11 +8525,11 @@ h4 { font-size: 17px; }
 .sc-stage {
   position: absolute; inset: 0; overflow: hidden;
   display: flex; flex-direction: column; align-items: center;
-  padding: 58px 16px 112px;
+  padding: calc(70px + env(safe-area-inset-top, 0px)) 16px calc(112px + var(--safe-bottom));
   background: radial-gradient(120% 90% at 50% 0%, #2A1D13 0%, #18110B 55%, #110C07 100%);
 }
 .sc-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 140px rgba(0,0,0,0.5); }
-.sc-topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+.sc-topbar { position: absolute; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
 .sc-title { font-family: var(--font-heading); font-weight: 800; font-size: 16px; color: #fff; opacity: 0.92; }
 .sc-close {
   width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
