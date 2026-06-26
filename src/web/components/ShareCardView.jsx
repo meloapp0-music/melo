@@ -43,10 +43,7 @@ function autoPick(show) {
 
 export default function ShareCardView({ show, handle, onShared, onClose, firstRun = false }) {
   const pick = autoPick(show);
-  // Interim: Ticket is the only style ported to the reliable canvas renderer, so
-  // default to it (every share is bulletproof). Restore `pick.style` once
-  // Poster/Vibe/Marquee/Player are ported. See 2026-06-25-share-cards-native-canvas.
-  const [style, setStyle] = useState('ticket');
+  const [style, setStyle] = useState(pick.style);
   const [format, setFormat] = useState('9x16');
   const [theme, setTheme] = useState(pick.theme);
   const [photos, setPhotos] = useState(pick.photos);

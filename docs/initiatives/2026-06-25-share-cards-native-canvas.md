@@ -7,7 +7,7 @@ type: project
 # Share Cards — Native Canvas Export
 
 - Started: 2026-06-25
-- Status: in-progress
+- Status: shipped (all 5 styles on canvas; device-confirmed for Ticket build 29)
 - Last updated: 2026-06-25
 
 ## Context
@@ -62,9 +62,25 @@ verifiable on desktop. No more blind builds.
   so every share is bulletproof; the other 4 styles fall back to the simple card until
   ported.
 
-## Still to port (canvas renderers)
-- Poster, Vibe, Marquee, Player → then restore the smart auto-pick + remove the
-  hidden html2canvas export node + drop the html2canvas dependency.
+- 2026-06-25: **Ported the other 4 styles — all 5 now on canvas (build 31).** User
+  reported the Vibe style "boring, nothing on it" (the interim simple-card fallback),
+  so finished the port before the 1.3 resubmit. Added `drawPoster` (photo bleed +
+  dark scrim + uppercase title + setlist + solid vibe chips + equalizer + QR),
+  `drawVibe` (artist word-wash, hero title, setlist, "THE VIBE" mood band with
+  per-vibe-colour words + equalizer), `drawMarquee` (theatre border + 4-side bulbs +
+  glow title + centered bill + vibe pill + QR lockup), `drawPlayer` (album art /
+  hero photo, progress bar, transport controls, "FROM THE SET" tracklist, vibe chips
+  + QR) + shared helpers (`fillSpacedCentered`, `drawEqualizer`). Registered all 5 in
+  `DRAWERS`; **restored the smart auto-pick** (removed the interim Ticket default).
+  Verified all 5 in the dev preview — clean labels, correct vibe colours, faithful to
+  the React designs. Rides build 31.
+
+## Open follow-ups
+- Remove the now-dead hidden html2canvas export node in `ShareCardView` (the
+  `exportRef` div) and drop the `html2canvas` dependency from package.json — neither
+  is used anymore. Left for a cleanup pass to keep the card-port diff focused.
+- The on-screen PREVIEW still uses the React components; only the EXPORT is canvas.
+  They're visually close; keep an eye on drift as styles evolve.
 
 ## Open questions / follow-ups
 - Photos need `crossOrigin='anonymous'` so `toBlob()` isn't tainted; the show
