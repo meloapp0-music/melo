@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom';
 import { useApp } from '../App';
 
 const tabs = [
@@ -55,12 +54,12 @@ export default function NavBar() {
   // First-run nudge: gently pulse the + until the user logs their first show.
   const firstTime = (shows?.length || 0) === 0;
 
-  // Render the fixed bottom bar at <body> level (a portal), OUTSIDE the .app
-  // wrapper. iOS WKWebView detaches position:fixed elements when an ancestor
-  // has overflow / backdrop-filter (.app has overflow-x:hidden), making the bar
-  // float into the middle on scroll. Portaling to body removes that ancestor
-  // interference so it stays pinned to the viewport bottom.
-  return createPortal(
+  // The bar is a normal flex-column sibling of the scrolling .page (.app is a
+  // 100dvh flex column; .page is flex:1 / overflow-auto; this bar is flex-shrink:0
+  // at the bottom) — NOT position:fixed. iOS WKWebView kept detaching the fixed bar
+  // on scroll even when portaled to <body> with the blur removed; a flex item at
+  // the bottom of the column physically cannot scroll away.
+  return (
     <nav className="nav-bar">
       <div className="nav-tabs">
         {tabs.map((t) =>
@@ -87,7 +86,6 @@ export default function NavBar() {
           )
         )}
       </div>
-    </nav>,
-    document.body,
+    </nav>
   );
 }

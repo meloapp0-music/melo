@@ -43,9 +43,11 @@ body {
 .app {
   max-width: 430px;
   margin: 0 auto;
-  min-height: 100dvh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -63,11 +65,24 @@ h2 { font-size: 24px; }
 h3 { font-size: 20px; }
 h4 { font-size: 17px; }
 
-/* Page */
+/* Base .page — also used by the sign-in screen, which renders OUTSIDE .app (no
+   flex parent), so it keeps a full-height block layout. */
 .page {
   padding: 0 20px;
   padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
   min-height: 100dvh;
+}
+
+/* Inside the flex-column app shell, .page is the single scrolling region; the nav
+   is a sibling BELOW it, so content no longer reserves nav height. */
+.app .page {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: 24px;
 }
 
 /* Use safe-area-inset-top so content clears the iOS status bar and
@@ -114,17 +129,13 @@ h4 { font-size: 17px; }
 /* ============================================
    NAVIGATION BAR
    ============================================ */
+/* Not position:fixed — a flex-shrink:0 sibling at the bottom of the .app column.
+   It can't detach/scroll on iOS because it isn't positioned, just laid out. */
 .nav-bar {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  flex-shrink: 0;
   width: 100%;
-  max-width: 430px;
   padding: 8px 16px calc(var(--safe-bottom) + 8px);
   z-index: 100;
-  /* Near-solid (not frosted) on purpose: a backdrop-filter on a position:fixed
-     element is an iOS WKWebView trigger for the bar detaching on scroll. */
   background: rgba(250, 248, 245, 0.96);
   border-top: 1px solid rgba(61, 44, 30, 0.06);
 }

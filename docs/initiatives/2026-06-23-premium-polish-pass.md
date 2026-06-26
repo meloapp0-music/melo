@@ -99,6 +99,20 @@ The handoff is an HTML/JSX prototype assuming one shared `ShowCard` +
   element with backdrop-filter is another known iOS detach trigger) — the bar is
   now near-solid cream (`rgba(250,248,245,0.96)`) instead of frosted. Pending
   device confirmation; restore the frosted look later if it proves stable.
+- 2026-06-25: **Real fix — flex-column app shell (the portal/blur did NOT hold).**
+  On device the bottom nav STILL floated up on scroll on build 29, so portaling to
+  `<body>` + dropping backdrop-filter was the wrong tree. The honest root cause is
+  broader: iOS WKWebView is unreliable with `position: fixed` here, full stop.
+  Switched to the bulletproof pattern that uses NO fixed positioning: `.app` is a
+  `100dvh` flex column, `.app .page` is the single scrolling region
+  (`flex:1; overflow-y:auto; min-height:0`), and `.nav-bar` is a `flex-shrink:0`
+  sibling at the bottom — a laid-out element that physically cannot scroll away.
+  Un-portaled the NavBar (in-flow child of `.app` again). Scoped the scroll CSS to
+  `.app .page` so the sign-in screen (a `.page` rendered OUTSIDE `.app`) keeps its
+  full-height block layout. Unlike fixed positioning, **flexbox is deterministic** →
+  verified in the dev preview by scrolling an injected `.app/.page/.nav-bar` 1600px:
+  the nav stays pinned (navBottom == appBottom), and it behaves identically on iOS.
+  Rides build 30.
 
 ## Open questions / follow-ups
 - The letter-art watermark + photo-base layering is applied to the main poster
