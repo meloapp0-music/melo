@@ -32,6 +32,17 @@ real reach + SEO. Also the natural home for the share-card QR deep-link, which t
 
 ## Changes made
 - 2026-06-23: Initiative created (idea capture; deferred — pairs with the marketing site).
+- 2026-06-27: **User prioritized this for the next version.** Concrete framing: a share
+  card posted to social should link to the show, and whoever taps it can "look through it
+  and see the whole setlist, see the pics, etc." — i.e. the `melo.show/show/:id` page must
+  render the full setlist + photos (+ **videos** once [[video-uploads]] lands) for a
+  viewer WITHOUT the app, plus a "Get Melo" CTA. Now that the share-card export is solid
+  (`2026-06-25-share-cards-native-canvas.md`), repointing the card's QR/link from the bare
+  App Store URL to this page is the highest-leverage growth move.
+  - **Key decision (security spine):** shows are private by default. A public page needs an
+    *opt-in* shareable mechanism — a per-show `share_token` (unguessable) or `is_public`
+    flag — read via a curated `SECURITY DEFINER` RPC / public view that exposes ONLY
+    explicitly-shared rows. Do NOT add a blanket public-read RLS policy.
 
 ## Open questions / follow-ups
 - Privacy: default profiles/shows to private; expose only what the user opts to share.
