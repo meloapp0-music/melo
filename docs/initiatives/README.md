@@ -11,7 +11,7 @@ initiative. See `CLAUDE.md` in the repo root for the full process.
 | **v1.3** ⏳ ready to build | new-user experience — "ready to market" | share-card redesign · Get Started onboarding + first-show reward · premium polish pass (all built). Plan: `2026-06-23-v1-3-release.md`. |
 | **v1.4** 📋 planned | stickier & more accessible | comparative-rating · going social loops (invite-on-going + friends-going push) · home-screen widget · Live Activities (Show Day) · Sign in with Apple/Google · dark mode · Add to Calendar · **public share pages ⭐** · **video uploads ⭐** · accessibility (Dynamic Type) |
 
-**⭐ Next-version priorities (flagged by user 2026-06-27):** (1) **video uploads** on shows alongside photos — `2026-06-27-video-uploads.md`; (2) **public share pages** so a shared card deep-links to the show and a non-user can see the full setlist + pics + videos — `2026-06-23-public-share-pages.md`. They reinforce each other.
+**⭐ Next-version priorities (flagged by user 2026-06-27):** (1) **video uploads** on shows alongside photos — `2026-06-27-video-uploads.md`; (2) **public share pages** so a shared card deep-links to the show and a non-user can see the full setlist + pics + videos — `2026-06-23-public-share-pages.md`; (3) **full friends-feed page + friend profiles showing upcoming shows** — `2026-06-27-friends-feed-and-richer-profiles.md`. (1) & (2) reinforce each other; (3) deepens the social layer.
 
 _The "Release sequence (as of 2026-05-08)" table below is historical — kept for reference; the roadmap above supersedes it._
 
@@ -38,6 +38,7 @@ buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
 - `2026-06-27-video-uploads.md` — planned (next version ⭐) · attach short videos to a show alongside photos; on-device compress → RLS'd Storage bucket → in-app + public-page playback. Make-or-break: keeping file size sane via on-device transcode. Pairs with public-share-pages.
+- `2026-06-27-friends-feed-and-richer-profiles.md` — planned (next version ⭐) · a dedicated full friends-feed page (the Home feed is only a 20-item preview) + friend profiles that show upcoming/Going shows, not just past (data's already loaded). Reuses existing friend-read RLS.
 - `2026-06-25-share-cards-native-canvas.md` — shipped (build 31) · rebuilt all 5 share-card EXPORTS with the native Canvas 2D API (replacing html2canvas, which mangled letter-spaced/dense text and raced fonts on iOS — none reproducible on desktop). Canvas is deterministic, so the output is verifiable on desktop. Ends the recurring share-card export bugs (haze, broken text, blank/black).
 - `2026-06-23-v1-3-release.md` — in-progress · the 1.3 build plan: ships the already-built new-user experience (share cards, Get Started, first-show reward, polish); comparative-rating + going loops deferred to 1.4. Includes the ship checklist (version bump + backend deploys).
 - `2026-06-23-social-auth.md` — planned (1.4) · Sign in with Apple/Google to kill the email + 8-digit-OTP signup friction. The biggest accessibility/conversion win for new users.
