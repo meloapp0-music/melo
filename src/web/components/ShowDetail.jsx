@@ -38,6 +38,9 @@ export default function ShowDetail({ show, onClose }) {
   // artist names) is logged via onShared when a post completes.
   const [shareCardOpen, setShareCardOpen] = useState(false);
 
+  // Delete confirmation — in-app sheet instead of a raw browser confirm().
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   // Status upgrade — local mirror so the button reflects the change
   // instantly (the parent holds `selectedShow` as a separate object).
   // Wishlist → Going when the user buys tickets.
@@ -155,11 +158,15 @@ export default function ShowDetail({ show, onClose }) {
   const upcoming = !isAttended(show) && !Number.isNaN(daysUntil(show.date)) && daysUntil(show.date) >= 0;
   const [weather, setWeather] = useState(null);
   const [startTime, setStartTime] = useState(null);
+  const [showdayLoading, setShowdayLoading] = useState(true);
   useEffect(() => {
     if (!upcoming) return;
     let cancelled = false;
-    fetchShowWeather(show.city, show.date).then((w) => { if (!cancelled && w) setWeather(w); });
-    fetchEventStartTime(show.artist, show.venue, show.date).then((t) => { if (!cancelled && t) setStartTime(t); });
+    setShowdayLoading(true);
+    Promise.allSettled([
+      fetchShowWeather(show.city, show.date).then((w) => { if (!cancelled && w) setWeather(w); }),
+      fetchEventStartTime(show.artist, show.venue, show.date).then((t) => { if (!cancelled && t) setStartTime(t); }),
+    ]).then(() => { if (!cancelled) setShowdayLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show.id, upcoming]);
@@ -280,7 +287,12 @@ export default function ShowDetail({ show, onClose }) {
           {upcoming && (
             <div className="showday-card">
               <div className="showday-label">Show day</div>
-              {(weather || startTime) && (
+              {showdayLoading ? (
+                <div className="showday-chips">
+                  <div className="showday-chip showday-chip-skeleton" />
+                  <div className="showday-chip showday-chip-skeleton" />
+                </div>
+              ) : (weather || startTime) && (
                 <div className="showday-chips">
                   {startTime && (
                     <div className="showday-chip">
@@ -438,7 +450,10 @@ export default function ShowDetail({ show, onClose }) {
           {show.photos && show.photos.length > 0 && (
             <div className="detail-section">
               <div className="detail-section-title">Photos ({show.photos.length})</div>
-              <PhotoGallery photos={show.photos} />
+              <PhotoGallery
+                photos={show.photos}
+                onRemove={isOwner ? (url) => updateShow(show.id, { photos: show.photos.filter((p) => p !== url) }) : undefined}
+              />
             </div>
           )}
 
@@ -580,9 +595,7 @@ export default function ShowDetail({ show, onClose }) {
 
               <button
                 className="detail-delete"
-                onClick={() => {
-                  if (confirm('Delete this show?')) deleteShow(show.id);
-                }}
+                onClick={() => setConfirmDelete(true)}
               >
                 Delete Show
               </button>
@@ -590,6 +603,29 @@ export default function ShowDetail({ show, onClose }) {
           )}
         </div>
       </div>
+
+      {confirmDelete && (
+        <div className="detail-confirm-scrim" onClick={() => setConfirmDelete(false)}>
+          <div className="detail-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-confirm-title">Delete this show?</div>
+            <div className="detail-confirm-body">This can't be undone.</div>
+            <div className="detail-confirm-actions">
+              <button
+                className="detail-confirm-cancel"
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="detail-confirm-delete"
+                onClick={() => { deleteShow(show.id); setConfirmDelete(false); }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

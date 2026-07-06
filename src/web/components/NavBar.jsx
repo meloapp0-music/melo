@@ -48,9 +48,15 @@ const tabs = [
   },
 ];
 
+// `map` and `songs` are real `tab` values (see App.jsx's navigate()) but have
+// no matching nav slot — they're only reached from Home's Cities stat and
+// Profile's Songs stat respectively. Fold them onto their launch point so the
+// bar still shows an active tab instead of going dark.
+const TAB_ALIAS = { map: 'home', songs: 'profile' };
+
 export default function NavBar() {
   const { tab, subPage, navigate, shows } = useApp();
-  const activeKey = subPage || tab;
+  const activeKey = subPage || TAB_ALIAS[tab] || tab;
   // First-run nudge: gently pulse the + until the user logs their first show.
   const firstTime = (shows?.length || 0) === 0;
 

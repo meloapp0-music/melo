@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-export default function PhotoGallery({ photos = [] }) {
+export default function PhotoGallery({ photos = [], onRemove }) {
   const [activeIndex, setActiveIndex] = useState(null); // null = closed
 
   const close = useCallback(() => setActiveIndex(null), []);
@@ -44,14 +44,25 @@ export default function PhotoGallery({ photos = [] }) {
     <>
       <div className="photo-gallery">
         {photos.map((url, i) => (
-          <button
-            key={url}
-            type="button"
-            className="photo-gallery-tile"
-            style={{ backgroundImage: `url(${url})` }}
-            onClick={() => setActiveIndex(i)}
-            aria-label={`View photo ${i + 1} of ${photos.length}`}
-          />
+          <div key={url} className="photo-gallery-tile-wrap">
+            <button
+              type="button"
+              className="photo-gallery-tile"
+              style={{ backgroundImage: `url(${url})` }}
+              onClick={() => setActiveIndex(i)}
+              aria-label={`View photo ${i + 1} of ${photos.length}`}
+            />
+            {onRemove && (
+              <button
+                type="button"
+                className="photo-gallery-tile-remove"
+                onClick={(e) => { e.stopPropagation(); onRemove(url); }}
+                aria-label="Remove photo"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         ))}
       </div>
 

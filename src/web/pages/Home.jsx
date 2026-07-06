@@ -20,7 +20,7 @@ const today = () => {
 };
 
 export default function Home() {
-  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget } = useApp();
+  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget, showToast } = useApp();
 
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
@@ -143,8 +143,15 @@ export default function Home() {
       : { background: grad };
   };
 
+  const [addedIds, setAddedIds] = useState(() => new Set());
+  // Ticketmaster events have no stable id, so key on the same
+  // artist|date|venue composite already used to dedupe them elsewhere.
+  const wishlistKey = (ev) => `${ev.artist}|${ev.date}|${ev.venue}`;
+
   const handleAddWishlist = (ev, e) => {
     e.stopPropagation();
+    const key = wishlistKey(ev);
+    if (addedIds.has(key)) return;
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     addShow({
       id, artist: ev.artist, date: ev.date, venue: ev.venue, city: ev.city,
@@ -152,6 +159,8 @@ export default function Home() {
       status: SHOW_STATUS.WISHLIST, wishlist: true,
       createdAt: new Date().toISOString(),
     });
+    setAddedIds((prev) => new Set(prev).add(key));
+    showToast?.({ message: `🎟️ Added ${ev.artist} to your wishlist` });
   };
 
   return (
@@ -283,15 +292,20 @@ export default function Home() {
         {songsHeard > 0 && (
           <>
             <div className="home-stat-divider" />
-            <div className="home-stat">
+            <button
+              type="button"
+              className="home-stat home-stat-btn"
+              onClick={() => navigate('songs')}
+              aria-label={`${songsHeard} songs — view all`}
+            >
               <div className="home-stat-num">{songsHeard}</div>
               <div className="home-stat-label">Songs</div>
-            </div>
+            </button>
           </>
         )}
         <div className="home-stat-divider" />
         <div className="home-stat">
-          <div className="home-stat-num">{avgScore}</div>
+          <div className="home-stat-num">{ratedOutings.length === 0 ? '—' : avgScore}</div>
           <div className="home-stat-label">Avg Score</div>
         </div>
         {streak.current > 0 && (
@@ -488,7 +502,9 @@ export default function Home() {
             <div className="upcoming-loading">Finding upcoming shows...</div>
           ) : (
             <div className="home-scroll">
-              {upcoming.map((ev, i) => (
+              {upcoming.map((ev, i) => {
+                const wishlisted = addedIds.has(wishlistKey(ev));
+                return (
                 <div key={i} className="upcoming-card">
                   <div className="upcoming-card-img" style={bgStyle(ev.artist)}>
                     <div className="upcoming-card-date">{formatDate(ev.date)}</div>
@@ -497,14 +513,21 @@ export default function Home() {
                     <div className="upcoming-card-artist">{ev.artist}</div>
                     <div className="upcoming-card-venue">{ev.venue}{ev.city ? `, ${ev.city}` : ''}</div>
                     <div className="upcoming-card-btns">
-                      <button className="upcoming-btn upcoming-btn-wishlist" onClick={(e) => handleAddWishlist(ev, e)}>+ Wishlist</button>
+                      <button
+                        className={`upcoming-btn upcoming-btn-wishlist ${wishlisted ? 'added' : ''}`}
+                        onClick={(e) => handleAddWishlist(ev, e)}
+                        disabled={wishlisted}
+                      >
+                        {wishlisted ? '✓ Wishlisted' : '+ Wishlist'}
+                      </button>
                       {ev.ticketUrl && (
                         <a className="upcoming-btn upcoming-btn-tickets" href={ev.ticketUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>Tickets</a>
                       )}
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

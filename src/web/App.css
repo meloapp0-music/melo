@@ -3358,6 +3358,76 @@ h4 { font-size: 17px; }
   background: rgba(232, 87, 58, 0.06);
 }
 
+/* Delete confirmation sheet — in-app replacement for the raw browser
+   confirm(). `position: fixed` so it doesn't depend on any ancestor
+   (ShowDetail has no .sc-overlay-style positioning context). */
+.detail-confirm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(12, 8, 5, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: scFade 0.2s ease;
+}
+.detail-confirm-card {
+  width: 100%;
+  max-width: 320px;
+  background: var(--bg);
+  border-radius: var(--card-radius);
+  padding: 22px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  animation: detailConfirmPop 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.detail-confirm-title {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--brown);
+}
+.detail-confirm-body {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--brown-muted);
+}
+.detail-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.detail-confirm-cancel {
+  flex: 1;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(61, 44, 30, 0.14);
+  background: none;
+  color: var(--brown);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.detail-confirm-delete {
+  flex: 1;
+  padding: 13px;
+  border-radius: 14px;
+  border: none;
+  background: var(--orange);
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.detail-confirm-cancel:active,
+.detail-confirm-delete:active {
+  transform: scale(0.97);
+}
+
 /* ============================================
    UTILITIES & ANIMATIONS
    ============================================ */
@@ -3532,6 +3602,11 @@ h4 { font-size: 17px; }
 .upcoming-btn-wishlist {
   background: rgba(232, 87, 58, 0.08);
   color: var(--orange);
+}
+
+.upcoming-btn-wishlist.added {
+  background: rgba(0, 168, 140, 0.1);
+  color: #00A88C;
 }
 
 .upcoming-btn-tickets {
@@ -6437,6 +6512,29 @@ h4 { font-size: 17px; }
 }
 .photo-gallery-tile:active { transform: scale(0.96); }
 
+.photo-gallery-tile-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.photo-gallery-tile-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(12, 8, 5, 0.55);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .photo-lightbox {
   position: fixed;
   inset: 0;
@@ -7694,6 +7792,15 @@ h4 { font-size: 17px; }
   font-size: 22px;
   line-height: 1;
 }
+.showday-chip-skeleton {
+  height: 42px;
+  background: rgba(61, 44, 30, 0.08);
+  animation: showdayChipPulse 1.1s ease-in-out infinite;
+}
+@keyframes showdayChipPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
 .showday-chip-text {
   display: flex;
   flex-direction: column;
@@ -8643,6 +8750,7 @@ h4 { font-size: 17px; }
 @keyframes scUp { from { transform: translateY(40px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
 @keyframes scPop { from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes scToast { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes detailConfirmPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 /* ── Premium polish pass (2026-06-23) ──────────────────────────────────
    Ghosted artist-initial "letter art" behind the scrim on fallback

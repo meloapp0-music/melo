@@ -1,49 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
-
-const CITY_COORDS = {
-  'New York': [40.7128, -74.006],
-  'Los Angeles': [34.0522, -118.2437],
-  'Chicago': [41.8781, -87.6298],
-  'Nashville': [36.1627, -86.7816],
-  'Austin': [30.2672, -97.7431],
-  'San Francisco': [37.7749, -122.4194],
-  'Denver': [39.7392, -104.9903],
-  'Seattle': [47.6062, -122.3321],
-  'Portland': [45.5051, -122.6750],
-  'Atlanta': [33.749, -84.388],
-  'Philadelphia': [39.9526, -75.1652],
-  'Boston': [42.3601, -71.0589],
-  'Miami': [25.7617, -80.1918],
-  'Brooklyn': [40.6782, -73.9442],
-  'Dallas': [32.7767, -96.797],
-  'Detroit': [42.3314, -83.0458],
-  'Minneapolis': [44.9778, -93.265],
-  'New Orleans': [29.9511, -90.0715],
-  'Washington DC': [38.9072, -77.0369],
-  'Phoenix': [33.4484, -112.074],
-  'Morrison': [39.6536, -105.1911],
-  'Manchester': [53.4808, -2.2426],
-  'London': [51.5074, -0.1278],
-  'Berlin': [52.52, 13.405],
-  'Tokyo': [35.6762, 139.6503],
-  'Paris': [48.8566, 2.3522],
-  'Toronto': [43.6532, -79.3832],
-  'Melbourne': [-37.8136, 144.9631],
-};
+import { resolveCities } from '../lib/geo';
 
 export default function ConcertMap() {
   const { shows, setSelectedShow, getArtistImage, navigate } = useApp();
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [resolvedGeo, setResolvedGeo] = useState({});
+  const [mapReady, setMapReady] = useState(false);
 
   const attended = shows.filter(isAttended);
   const cityCounts = {};
   attended.forEach((s) => {
     if (s.city) cityCounts[s.city] = (cityCounts[s.city] || 0) + 1;
   });
+
+  // Resolve city -> {lat, lng, state, country} for every distinct city
+  // logged, mirroring Wrapped.jsx's map slide. CITY_DATA covers common
+  // cities synchronously; anything else falls back to Nominatim so
+  // every city counted in "N cities explored" also gets a pin.
+  useEffect(() => {
+    let cancelled = false;
+    const cities = Object.keys(cityCounts);
+    if (cities.length === 0) return;
+    resolveCities(cities).then((resolved) => {
+      if (!cancelled) setResolvedGeo(resolved);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shows]);
+
+  const markersRef = useRef([]);
 
   useEffect(() => {
     if (mapInstance.current || !mapRef.current) return;
@@ -58,24 +47,8 @@ export default function ConcertMap() {
         maxZoom: 19,
       }).addTo(map);
 
-      Object.entries(cityCounts).forEach(([city, count]) => {
-        const coords = CITY_COORDS[city];
-        if (!coords) return;
-
-        const size = Math.min(24 + count * 4, 40);
-        const icon = L.divIcon({
-          className: '',
-          html: `<div style="width:${size}px;height:${size}px;background:linear-gradient(135deg,#F4A261,#E8573A);border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px rgba(232,87,58,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${count > 1 ? 12 : 0}px;font-family:Outfit,sans-serif;">${count > 1 ? count : ''}</div>`,
-          iconSize: [size, size],
-          iconAnchor: [size / 2, size / 2],
-        });
-
-        L.marker(coords, { icon })
-          .addTo(map)
-          .on('click', () => setSelectedCity(city));
-      });
-
       mapInstance.current = map;
+      setMapReady(true);
       setTimeout(() => map.invalidateSize(), 100);
     });
 
@@ -86,6 +59,36 @@ export default function ConcertMap() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!mapReady) return;
+
+    import('leaflet').then((L) => {
+      const map = mapInstance.current;
+      if (!map) return;
+
+      markersRef.current.forEach((m) => map.removeLayer(m));
+      markersRef.current = [];
+
+      Object.entries(cityCounts).forEach(([city, count]) => {
+        const g = resolvedGeo[city];
+        if (!g) return;
+
+        const size = Math.min(24 + count * 4, 40);
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:${size}px;height:${size}px;background:linear-gradient(135deg,#F4A261,#E8573A);border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px rgba(232,87,58,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${count > 1 ? 12 : 0}px;font-family:Outfit,sans-serif;">${count > 1 ? count : ''}</div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+
+        const marker = L.marker([g.lat, g.lng], { icon })
+          .addTo(map)
+          .on('click', () => setSelectedCity(city));
+        markersRef.current.push(marker);
+      });
+    });
+  }, [resolvedGeo, mapReady]);
 
   const cityShows = selectedCity
     ? attended.filter((s) => s.city === selectedCity)

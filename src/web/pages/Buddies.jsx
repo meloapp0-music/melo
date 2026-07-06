@@ -179,17 +179,25 @@ export default function Buddies() {
       {view === 'requests' && (
         <>
           <div className="section-label">Incoming</div>
-          {incoming.length === 0 ? (
+          {loading ? (
+            <div className="upcoming-loading">Loading requests…</div>
+          ) : incoming.length === 0 ? (
             <p className="settings-desc">No incoming requests.</p>
           ) : (
             <div className="buddy-grid">
               {incoming.map((r) => (
                 <div key={r.userId} className="buddy-card">
-                  <Avatar name={r.displayName || r.username} color={r.avatarColor} url={r.avatarUrl} />
-                  <div className="buddy-info">
-                    <div className="buddy-name">{r.displayName || r.username}</div>
-                    <div className="buddy-shows-count">@{r.username}</div>
-                  </div>
+                  <button
+                    type="button"
+                    className="buddy-search-main"
+                    onClick={() => setSelectedUserId(r.userId)}
+                  >
+                    <Avatar name={r.displayName || r.username} color={r.avatarColor} url={r.avatarUrl} />
+                    <div className="buddy-info">
+                      <div className="buddy-name">{r.displayName || r.username}</div>
+                      <div className="buddy-shows-count">@{r.username}</div>
+                    </div>
+                  </button>
                   <div className="buddy-req-actions">
                     <button className="buddy-action-btn" onClick={() => handleAccept(r.userId)}>Accept</button>
                     <button className="buddy-action-btn buddy-action-ghost" onClick={() => handleDecline(r.userId)}>Decline</button>
@@ -200,17 +208,25 @@ export default function Buddies() {
           )}
 
           <div className="section-label" style={{ marginTop: 24 }}>Sent</div>
-          {outgoing.length === 0 ? (
+          {loading ? (
+            <div className="upcoming-loading">Loading requests…</div>
+          ) : outgoing.length === 0 ? (
             <p className="settings-desc">No pending sent requests.</p>
           ) : (
             <div className="buddy-grid">
               {outgoing.map((r) => (
                 <div key={r.userId} className="buddy-card">
-                  <Avatar name={r.displayName || r.username} color={r.avatarColor} url={r.avatarUrl} />
-                  <div className="buddy-info">
-                    <div className="buddy-name">{r.displayName || r.username}</div>
-                    <div className="buddy-shows-count">@{r.username}</div>
-                  </div>
+                  <button
+                    type="button"
+                    className="buddy-search-main"
+                    onClick={() => setSelectedUserId(r.userId)}
+                  >
+                    <Avatar name={r.displayName || r.username} color={r.avatarColor} url={r.avatarUrl} />
+                    <div className="buddy-info">
+                      <div className="buddy-name">{r.displayName || r.username}</div>
+                      <div className="buddy-shows-count">@{r.username}</div>
+                    </div>
+                  </button>
                   <button className="buddy-action-btn buddy-action-ghost" onClick={() => handleDecline(r.userId)}>Cancel</button>
                 </div>
               ))}

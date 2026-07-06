@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useApp } from '../App';
 import {
   getArtistGradient, formatDate, daysUntil,
@@ -27,6 +27,14 @@ export default function MyShows() {
   const [activeTab, setActiveTab] = useState(SHOW_STATUS.ATTENDED);
   const [genreFilter, setGenreFilter] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+
+  // Genre chips are tab-specific (Attended/Going/Wishlist have different
+  // genre sets), so a filter left over from another tab could silently hide
+  // everything with no visible chip to explain why.
+  useEffect(() => {
+    setGenreFilter('');
+  }, [activeTab]);
+
   const [festivalsOnly, setFestivalsOnly] = useState(false);
   const [expandedFest, setExpandedFest] = useState(() => new Set());
 
@@ -123,6 +131,19 @@ export default function MyShows() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        {search && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => setSearch('')}
+            style={{ background: 'none', border: 'none', padding: 0, display: 'flex', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <svg viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="shows-tabs">
@@ -162,6 +183,14 @@ export default function MyShows() {
               aria-pressed={festivalsOnly}
             >
               <span aria-hidden="true">🎪</span> Festivals
+            </button>
+          )}
+          {genres.length > 0 && (
+            <button
+              className={`filter-chip ${genreFilter === '' ? 'active' : ''}`}
+              onClick={() => setGenreFilter('')}
+            >
+              All
             </button>
           )}
           {genres.map((g) => (

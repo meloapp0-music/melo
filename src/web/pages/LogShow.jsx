@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../App';
 import {
   VIBES, CITIES, VENUES_BY_CITY, GENRES, generateId, formatDate,
@@ -131,6 +131,8 @@ export default function LogShow({ onClose, editingShow = null }) {
   const [cityOpen, setCityOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
   const [status, setStatus] = useState(initialStatus);
+  const [artistError, setArtistError] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ----- "Find a past show" finder mode (Attended tab) -----
   // Location-first search so festival-goers can find shows without
@@ -281,7 +283,8 @@ export default function LogShow({ onClose, editingShow = null }) {
   const filteredCities = city
     ? CITIES.filter((c) => c.toLowerCase().includes(city.toLowerCase()))
     : [];
-  const cityVenues = VENUES_BY_CITY[city] || [];
+  const ALL_VENUES = useMemo(() => [...new Set(Object.values(VENUES_BY_CITY).flat())], []);
+  const cityVenues = VENUES_BY_CITY[city] || (city.trim() ? ALL_VENUES : []);
   const filteredVenues = venue
     ? cityVenues.filter((v) => v.toLowerCase().includes(venue.toLowerCase()))
     : cityVenues;
@@ -377,7 +380,13 @@ export default function LogShow({ onClose, editingShow = null }) {
   };
 
   const handleSubmit = async () => {
-    if (!artist.trim()) return;
+    if (saving) return;
+    if (!artist.trim()) {
+      setArtistError(true);
+      showToast?.({ message: 'Add an artist to log this show' });
+      return;
+    }
+    setSaving(true);
     const payload = {
       artist: artist.trim(),
       date: date || new Date().toISOString().split('T')[0],
@@ -415,34 +424,38 @@ export default function LogShow({ onClose, editingShow = null }) {
     // We close the sheet first so the toast doesn't appear behind the
     // dimmed backdrop. Then fire-and-forget the save + show toast.
     onClose();
-    let savedShow = null;
-    if (editingShow) {
-      await updateShow(editingShow.id, payload);
-      savedShow = { ...editingShow, ...payload };
-    } else {
-      savedShow = await addShow({
-        id: generateId(),
-        ...payload,
-        createdAt: new Date().toISOString(),
-      });
-    }
-    // Reconcile real-friend tags now that the show row (and its id)
-    // exists. Diff against what was loaded so edits add/remove cleanly.
-    if (savedShow?.id) {
-      const orig = originalTagsRef.current;
-      const add = [...taggedIds].filter((id) => !orig.has(id));
-      const remove = [...orig].filter((id) => !taggedIds.has(id));
-      await Promise.all([
-        ...add.map((id) => tagAttendee(savedShow.id, id).catch(() => {})),
-        ...remove.map((id) => untagAttendee(savedShow.id, id).catch(() => {})),
-      ]);
-    }
-    if (showToast) {
-      const verb = editingShow ? 'Updated' : 'Logged';
-      showToast({
-        message: `✓ ${verb} ${payload.artist}`,
-        onClick: savedShow?.id ? () => setSelectedShow(savedShow) : undefined,
-      });
+    try {
+      let savedShow = null;
+      if (editingShow) {
+        await updateShow(editingShow.id, payload);
+        savedShow = { ...editingShow, ...payload };
+      } else {
+        savedShow = await addShow({
+          id: generateId(),
+          ...payload,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      // Reconcile real-friend tags now that the show row (and its id)
+      // exists. Diff against what was loaded so edits add/remove cleanly.
+      if (savedShow?.id) {
+        const orig = originalTagsRef.current;
+        const add = [...taggedIds].filter((id) => !orig.has(id));
+        const remove = [...orig].filter((id) => !taggedIds.has(id));
+        await Promise.all([
+          ...add.map((id) => tagAttendee(savedShow.id, id).catch(() => {})),
+          ...remove.map((id) => untagAttendee(savedShow.id, id).catch(() => {})),
+        ]);
+      }
+      if (showToast) {
+        const verb = editingShow ? 'Updated' : 'Logged';
+        showToast({
+          message: `✓ ${verb} ${payload.artist}`,
+          onClick: savedShow?.id ? () => setSelectedShow(savedShow) : undefined,
+        });
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -844,9 +857,11 @@ export default function LogShow({ onClose, editingShow = null }) {
                 className={`log-input ${artistImage ? 'with-avatar' : ''}`}
                 placeholder="Artist / Band"
                 value={artist}
+                style={artistError ? { borderColor: 'var(--red, #E24B4A)' } : undefined}
                 onChange={(e) => {
                   setArtist(e.target.value);
                   setArtistOpen(true);
+                  setArtistError(false);
                 }}
                 onFocus={() => setArtistOpen(true)}
                 onBlur={() => setTimeout(() => setArtistOpen(false), 200)}
@@ -987,6 +1002,13 @@ export default function LogShow({ onClose, editingShow = null }) {
                   ))}
                 </div>
               )}
+              {cityOpen && city.trim() && filteredCities.length === 0 && (
+                <div className="log-autocomplete">
+                  <div className="log-autocomplete-item" style={{ color: 'var(--brown-muted)', cursor: 'default' }}>
+                    We'll use "{city}"
+                  </div>
+                </div>
+              )}
             </div>
             <div className="log-input-wrap">
               <input
@@ -1038,6 +1060,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                 className="log-finder-search"
                 style={{ marginTop: 10 }}
                 onClick={() => pullFestivalLineup()}
+                disabled={finderLoading}
               >
                 🎪 Find this festival's lineup →
               </button>
@@ -1175,7 +1198,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                   <button
                     key={n}
                     className={`log-score ${score === n ? 'active' : ''}`}
-                    onClick={() => setScore(n)}
+                    onClick={() => setScore(score === n ? 0 : n)}
                   >
                     {n}
                   </button>
@@ -1362,8 +1385,8 @@ export default function LogShow({ onClose, editingShow = null }) {
             </div>
           )}
 
-          <button className="log-submit" onClick={handleSubmit}>
-            {submitLabel}
+          <button className="log-submit" onClick={handleSubmit} disabled={saving}>
+            {saving ? 'Saving…' : submitLabel}
           </button>
 
           </>

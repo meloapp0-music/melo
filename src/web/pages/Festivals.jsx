@@ -82,6 +82,7 @@ export default function Festivals() {
   const [mode, setMode] = useState(homeCity ? 'near' : 'anywhere');
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   // ----- Shows search view state -----
   // searchType: how the user is browsing — by 'city', 'artist', or
@@ -100,9 +101,10 @@ export default function Festivals() {
   useEffect(() => {
     if (view !== 'festivals') return;
     setLoading(true);
+    setFetchError(false);
     fetchFestivals({ city: mode === 'near' ? homeCity : undefined })
       .then((list) => setFestivals(list || []))
-      .catch(() => setFestivals([]))
+      .catch(() => { setFestivals([]); setFetchError(true); })
       .finally(() => setLoading(false));
   }, [view, mode, homeCity]);
 
@@ -445,7 +447,9 @@ export default function Festivals() {
               <p>
                 {mode === 'near' && homeCity
                   ? `No festivals near ${homeCity} yet. Try Anywhere.`
-                  : "Couldn't load festivals right now. Check back later."}
+                  : fetchError
+                    ? "Couldn't load festivals right now. Check back later."
+                    : 'No festivals to show right now.'}
               </p>
             </div>
           ) : (
