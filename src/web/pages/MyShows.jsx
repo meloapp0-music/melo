@@ -66,6 +66,20 @@ export default function MyShows() {
       : { background: grad };
   };
 
+  // Festival card imagery: a real photo from any act at the festival, else the
+  // headliner's artist image, else null (→ gradient only).
+  const festivalImg = (o) => {
+    const photo = (o.shows || []).map((s) => (s.photos || [])[0]).find(Boolean);
+    return photo || getArtistImage((o.shows || [])[0]?.artist) || null;
+  };
+  const festivalBg = (o) => {
+    const grad = getArtistGradient(o.festival);
+    const img = festivalImg(o);
+    return img
+      ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
+      : { background: grad };
+  };
+
   const festivalDateLabel = (o) =>
     o.dateStart && o.dateEnd && o.dateStart !== o.dateEnd
       ? `${formatDate(o.dateStart)} – ${formatDate(o.dateEnd)}`
@@ -194,10 +208,12 @@ export default function MyShows() {
             item.isFestival ? (
               <Fragment key={item.key}>
                 <div className="show-poster" style={{ cursor: 'pointer' }} onClick={() => toggleFest(item.key)}>
-                  <div className="show-poster-bg" style={{ background: getArtistGradient(item.festival) }} />
-                  <div className="poster-letter" aria-hidden="true">
-                    {(item.festival || '?').trim().charAt(0).toUpperCase()}
-                  </div>
+                  <div className="show-poster-bg" style={festivalBg(item)} />
+                  {!festivalImg(item) && (
+                    <div className="poster-letter" aria-hidden="true">
+                      {(item.festival || '?').trim().charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div className="show-poster-overlay" />
                   <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 2, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>
                     🎪 {item.artistCount} acts
@@ -273,7 +289,7 @@ export default function MyShows() {
             item.isFestival ? (
               <Fragment key={item.key}>
                 <div className="show-list-item" onClick={() => toggleFest(item.key)}>
-                  <div className="show-list-thumb" style={{ background: getArtistGradient(item.festival) }} />
+                  <div className="show-list-thumb" style={festivalBg(item)} />
                   <div className="show-list-info">
                     <div className="show-list-artist">🎪 {item.festival}</div>
                     <div className="show-list-meta">
