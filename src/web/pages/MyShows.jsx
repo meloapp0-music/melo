@@ -27,6 +27,7 @@ export default function MyShows() {
   const [activeTab, setActiveTab] = useState(SHOW_STATUS.ATTENDED);
   const [genreFilter, setGenreFilter] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [festivalsOnly, setFestivalsOnly] = useState(false);
   const [expandedFest, setExpandedFest] = useState(() => new Set());
 
   const base = shows.filter((s) => getShowStatus(s) === activeTab);
@@ -98,8 +99,10 @@ export default function MyShows() {
     if (activeTab !== SHOW_STATUS.ATTENDED) {
       return filtered.map((s) => ({ isFestival: false, key: s.id, show: s, date: s.date }));
     }
-    return groupIntoOutings(filtered).sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [filtered, activeTab]);
+    let items = groupIntoOutings(filtered).sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (festivalsOnly) items = items.filter((o) => o.isFestival);
+    return items;
+  }, [filtered, activeTab, festivalsOnly]);
 
   return (
     <div className="page">
@@ -152,6 +155,15 @@ export default function MyShows() {
           >
             <span aria-hidden="true">★</span> Favorites
           </button>
+          {activeTab === SHOW_STATUS.ATTENDED && (
+            <button
+              className={`filter-chip ${festivalsOnly ? 'active' : ''}`}
+              onClick={() => setFestivalsOnly((v) => !v)}
+              aria-pressed={festivalsOnly}
+            >
+              <span aria-hidden="true">🎪</span> Festivals
+            </button>
+          )}
           {genres.map((g) => (
             <button
               key={g}
@@ -192,14 +204,17 @@ export default function MyShows() {
           <div className="shows-empty-icon">
             {activeTab === SHOW_STATUS.WISHLIST ? '\u2734'
               : activeTab === SHOW_STATUS.GOING ? '\uD83C\uDFAB'
-                : '\uD83C\uDFB6'}
+                : festivalsOnly ? '\uD83C\uDFAA'
+                  : '\uD83C\uDFB6'}
           </div>
           <p>
             {activeTab === SHOW_STATUS.WISHLIST
               ? 'No shows on your wishlist yet'
               : activeTab === SHOW_STATUS.GOING
                 ? "No upcoming shows you're going to yet"
-                : 'No shows found'}
+                : festivalsOnly
+                  ? 'No festivals logged yet \u2014 log one from the Festival tab'
+                  : 'No shows found'}
           </p>
         </div>
       ) : view === 'grid' ? (
