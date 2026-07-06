@@ -150,6 +150,14 @@ None — reuses existing `shows.festival`.
   field; its Search calls `runFinder({festival:''})` to force the general path). Compiles
   clean, boots with no errors. **Not click-tested (auth)** — flag: the 3-button mode
   toggle's fit/wrap should be eyeballed on device.
+- 2026-07-05: Festival cards now use a **real image** — a photo from any act at the
+  festival → the headliner's artist image → gradient fallback (letter watermark hides
+  when an image exists). Shipped in v1.4 (`festivalImg`/`festivalBg` in `MyShows.jsx`).
+  **QUEUED for next version:** pull the festival's OFFICIAL art from **Ticketmaster** —
+  the same `images[]` already shown on the Discover/Festivals page (`fest.image` from
+  `fetchFestivals`), legit + licensed-for-display + free with the existing TM key —
+  cached like `getArtistImage`, with a logged user photo still winning. Do NOT scrape
+  Google Images (copyright + ToS + no clean API; a real risk in a shipped app).
 
 ## Open questions / follow-ups
 
