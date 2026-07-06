@@ -9,6 +9,18 @@
       ],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "landing-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4601",
+        "--directory",
+        "/tmp/mlp"
+      ],
+      "port": 4601
     }
   ]
 }

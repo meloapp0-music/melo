@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../App';
 import {
-  formatDate, topArtists, inferHomeCity, SHOW_STATUS, generateId,
+  formatDate, daysUntil, topArtists, inferHomeCity, SHOW_STATUS, generateId,
 } from '../store';
 import { fetchFestivals, searchEvents } from '../api';
 
@@ -18,6 +18,21 @@ const GENRES = [
   { label: 'Latin', value: 'Latin' },
   { label: 'Folk', value: 'Folk' },
 ];
+
+// Honest "how soon" countdown from the festival's REAL start date. We don't
+// fake "lineup drops in N days" — there's no announcement-date data source.
+function festivalCountdown(date, endDate) {
+  if (!date) return '';
+  const d = daysUntil(date);
+  const end = endDate ? daysUntil(endDate) : d;
+  if (d <= 0 && end >= 0) return 'Happening now';
+  if (d < 0) return '';
+  if (d === 0) return 'Starts today';
+  if (d === 1) return 'Starts tomorrow';
+  if (d <= 14) return `In ${d} days`;
+  if (d <= 60) return `In ${Math.round(d / 7)} weeks`;
+  return `In ${Math.round(d / 30)} months`;
+}
 
 // Formats "May 15, 2026" or "May 15 – May 17, 2026" for a festival
 // that spans multiple days. If `endDate` is missing or equals `date`,
@@ -463,6 +478,12 @@ export default function Festivals() {
                           </>
                         )}
                       </div>
+
+                      {festivalCountdown(fest.date, fest.endDate) && (
+                        <div className="festival-card-badge">
+                          ⏳ {festivalCountdown(fest.date, fest.endDate)}
+                        </div>
+                      )}
 
                       {fest.matchedArtists.length > 0 && (
                         <>

@@ -103,6 +103,10 @@ export default function Buddies() {
         </button>
       </div>
 
+      <p style={{ color: 'var(--brown-muted)', fontSize: 14, margin: '0 0 14px' }}>
+        Live music is better with your people.
+      </p>
+
       {/* Tabs */}
       <div className="festival-mode-tabs">
         <button className={`shows-tab ${view === 'friends' ? 'active' : ''}`} onClick={() => setView('friends')}>

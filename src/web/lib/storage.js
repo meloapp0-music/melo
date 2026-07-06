@@ -79,6 +79,87 @@ export async function deleteShowPhoto(publicUrl) {
   }
 }
 
+// ---------- videos ----------
+// Videos can't be transcoded reliably inside the WKWebView (no
+// AVFoundation access, ffmpeg.wasm is slow/crashy on phones), so v1
+// VALIDATES instead of compressing: ≤60s and ≤45MB (the bucket also
+// enforces 45MB + video MIME types server-side — migration 0014).
+// A native compression pass is the planned phase 2 — see
+// docs/initiatives/2026-06-27-video-uploads.md.
+
+const VIDEO_BUCKET = 'show-videos';
+export const VIDEO_MAX_SECONDS = 60;
+export const VIDEO_MAX_BYTES = 45 * 1024 * 1024; // keep in sync with 0014
+
+/** Upload one video. Validates duration + size, returns the public URL.
+ *  Throws Error with a user-friendly message on validation failure. */
+export async function uploadShowVideo(file, userId, showId) {
+  if (!file || !userId || !showId) throw new Error('uploadShowVideo: missing arg');
+
+  if (file.size > VIDEO_MAX_BYTES) {
+    const mb = Math.round(file.size / (1024 * 1024));
+    throw new Error(`That video is ${mb}MB — the limit is 45MB. Trim it shorter and try again.`);
+  }
+  const seconds = await videoDuration(file);
+  if (seconds && seconds > VIDEO_MAX_SECONDS + 1) {
+    throw new Error(`That clip is ${Math.round(seconds)}s — keep it under ${VIDEO_MAX_SECONDS}s. Short clips are the good stuff anyway.`);
+  }
+
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  const ext = (file.name || '').toLowerCase().endsWith('.webm') ? 'webm'
+    : (file.type === 'video/quicktime' || (file.name || '').toLowerCase().endsWith('.mov')) ? 'mov'
+    : 'mp4';
+  const path = `${userId}/${showId}/${ts}-${rand}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(VIDEO_BUCKET)
+    .upload(path, file, {
+      contentType: file.type || 'video/mp4',
+      upsert: false,
+      cacheControl: '31536000',
+    });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(VIDEO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/** Delete one video by its public URL. Best-effort, like deleteShowPhoto. */
+export async function deleteShowVideo(publicUrl) {
+  const marker = `/object/public/${VIDEO_BUCKET}/`;
+  const i = (publicUrl || '').indexOf(marker);
+  if (i === -1) return;
+  const path = publicUrl.slice(i + marker.length);
+  const { error } = await supabase.storage.from(VIDEO_BUCKET).remove([path]);
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[Melo] deleteShowVideo storage error', error);
+  }
+}
+
+/** Read a video file's duration (seconds) via an off-DOM <video>.
+ *  Resolves 0 when metadata can't be read — we upload rather than
+ *  false-reject in that case (the size cap still protects storage). */
+function videoDuration(file) {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      const done = (secs) => {
+        URL.revokeObjectURL(url);
+        resolve(secs);
+      };
+      v.onloadedmetadata = () => done(Number.isFinite(v.duration) ? v.duration : 0);
+      v.onerror = () => done(0);
+      v.src = url;
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
 // ---------- internals ----------
 
 function pathFromPublicUrl(url) {

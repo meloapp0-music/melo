@@ -4,7 +4,7 @@ import { useApp } from '../App';
 import {
   getArtistGradient, getGreeting, formatDate, daysUntil,
   calculateStreak, getWrappedYears, wrappedLabel, DISCOVERY_ARTISTS,
-  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl,
+  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, groupIntoOutings,
 } from '../store';
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
 import { MeloIcon } from '../components/MeloLogo';
@@ -25,10 +25,18 @@ export default function Home() {
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
   const artists = new Set(attended.map((s) => s.artist));
+  // Collapse festivals into one "outing" so a 60-act festival counts as a single
+  // show, and average only the outings you've actually rated — a freshly-logged,
+  // unrated festival no longer drags the average toward zero.
+  const outings = groupIntoOutings(attended);
+  const ratedOutings = outings.filter((o) => o.score > 0);
   const avgScore =
-    attended.length > 0
-      ? (attended.reduce((sum, s) => sum + s.score, 0) / attended.length).toFixed(1)
+    ratedOutings.length > 0
+      ? (ratedOutings.reduce((sum, o) => sum + o.score, 0) / ratedOutings.length).toFixed(1)
       : 0;
+  // Total songs heard live — sums every logged setlist. A delightful, unique
+  // stat we already have the data for (only shown once there's a setlist).
+  const songsHeard = attended.reduce((sum, s) => sum + (s.setlist?.length || 0), 0);
 
   const sorted = [...attended].sort((a, b) => new Date(b.date) - new Date(a.date));
   const recent = sorted.slice(0, 8);
@@ -156,7 +164,7 @@ export default function Home() {
         <p className="home-greeting-sub">
           {shows.length === 0
             ? 'Let’s get your first show in the books.'
-            : 'Your concert journey awaits'}
+            : 'Every show you’ve ever seen, in one place.'}
         </p>
       </div>
 
@@ -247,9 +255,9 @@ export default function Home() {
           type="button"
           className="home-stat home-stat-btn"
           onClick={() => navigate('shows')}
-          aria-label={`${attended.length} shows — view all`}
+          aria-label={`${outings.length} shows — view all`}
         >
-          <div className="home-stat-num">{attended.length}</div>
+          <div className="home-stat-num">{outings.length}</div>
           <div className="home-stat-label">Shows</div>
         </button>
         <div className="home-stat-divider" />
@@ -272,6 +280,15 @@ export default function Home() {
           <div className="home-stat-num">{cities.size}</div>
           <div className="home-stat-label">Cities</div>
         </button>
+        {songsHeard > 0 && (
+          <>
+            <div className="home-stat-divider" />
+            <div className="home-stat">
+              <div className="home-stat-num">{songsHeard}</div>
+              <div className="home-stat-label">Songs</div>
+            </div>
+          </>
+        )}
         <div className="home-stat-divider" />
         <div className="home-stat">
           <div className="home-stat-num">{avgScore}</div>

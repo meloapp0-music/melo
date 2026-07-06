@@ -270,6 +270,206 @@ export async function searchPastShows({ artist, city, year, venue } = {}) {
   return deduped;
 }
 
+// ===== Festival-name autofill =====
+// "Type Electric Forest → the whole festival pops up." There is NO clean API
+// for this: Ticketmaster is upcoming-events-only and fuzzy (searching "Electric
+// Forest" returns "Electric Callboy" — verified 2026-06-30), so it can't find a
+// festival someone JUST attended; and Setlist.fm, which DOES have the past
+// setlists, isn't searchable by festival name. So we:
+//   1. Resolve the festival name → its venue/city via a curated map (reliable
+//      for the big festivals; the primary path for PAST festivals).
+//   2. Pull the real per-day setlists from Setlist.fm for that venue/city+year.
+//   3. Use Ticketmaster ONLY as a strict-match bonus (upcoming/unmapped fests),
+//      never trusting a fuzzy hit — it just enriches the lineup when it has the
+//      actual event.
+// Every row is stamped with the festival name so the existing finder groups +
+// multi-selects them unchanged.
+// Per docs/initiatives/2026-05-21-festival-past-show-finder.md (2026-06-30 add).
+//
+// Curated map — seed set of major (mostly US) festivals → the venue or city
+// Setlist.fm files them under. `q` is what we hand to searchPastShows: a
+// venueName for big-city fests (so we don't drown in unrelated club shows), a
+// cityName for small-town fests (clean + robust). Extend freely; these strings
+// are tuned against Setlist.fm's naming.
+const FESTIVAL_VENUES = {
+  'electric forest': { q: { city: 'Rothbury' }, city: 'Rothbury', state: 'MI' },
+  'coachella': { q: { city: 'Indio' }, city: 'Indio', state: 'CA' },
+  'bonnaroo': { q: { city: 'Manchester' }, city: 'Manchester', state: 'TN' },
+  'lollapalooza': { q: { venue: 'Grant Park' }, city: 'Chicago', state: 'IL' },
+  'pitchfork music festival': { q: { venue: 'Union Park' }, city: 'Chicago', state: 'IL' },
+  'riot fest': { q: { venue: 'Douglass Park' }, city: 'Chicago', state: 'IL' },
+  'austin city limits': { q: { venue: 'Zilker Park' }, city: 'Austin', state: 'TX' },
+  'acl': { q: { venue: 'Zilker Park' }, city: 'Austin', state: 'TX' },
+  'outside lands': { q: { venue: 'Golden Gate Park' }, city: 'San Francisco', state: 'CA' },
+  'governors ball': { q: { venue: 'Flushing Meadows Corona Park' }, city: 'New York', state: 'NY' },
+  'bottlerock': { q: { city: 'Napa' }, city: 'Napa', state: 'CA' },
+  'edc': { q: { venue: 'Las Vegas Motor Speedway' }, city: 'Las Vegas', state: 'NV' },
+  'electric daisy carnival': { q: { venue: 'Las Vegas Motor Speedway' }, city: 'Las Vegas', state: 'NV' },
+  'ultra': { q: { venue: 'Bayfront Park' }, city: 'Miami', state: 'FL' },
+  'shaky knees': { q: { venue: 'Central Park' }, city: 'Atlanta', state: 'GA' },
+  'boston calling': { q: { venue: 'Harvard Athletic Complex' }, city: 'Boston', state: 'MA' },
+  'summerfest': { q: { venue: 'Henry Maier Festival Park' }, city: 'Milwaukee', state: 'WI' },
+  'hangout': { q: { city: 'Gulf Shores' }, city: 'Gulf Shores', state: 'AL' },
+  'railbird': { q: { city: 'Lexington' }, city: 'Lexington', state: 'KY' },
+};
+
+// Display-cased festival names for the Log-a-Show autocomplete dropdown. Kept in
+// sync with FESTIVAL_VENUES above (the ones we can resolve to a lineup reliably).
+export const FESTIVAL_NAMES = [
+  'Coachella', 'Lollapalooza', 'Bonnaroo', 'Electric Forest', 'Austin City Limits',
+  'Outside Lands', 'Governors Ball', 'BottleRock', 'EDC', 'Ultra',
+  'Pitchfork Music Festival', 'Riot Fest', 'Shaky Knees', 'Boston Calling',
+  'Summerfest', 'Hangout', 'Railbird',
+];
+
+function normalizeFestival(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\bmusic festival\b|\bfestival\b|\bfest\b/g, '')
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function lookupFestivalVenue(name) {
+  const n = normalizeFestival(name);
+  if (!n) return null;
+  if (FESTIVAL_VENUES[n]) return FESTIVAL_VENUES[n];
+  for (const [k, v] of Object.entries(FESTIVAL_VENUES)) {
+    const nk = normalizeFestival(k);
+    if (n === nk || n.includes(nk) || nk.includes(n)) return v;
+  }
+  return null;
+}
+
+function isoToDisplay(iso) {
+  const p = String(iso || '').split('-');
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
+}
+
+export async function searchFestivalByName(name, { year } = {}) {
+  const label = (name || '').trim();
+  if (!label) return [];
+
+  let venue = '';
+  let city = '';
+  let state = '';
+  let resolvedYear = year ? String(year) : '';
+  const lineup = []; // { artist, date } — only from a STRICT Ticketmaster hit
+
+  // --- 1) Curated map (reliable for past festivals) ---
+  const mapped = lookupFestivalVenue(label);
+  if (mapped) {
+    venue = mapped.q.venue || '';
+    city = mapped.q.city || mapped.city || '';
+    state = mapped.state || '';
+  }
+
+  // --- 2) Ticketmaster: STRICT match only (upcoming / unmapped fests) ---
+  const key = import.meta.env.VITE_TICKETMASTER_KEY;
+  if (key) {
+    try {
+      const params = new URLSearchParams({
+        apikey: key,
+        keyword: label,
+        classificationName: 'music',
+        sort: 'date,desc',
+        size: '60',
+      });
+      const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`;
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (res.ok) {
+        const data = await res.json();
+        const events = data?._embedded?.events || [];
+        const target = normalizeFestival(label);
+        // Only events whose NAME really contains the festival label — never a
+        // fuzzy fallback (that's how we'd get "Electric Callboy" for "Electric
+        // Forest"). An empty result here is correct, not a bug.
+        let pool = events.filter((ev) => normalizeFestival(ev.name).includes(target) && target);
+        if (year) {
+          const yr = pool.filter((ev) =>
+            (ev?.dates?.start?.localDate || '').startsWith(String(year))
+          );
+          if (yr.length) pool = yr;
+        }
+        pool.sort((a, b) =>
+          (b?.dates?.start?.localDate || '').localeCompare(a?.dates?.start?.localDate || '')
+        );
+        const primary = pool[0];
+        if (primary) {
+          const v = primary?._embedded?.venues?.[0] || {};
+          if (!venue && !city) {
+            venue = v.name || '';
+            city = v.city?.name || '';
+            state = v.state?.stateCode || v.state?.name || '';
+          }
+          if (!resolvedYear) resolvedYear = (primary?.dates?.start?.localDate || '').slice(0, 4);
+        }
+        pool.forEach((ev) => {
+          const d = ev?.dates?.start?.localDate || '';
+          (ev?._embedded?.attractions || []).forEach((a) => {
+            if (a.name) lineup.push({ artist: a.name, date: d });
+          });
+        });
+      }
+    } catch (err) {
+      console.warn('[Melo] Festival resolve (Ticketmaster) failed for', label, err.message);
+    }
+  }
+
+  // Couldn't resolve the festival to any venue/city → let the caller nudge the
+  // user to the details fields rather than return garbage.
+  if (!venue && !city) return [];
+
+  const lineupSet = new Set(lineup.map((l) => l.artist.toLowerCase()));
+
+  // --- 3) Setlist.fm for the real per-day setlists ---
+  let rows = [];
+  if (venue) {
+    rows = await searchPastShows({ venue, year: resolvedYear || undefined });
+  }
+  if (!rows.length && city) {
+    // City search is broader; if we have a Ticketmaster lineup, keep only those
+    // acts (avoids stamping unrelated club shows as the festival).
+    const cityRows = await searchPastShows({ city, year: resolvedYear || undefined });
+    rows = lineupSet.size
+      ? cityRows.filter((r) => lineupSet.has((r.artist || '').toLowerCase()))
+      : cityRows;
+  }
+
+  // Stamp the festival label so everything groups together in the finder.
+  rows = rows.map((r) => ({ ...r, festival: label }));
+
+  // --- 4) Add lineup acts Setlist.fm didn't return (no setlist logged yet) ---
+  const have = new Set(rows.map((r) => (r.artist || '').toLowerCase()));
+  const added = new Set();
+  lineup.forEach(({ artist, date }) => {
+    const la = artist.toLowerCase();
+    if (have.has(la) || added.has(la)) return;
+    added.add(la);
+    rows.push({
+      artist,
+      venue,
+      city,
+      state,
+      country: '',
+      date: date || '',
+      displayDate: isoToDisplay(date),
+      songs: [],
+      songCount: 0,
+      tour: '',
+      festival: label,
+    });
+  });
+
+  rows.sort(
+    (a, b) =>
+      (a.date || '').localeCompare(b.date || '') ||
+      (a.artist || '').localeCompare(b.artist || '')
+  );
+  return rows;
+}
+
 // ===== SETLIST.FM — Co-act lookup =====
 // Given a venue + date + headliner, finds OTHER artists who played
 // that same venue on that same date — i.e. likely opening acts.
@@ -394,6 +594,100 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
     console.warn('[Melo] Ticketmaster fetch failed for', artistName, err.message);
     return [];
   }
+}
+
+// ===== JAMBASE — small-venue coverage (Schubas-tier) =====
+// Ticketmaster misses independent rooms (Schubas Tavern, Lincoln Hall, Empty
+// Bottle). JamBase lists them. Routed through the `jambase-proxy` Edge Function
+// so the Bearer key stays server-side (never in the bundle).
+//
+// OFF until BOTH: `VITE_JAMBASE_ENABLED === 'true'` (client) AND the
+// `JAMBASE_KEY` secret is set + `jambase-proxy` deployed (server). So this is a
+// clean no-op until you wire it up — the app stays Ticketmaster-only.
+// Per docs/initiatives/2026-07-01-artist-tracking-anywhere.md.
+
+// "US-IL" -> "IL"
+function jbState(region) {
+  const s = String(region || '');
+  const m = s.match(/^[A-Z]{2}-([A-Z0-9]{1,3})$/);
+  return m ? m[1] : s;
+}
+
+export async function fetchJamBaseEvents(artistName, opts = {}) {
+  if (import.meta.env.VITE_JAMBASE_ENABLED !== 'true') return [];
+  if (!artistName) return [];
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const params = new URLSearchParams({ artistName, eventDateFrom: today });
+    if (opts.city) params.set('geoCityName', opts.city);
+    if (opts.genre) params.set('genreSlug', opts.genre);
+
+    const { data, error } = await supabase.functions.invoke('jambase-proxy', {
+      body: { path: 'events', query: params.toString() },
+    });
+    if (error || !data) return [];
+
+    // JamBase v3 is JSON-LD-ish and the list wrapper has varied across docs —
+    // handle the likely shapes. If this returns [] once you have a real key,
+    // log `data` to see the actual wrapper and adjust this one line.
+    const events =
+      data.events ||
+      data['@graph'] ||
+      (data.itemListElement || []).map((x) => x.item || x) ||
+      (Array.isArray(data) ? data : []);
+
+    const lc = artistName.toLowerCase();
+    return events
+      .map((ev) => {
+        const performers = (ev.performer || []).filter(Boolean);
+        const headliner = performers.find((p) => p['x-isHeadliner']) || performers[0] || {};
+        const addr = ev.location?.address || {};
+        const primaryOffer =
+          (ev.offers || []).find((o) => o.category === 'ticketingLinkPrimary') ||
+          (ev.offers || [])[0];
+        return {
+          artist: headliner.name || artistName,
+          venue: ev.location?.name || '',
+          city: addr.addressLocality || '',
+          state: jbState(addr.addressRegion?.identifier),
+          country: '',
+          date: (ev.startDate || '').slice(0, 10),
+          ticketUrl: primaryOffer?.url || '',
+          lineup: performers.map((p) => p.name).filter(Boolean),
+          source: 'jambase',
+        };
+      })
+      .filter(
+        (e) =>
+          (e.artist || '').toLowerCase().includes(lc) ||
+          lc.includes((e.artist || '').toLowerCase()) ||
+          e.lineup.some((n) => (n || '').toLowerCase().includes(lc)),
+      );
+  } catch (err) {
+    console.warn('[Melo] JamBase fetch failed for', artistName, err?.message);
+    return [];
+  }
+}
+
+// Merge Ticketmaster (big rooms) + JamBase (small venues) → dedupe by
+// artist+date+venue. Drop-in replacement for fetchUpcomingEvents at call sites
+// that want full small-venue coverage. JamBase is a no-op until enabled, so
+// today this returns exactly the Ticketmaster results.
+export async function fetchUpcomingEventsMulti(artistName, opts = {}) {
+  const [tm, jb] = await Promise.all([
+    fetchUpcomingEvents(artistName, opts),
+    fetchJamBaseEvents(artistName, opts),
+  ]);
+  const seen = new Set();
+  const merged = [];
+  for (const e of [...tm, ...jb]) {
+    const k = `${(e.artist || '').toLowerCase()}|${e.date}|${(e.venue || '').toLowerCase()}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    merged.push(e);
+  }
+  merged.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return merged;
 }
 
 // ===== Wikipedia/Wikidata — Official venue website lookup =====

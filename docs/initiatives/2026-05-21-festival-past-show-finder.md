@@ -74,6 +74,82 @@ None — reuses existing `shows.festival`.
   (copy + the artist field). Festival auto-fill confirmed working:
   results group by festival and each logged show carries its festival
   (both the finder payload and quick-log `pickShow` already set it).
+- 2026-06-30: New user ask — **festival-NAME-first autofill**: type "Electric
+  Forest" → the whole festival pops up (who played, what day) and auto-fills as
+  the festival. Today the LogShow autocomplete is artist-first (`fetchSetlists` /
+  `fetchUpcomingEvents`), and picking a show fires `fetchCoActs(venue,date,headliner)`
+  → that's why typing "GriZ" surfaced the festival's openers. The finder is
+  city/year/venue/artist — there is **no festival-name entry**.
+  Feasibility (verified 2026-06-30): **no single API returns "festival name → daily
+  lineup."** Setlist.fm has NO festival search (festivals "not part of the API";
+  `isFestival`/`festivalName` are read-only result fields). Feasible path =
+  **Ticketmaster Discovery keyword search** ("Electric Forest" → festival event +
+  `attractions` = the lineup; we already extract this in `fetchFestivals` /
+  `fetchUpcomingEvents`) → resolve the festival's venue + year → seed
+  `searchPastShows({venue, year})` on Setlist.fm → group by date for per-day acts +
+  setlists → reuse the existing multi-select "Log N shows" UI. Caveats: TM per-day
+  splits are inconsistent; Setlist.fm day data is sparse for small acts and fills in
+  over ~1-2 weeks after the fest; great for big fests (Electric Forest), thin for tiny
+  ones (manual quick-log stays the fallback). Status: scoped, not built.
+- 2026-06-30: **Built festival-name autofill** (`searchFestivalByName` in `api.js` +
+  a "Festival" field at the top of the finder in `LogShow.jsx`, routed through the
+  existing multi-select/batch-log UI). Key finding during testing: **Ticketmaster
+  Discovery is the WRONG primary source** — it's upcoming-events-only and fuzzy
+  (a live curl for "Electric Forest" returned "Electric Callboy" in Brussels, and no
+  Electric Forest, since the fest just ended and dropped off TM). So the design changed:
+  primary = a **curated `FESTIVAL_VENUES` map** (festival → venue/city Setlist.fm files
+  it under; ~19 major fests seeded) → `searchPastShows(venue|city, year)` for the real
+  per-day setlists; TM demoted to a **strict-name-match bonus** (never a fuzzy fallback)
+  for upcoming/unmapped fests. Rows stamped with the festival label so the finder groups
+  them. **Verification status:** code compiles, app boots clean (no runtime errors), and
+  the TM limitation is proven. **NOT verified end-to-end:** the Setlist.fm half — the
+  `setlistfm-proxy` Edge Function requires an authenticated session (`invalid session`
+  on anon calls), so the "Electric Forest → Rothbury → acts" path needs a **signed-in
+  device/TestFlight test**. The curated venue/city strings are best-effort and must be
+  tuned against Setlist.fm's real naming during that test.
+- 2026-07-01: **Verified working end-to-end** — user tested on a signed-in build:
+  "Electric Forest" resolved to Double JJ Ranch / Rothbury and pulled the real 2026
+  lineup (Bob Moses, Chris Lake, LSDREAM, Qrion…); "Select all" logged 60. So the
+  Setlist.fm half is confirmed; the curated `Rothbury` city entry matched.
+  User feedback → **festival-as-one-outing** work (new): (1) logging 60 acts tanked the
+  Home **avg score to 2.8** (60 unrated shows counted as zeros); (2) My Shows showed 60
+  separate cards; (3) wants ONE festival rating, not to rate 60 acts.
+  Built (2026-07-01): a shared `groupIntoOutings()` helper in `store.js` — collapses
+  shows sharing a `festival` into one "outing" whose score is the AVERAGE OF THE RATED
+  ACTS (unrated acts contribute nothing). Wired into `Home.jsx` (Shows stat now counts a
+  festival as 1; avg averages only rated OUTINGS → fixes the 2.8) and `MyShows.jsx` (a
+  festival renders as ONE card — "🎪 N acts" — that taps to expand its acts inline; grid +
+  list). Compiles clean, boots with no errors; **UI not click-tested (behind auth)** —
+  needs the user's signed-in verification. Rating model = derive from the standout acts
+  you rate (so you rate a few, not 60); an explicit single "rate the whole festival"
+  control is the offered next step. Still open: user's "it should be in Attended too"
+  (ambiguous — festival search is under Attended→Find a past show; awaiting clarify).
+- 2026-07-01: User confirmed the grouping + avg fix work ("test is good"), and clarified
+  "in Attended too" = be able to type a festival in **Quick log** and pull its lineup.
+  Built the bridge: a "🎪 Find this festival's lineup →" button under the Quick-log
+  Festival field (Attended tab only) that jumps into the finder with that festival — and
+  the quick-log date's year — pre-searched. `runFinder(override)` now accepts an override
+  so the search fires without waiting on async state; the finder Search button calls
+  `runFinder()` (no event arg). Compiles clean, boots with no errors.
+- 2026-07-01: User pushed back — didn't want the button to *switch screens* to the
+  finder. Reworked to render the lineup **inline inside Quick log**: extracted the
+  finder's results UI into a shared `finderResultsBlock` used by both the "Find a past
+  show" finder and, now, inline under the Quick-log Festival field (`inlineFestival`
+  state; `pullFestivalLineup` runs the search without changing `logMode`). No screen
+  switch — type a festival in Quick log, tap the button, results appear in place to
+  multi-select + "Log N shows". Compiles clean, boots with no errors.
+- 2026-07-01: Festival entry point was still buried in the Quick-log "Festival" field.
+  User chose (AskUserQuestion) **"both — a dedicated Festival tab AND a smart field."**
+  Built: (1) the Attended mode toggle is now **3 tabs — Quick log · Festival · Past show**
+  (`switchMode()` clears stale results between modes); (2) a **Festival tab** (festival-
+  first: `FestivalAutocomplete` + year → pull lineup → the shared `finderResultsBlock`);
+  (3) a **`FestivalAutocomplete` dropdown** (suggests from a new `FESTIVAL_NAMES` export in
+  `api.js`, mirrors the city/venue autocomplete) used both in the Festival tab AND as the
+  Quick-log Festival field — picking a suggestion pulls the lineup inline. Cleaned the
+  "Past show" finder back to a general artist/city/year/venue search (removed its festival
+  field; its Search calls `runFinder({festival:''})` to force the general path). Compiles
+  clean, boots with no errors. **Not click-tested (auth)** — flag: the 3-button mode
+  toggle's fit/wrap should be eyeballed on device.
 
 ## Open questions / follow-ups
 
@@ -85,3 +161,7 @@ None — reuses existing `shows.festival`.
   the fallback.
 - Cross-link `2026-05-21-trip-discovery.md` (shares city+date search
   plumbing) and `2026-04-20-festivals.md`.
+- Festival-name resolution (the new ask): a TM keyword search can return multiple/
+  ambiguous events (which year, which region) → needs a disambiguation step (pick the
+  right festival instance). Consider a small curated festival→venue map for the top US
+  festivals so the Setlist.fm day-grouping is reliable for the big ones.

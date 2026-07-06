@@ -442,6 +442,28 @@ export default function ShowDetail({ show, onClose }) {
             </div>
           )}
 
+          {/* Videos — short clips logged with the show (migration 0014).
+              Tap-to-play, never autoplay: saves data and battery.
+              #t=0.01 nudges iOS WKWebView to paint the first frame as
+              the poster instead of a black rectangle. */}
+          {show.videos && show.videos.length > 0 && (
+            <div className="detail-section">
+              <div className="detail-section-title">Videos ({show.videos.length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {show.videos.map((url) => (
+                  <video
+                    key={url}
+                    src={`${url}#t=0.01`}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    style={{ width: '100%', borderRadius: 14, background: '#17120C' }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {show.notes && (
             <div className="detail-section">
               <div className="detail-section-title">Notes</div>

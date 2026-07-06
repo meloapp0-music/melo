@@ -31,6 +31,7 @@ function fromRow(row) {
     buddies: row.buddies || [],
     openers: row.openers || [],
     photos: row.photos || [],
+    videos: row.videos || [],
     festival: row.festival || '',
     venueUrl: row.venue_url || '',
     battleWins: row.battle_wins ?? 0,
@@ -77,6 +78,8 @@ function toRow(show, userId) {
   if (show.isFavorite) row.is_favorite = show.isFavorite;
   // Same defense for `openers` (migration 0009).
   if (Array.isArray(show.openers) && show.openers.length > 0) row.openers = show.openers;
+  // Same defense for `videos` (migration 0014).
+  if (Array.isArray(show.videos) && show.videos.length > 0) row.videos = show.videos;
   return row;
 }
 
@@ -246,6 +249,7 @@ export async function updateShow(id, updates, userId) {
     buddies: 'buddies',
     openers: 'openers',
     photos: 'photos',
+    videos: 'videos',
     festival: 'festival',
     venueUrl: 'venue_url',
     battleWins: 'battle_wins',

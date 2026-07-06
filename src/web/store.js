@@ -91,6 +91,50 @@ export const isAttended = (s) => getShowStatus(s) === SHOW_STATUS.ATTENDED;
 export const isGoing    = (s) => getShowStatus(s) === SHOW_STATUS.GOING;
 export const isWishlist = (s) => getShowStatus(s) === SHOW_STATUS.WISHLIST;
 
+// A festival's grouping key (case-insensitive festival name).
+export const festivalKey = (s) => (s?.festival || '').trim().toLowerCase();
+
+// Collapse shows that share a festival into a single "outing". A festival then
+// counts as ONE show in stats and renders as ONE card in My Shows, while its
+// individual acts still live underneath. The outing's score is the AVERAGE of
+// the acts you actually rated (score > 0) — so you can rate just the standouts
+// instead of all 60, and a freshly-logged, unrated festival contributes nothing
+// to your average (fixes the "60 zeros tanked my avg" problem). Non-festival
+// shows pass through as their own single-show outing.
+export function groupIntoOutings(shows) {
+  const fests = new Map();
+  const outings = [];
+  for (const s of shows) {
+    const k = festivalKey(s);
+    if (!k) {
+      outings.push({ isFestival: false, key: s.id, show: s, score: s.score || 0, date: s.date });
+      continue;
+    }
+    if (!fests.has(k)) {
+      const o = {
+        isFestival: true, key: k, festival: (s.festival || '').trim(),
+        shows: [], score: 0, ratedCount: 0, artistCount: 0,
+        date: s.date, dateStart: s.date, dateEnd: s.date,
+        venue: s.venue || '', city: s.city || '',
+      };
+      fests.set(k, o);
+      outings.push(o); // same object ref finalized below
+    }
+    fests.get(k).shows.push(s);
+  }
+  for (const o of fests.values()) {
+    o.artistCount = o.shows.length;
+    const rated = o.shows.filter((s) => s.score > 0);
+    o.ratedCount = rated.length;
+    o.score = rated.length ? rated.reduce((a, s) => a + s.score, 0) / rated.length : 0;
+    const dates = o.shows.map((s) => s.date).filter(Boolean).sort();
+    o.dateStart = dates[0] || o.date;
+    o.dateEnd = dates[dates.length - 1] || o.date;
+    o.date = o.dateEnd; // newest-first sorting elsewhere keys off .date
+  }
+  return outings;
+}
+
 // Placeholder id — ignored by the Supabase data layer (the DB assigns
 // a uuid), kept for backwards compatibility with call sites that still
 // set `id` in-flight before the round-trip.
