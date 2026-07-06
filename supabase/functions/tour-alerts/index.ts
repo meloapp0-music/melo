@@ -27,7 +27,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const TM_KEY = Deno.env.get('TICKETMASTER_KEY');
 
-// Cap how many TM lookups we make per run. Each artist = one
+// Cap how many TM lookups we make per run. Each artist (or genre) = one
 // Discovery call. Free tier is 5,000 req/day; we leave plenty of
 // headroom for the in-app callers.
 const MAX_LOOKUPS_PER_RUN = 1000;
@@ -35,6 +35,35 @@ const MAX_LOOKUPS_PER_RUN = 1000;
 // Cap notifications per user per run so a user with 100 wishlist
 // hits doesn't get a notification storm.
 const MAX_NOTIFS_PER_USER = 5;
+
+// Genre-wide discovery is far more prolific than named-artist watches (one
+// query can surface dozens of shows), so it gets its own smaller sub-cap —
+// out of MAX_NOTIFS_PER_USER — so it can't crowd out the higher-signal
+// pre-show reminders and named-artist alerts above it in the run order.
+const MAX_GENRE_NOTIFS_PER_USER = 2;
+
+// Settings' TasteEditor stores genres as free-text labels (see
+// TASTE_GENRES in src/web/components/TasteEditor.jsx). Map the ones with a
+// confident, stable Ticketmaster Discovery `classificationName` match;
+// anything absent (e.g. "Indie", which isn't a standalone top-level TM
+// genre) falls back to a `keyword` search in searchTmByGenre — approximate
+// rather than a strict category filter, but still functional instead of
+// silently dropping the genre. Values verified against Festivals.jsx's
+// existing GENRES mapping (already proven live) plus TM's well-established
+// public taxonomy for the rest.
+const GENRE_TM_MAP: Record<string, string> = {
+  'Rock': 'Rock',
+  'Pop': 'Pop',
+  'Hip-Hop': 'Hip-Hop/Rap',
+  'Country': 'Country',
+  'Electronic': 'Dance/Electronic',
+  'R&B': 'R&B',
+  'Metal': 'Metal',
+  'Latin': 'Latin',
+  'Folk': 'Folk',
+  'Jazz': 'Jazz',
+  'Alternative': 'Alternative',
+};
 
 serve(async (_req) => {
   const start = Date.now();
@@ -98,18 +127,21 @@ serve(async (_req) => {
   // the city we'd otherwise infer from their attended shows.
   const { data: profRows } = await admin
     .from('profiles')
-    .select('id, fav_artists, home_city');
-  const prefs = new Map<string, { favArtists: string[]; homeCity: string }>();
+    .select('id, fav_artists, fav_genres, home_city');
+  const prefs = new Map<string, { favArtists: string[]; favGenres: string[]; homeCity: string }>();
   for (const p of profRows || []) {
     const fav = Array.isArray(p.fav_artists) ? p.fav_artists.filter(Boolean) : [];
+    const gen = Array.isArray(p.fav_genres) ? p.fav_genres.filter(Boolean) : [];
     const hc = (p.home_city || '').trim();
-    if (fav.length > 0 || hc) prefs.set(p.id, { favArtists: fav, homeCity: hc });
+    if (fav.length > 0 || gen.length > 0 || hc) {
+      prefs.set(p.id, { favArtists: fav, favGenres: gen, homeCity: hc });
+    }
   }
 
   // Resolve each user's home city + finalize watch list + going shows.
-  // byUser: user_id -> { homeCity, artists, going }. Union of users with
-  // shows-derived signal and users with explicit taste.
-  const byUser = new Map<string, { homeCity: string; artists: string[]; going: GoingShow[] }>();
+  // byUser: user_id -> { homeCity, artists, genres, going }. Union of users
+  // with shows-derived signal and users with explicit taste.
+  const byUser = new Map<string, { homeCity: string; artists: string[]; genres: string[]; going: GoingShow[] }>();
   for (const u of new Set<string>([...agg.keys(), ...prefs.keys()])) {
     const a = agg.get(u);
     const p = prefs.get(u);
@@ -121,16 +153,17 @@ serve(async (_req) => {
       }
     }
     const homeCity = p?.homeCity || inferredCity;
-    // Taste-derived favorites only power "artist in YOUR CITY" alerts —
-    // so only watch them when we actually have a city. Otherwise they'd
-    // fire global "just announced a tour" pushes for passively-liked
-    // artists. Shows-derived `watch` (wishlist/going/loved) keeps its
+    // Taste-derived favorites (named artists AND genres) only power "in YOUR
+    // CITY" alerts — so only watch them when we actually have a city.
+    // Otherwise genres would fire a firehose of every matching show
+    // worldwide. Shows-derived `watch` (wishlist/going/loved) keeps its
     // existing global behavior since those are explicit actions.
     const favForWatch = homeCity ? (p?.favArtists || []) : [];
     const artists = [...new Set([...(a?.watch || []), ...favForWatch])];
+    const genres = homeCity ? [...new Set(p?.favGenres || [])] : [];
     const going = a?.going || [];
-    if (artists.length === 0 && going.length === 0) continue;
-    byUser.set(u, { homeCity, artists, going });
+    if (artists.length === 0 && genres.length === 0 && going.length === 0) continue;
+    byUser.set(u, { homeCity, artists, genres, going });
   }
 
   // Pull device tokens once.
@@ -155,7 +188,7 @@ serve(async (_req) => {
   const { data: sentRows, error: sentErr } = await admin
     .from('notifications_sent')
     .select('user_id, kind, ref')
-    .in('kind', ['tour_alert', 'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate']);
+    .in('kind', ['tour_alert', 'genre_alert', 'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate']);
   if (sentErr) {
     console.error('[tour-alerts] sent read failed', sentErr);
     return err({ error: sentErr.message }, 500);
@@ -173,7 +206,7 @@ serve(async (_req) => {
   let recorded = 0;
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
 
-  for (const [userId, { homeCity, artists, going }] of byUser) {
+  for (const [userId, { homeCity, artists, genres, going }] of byUser) {
     if (lookups >= MAX_LOOKUPS_PER_RUN) break;
 
     const tokens = tokensByUser.get(userId) || [];
@@ -293,6 +326,68 @@ serve(async (_req) => {
       sent.add(`tour_alert|${ev.id}`);
       userNotifs++;
     }
+
+    // --- Genre-wide city discovery: "notify me when ANY artist in these
+    //     genres plays my city" — not just artists I've explicitly named.
+    //     One Discovery query per selected genre, then ROUND-ROBIN the
+    //     results (one pick per genre per pass) so a genre with many
+    //     touring acts can't crowd out a quieter one — each selected genre
+    //     gets a fair shot at the (small) per-run notification budget.
+    //     Genre order is shuffled each run so whichever genre the user
+    //     picked first doesn't always win ties.
+    if (genres.length > 0 && homeCity) {
+      const shuffled = [...genres].sort(() => Math.random() - 0.5);
+      const perGenre = new Map<string, TmGenreEvent[]>();
+      for (const genre of shuffled) {
+        if (lookups >= MAX_LOOKUPS_PER_RUN) break;
+        lookups++;
+        const events = await searchTmByGenre(genre, homeCity);
+        // A show can match both a named-artist watch AND a genre pick —
+        // check both namespaces so it's never pushed twice for the same event.
+        const candidates = events.filter(
+          (e) => !sent.has(`tour_alert|${e.id}`) && !sent.has(`genre_alert|${e.id}`)
+        );
+        if (candidates.length) perGenre.set(genre, candidates);
+      }
+
+      let genreNotifs = 0;
+      let progress = true;
+      while (progress && genreNotifs < MAX_GENRE_NOTIFS_PER_USER && userNotifs < MAX_NOTIFS_PER_USER) {
+        progress = false;
+        for (const genre of shuffled) {
+          if (genreNotifs >= MAX_GENRE_NOTIFS_PER_USER || userNotifs >= MAX_NOTIFS_PER_USER) break;
+          const queue = perGenre.get(genre);
+          if (!queue || queue.length === 0) continue;
+          const ev = queue.shift()!;
+          progress = true;
+
+          const title = `${ev.artist} — new ${genre} show near you 🎶`;
+          const body = `${ev.venue ? ev.venue + ' · ' : ''}${formatDate(ev.date)}`;
+
+          let delivered = false;
+          if (tokens.length > 0 && isApnsConfigured()) {
+            const results = await sendApnsBatch(tokens, {
+              title,
+              body,
+              data: { kind: 'genre_alert', genre, artist: ev.artist, eventId: ev.id, ticketUrl: ev.ticketUrl },
+            });
+            const okCount = results.filter((r) => r.ok).length;
+            pushed += okCount;
+            delivered = okCount > 0;
+            await pruneDeadTokens(admin, userId, results);
+          }
+          // Same rule as the other alert kinds: only record a delivered
+          // push, so an undeliverable one retries on a later run instead
+          // of being permanently suppressed.
+          if (!delivered) continue;
+
+          sentInsertBuffer.push({ user_id: userId, kind: 'genre_alert', ref: ev.id });
+          sent.add(`genre_alert|${ev.id}`);
+          genreNotifs++;
+          userNotifs++;
+        }
+      }
+    }
   }
 
   // Bulk record only what we ACTUALLY delivered. Every row here was
@@ -327,6 +422,19 @@ interface GoingShow {
 
 interface TmEvent {
   id: string;
+  city: string;
+  state: string;
+  venue: string;
+  date: string;
+  ticketUrl: string;
+}
+
+// Genre discovery isn't scoped to one named artist, so each event carries
+// its own resolved headliner name (unlike TmEvent, which is always about
+// the single artist searchTm() was called for).
+interface TmGenreEvent {
+  id: string;
+  artist: string;
   city: string;
   state: string;
   venue: string;
@@ -396,6 +504,50 @@ async function searchTm(artist: string, hintCity: string | null): Promise<TmEven
       .filter((e: TmEvent) => e.id);
   } catch (err) {
     console.warn('[tour-alerts] TM search failed for', artist, err);
+    return [];
+  }
+}
+
+// Genre-wide city discovery: any artist playing `city` in `genre`, not one
+// named artist. Uses GENRE_TM_MAP's classificationName when we have a
+// confident match; falls back to a keyword search (still scoped to the
+// music segment) for a genre label with no stable TM classification (e.g.
+// "Indie") so it degrades to approximate matching instead of doing nothing.
+async function searchTmByGenre(genre: string, city: string): Promise<TmGenreEvent[]> {
+  try {
+    const params = new URLSearchParams({
+      apikey: TM_KEY!,
+      city,
+      classificationName: 'music',
+      sort: 'date,asc',
+      size: '20',
+    });
+    const tmGenre = GENRE_TM_MAP[genre];
+    if (tmGenre) params.set('classificationName', tmGenre);
+    else params.set('keyword', genre);
+
+    const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const events = data?._embedded?.events || [];
+    return events
+      .map((ev: any) => {
+        const venue = ev?._embedded?.venues?.[0] || {};
+        const attractions = ev?._embedded?.attractions || [];
+        return {
+          id: ev.id || '',
+          artist: attractions[0]?.name || ev.name || genre,
+          city: venue.city?.name || '',
+          state: venue.state?.stateCode || venue.state?.name || '',
+          venue: venue.name || '',
+          date: ev?.dates?.start?.localDate || '',
+          ticketUrl: ev.url || '',
+        };
+      })
+      .filter((e: TmGenreEvent) => e.id && e.date);
+  } catch (err) {
+    console.warn('[tour-alerts] TM genre search failed for', genre, err);
     return [];
   }
 }

@@ -55,6 +55,12 @@ export default function TasteEditor({ value, onChange }) {
           </button>
         ))}
       </div>
+      <p className="taste-hint">
+        Get notified when ANY artist in these genres announces a show near
+        you — not just artists you've named below. Picking a few genres
+        rotates fairly between them, so one busy genre won't drown out a
+        quieter one.
+      </p>
 
       <div className="taste-label">Artists you love</div>
       {artists.length > 0 && (
@@ -106,7 +112,10 @@ export default function TasteEditor({ value, onChange }) {
         value={city}
         onChange={(e) => set({ city: e.target.value })}
       />
-      <p className="taste-hint">Used to alert you when artists you love play near you.</p>
+      <p className="taste-hint">
+        Your genres and named artists are both matched against this city —
+        set it so the alerts above actually mean "near you."
+      </p>
     </div>
   );
 }
