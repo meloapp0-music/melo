@@ -499,7 +499,7 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
       // A festival name takes over: resolve it to a lineup + per-day setlists.
       // Otherwise fall back to the general artist/city/year/venue search.
       const results = fest
-        ? await searchFestivalByName(fest, { year: year || undefined })
+        ? await searchFestivalByName(fest, { year: year || undefined, futureOnly: isFutureTab })
         : await searchPastShows({
             artist: artist || undefined,
             city: city || undefined,

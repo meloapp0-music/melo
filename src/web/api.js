@@ -347,7 +347,7 @@ function isoToDisplay(iso) {
   return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
 }
 
-export async function searchFestivalByName(name, { year } = {}) {
+export async function searchFestivalByName(name, { year, futureOnly } = {}) {
   const label = (name || '').trim();
   if (!label) return [];
 
@@ -433,9 +433,18 @@ export async function searchFestivalByName(name, { year } = {}) {
   const lineupSet = new Set(lineup.map((l) => l.artist.toLowerCase()));
 
   // --- 3) Setlist.fm for the real per-day setlists ---
+  // A resolved venue can be a dedicated festival ground (Grant Park, Union
+  // Park — safe to trust broadly) OR a shared arena used for hundreds of
+  // unrelated shows a year (verified live: Windy City Smokeout resolves to
+  // United Center, and an unfiltered venue search pulled in every unrelated
+  // concert Setlist.fm has logged there). Whenever we have a Ticketmaster-
+  // confirmed lineup, ALWAYS filter to just those artists — on the venue
+  // branch too, not only the city fallback — so a shared venue can never
+  // leak in shows that have nothing to do with this festival.
   let rows = [];
   if (venue) {
     rows = await searchPastShows({ venue, year: resolvedYear || undefined });
+    if (lineupSet.size) rows = rows.filter((r) => lineupSet.has((r.artist || '').toLowerCase()));
   }
   if (!rows.length && city) {
     // City search is broader; if we have a Ticketmaster lineup, keep only those
@@ -470,6 +479,17 @@ export async function searchFestivalByName(name, { year } = {}) {
       festival: label,
     });
   });
+
+  // Called from Wishlist/Going, where a past show (this year's edition
+  // already happened, or a prior year's setlist for an artist who's also on
+  // THIS year's bill) is never useful — only ever a future date belongs on
+  // a wishlist. Requires a real, resolvable date; a dateless row can't be
+  // confirmed upcoming, so it's dropped too rather than risk showing stale
+  // noise.
+  if (futureOnly) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    rows = rows.filter((r) => r.date && r.date >= todayIso);
+  }
 
   rows.sort(
     (a, b) =>

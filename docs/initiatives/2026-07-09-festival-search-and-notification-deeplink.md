@@ -91,6 +91,42 @@ client-side UI state.
   Wishlist → Festival mode, and (harder to test without a live push) confirm
   a genre/tour-alert tap opens the Full Tour view pre-searched.
 
+## Follow-up fix (same day)
+User reported the Windy City Smokeout search itself was returning "a bunch of
+past shows and artists/bands that aren't even remotely close to being a part
+of" the festival, and asked for Wishlist/Going to only ever show future
+shows. Root-caused precisely (not guessed) by re-reading the actual function:
+
+1. **The real bug**: `searchFestivalByName`'s venue-based Setlist.fm branch
+   had NO filter against the Ticketmaster-confirmed lineup — only the
+   city-fallback branch did. Windy City Smokeout resolves to venue = "United
+   Center," a massive shared arena hosting hundreds of unrelated concerts a
+   year, so the unfiltered venue search pulled in every unrelated artist
+   Setlist.fm has ever logged there. Fixed by applying the same
+   lineup-confirmed filter to the venue branch too — whenever we have a
+   Ticketmaster-verified lineup, ALWAYS restrict Setlist.fm rows to just
+   those artists, regardless of which branch (venue or city) found them.
+2. **The future-only ask**: added a `futureOnly` option to
+   `searchFestivalByName` — when set, drops any row without a real date >=
+   today (covers both stale Setlist.fm rows from a prior year's edition and
+   any dateless edge case). `LogShow.jsx`'s `runFinder` now passes
+   `futureOnly: isFutureTab`, so Festival search on Wishlist/Going is
+   future-only while Attended's festival search is untouched (still wants
+   past editions, since you're logging what you saw).
+
+Note: Quick-log's artist search and the Full Tour mode were NOT part of this
+bug — their data sources (Ticketmaster Discovery, JamBase) are inherently
+upcoming-only by construction. Only `searchFestivalByName`'s Setlist.fm
+fallback could leak past/unrelated data, since Setlist.fm is a past-shows-only
+database with no concept of "upcoming."
+
+Verified: production build clean, zero console/server errors. Could not
+re-run the live Windy City Smokeout check end-to-end from here (the
+Setlist.fm half goes through `setlistfm-proxy`, which requires an
+authenticated session) — the fix is grounded in directly reading and
+correcting an objective asymmetry in the code (one branch filtered, the
+sibling branch didn't), not a guess. Worth a real re-test on device.
+
 ## Open questions / follow-ups
 - Notification-triggered `logPrefill` always targets Wishlist, never Going —
   reasonable default (you're being told about something new, not confirming
