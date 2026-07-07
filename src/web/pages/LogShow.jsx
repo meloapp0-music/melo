@@ -57,7 +57,12 @@ function FestivalAutocomplete({ value, onChange, onSelect, placeholder }) {
 // Three-status segmented control. `editingShow` is set when LogShow is
 // opened from the Home "How was X?" CTA — we hydrate all fields from
 // the existing record and call updateShow on save instead of addShow.
-export default function LogShow({ onClose, editingShow = null }) {
+// `prefill` lets a caller open LogShow straight into a specific mode instead
+// of the default blank Quick-log form — e.g. a tapped tour/genre-alert
+// notification opens Wishlist's Full Tour view, pre-searched for that
+// artist, instead of landing on a blank Home. Shape: { status, mode,
+// tourArtist }. Ignored while editing an existing show.
+export default function LogShow({ onClose, editingShow = null, prefill = null }) {
   const { addShow, addShows, updateShow, buddies, settings, navigate, session, showToast, setSelectedShow } = useApp();
   const userId = session?.user?.id || null;
 
@@ -67,7 +72,7 @@ export default function LogShow({ onClose, editingShow = null }) {
     ? (getShowStatus(editingShow) === SHOW_STATUS.GOING
         ? SHOW_STATUS.ATTENDED
         : getShowStatus(editingShow))
-    : SHOW_STATUS.ATTENDED;
+    : (prefill?.status || SHOW_STATUS.ATTENDED);
 
   const [artist, setArtist] = useState(editingShow?.artist || '');
   const [date, setDate] = useState(editingShow?.date || '');
@@ -137,11 +142,11 @@ export default function LogShow({ onClose, editingShow = null }) {
   // ----- "Find a past show" finder mode (Attended tab) -----
   // Location-first search so festival-goers can find shows without
   // typing each artist. Per v1.0.7 festival-past-show-finder initiative.
-  const [logMode, setLogMode] = useState('quick'); // 'quick' | 'finder'
+  const [logMode, setLogMode] = useState((!editingShow && prefill?.mode) || 'quick'); // 'quick' | 'finder' | 'festival' | 'tour'
   const [finderFestival, setFinderFestival] = useState('');
   const [finderSource, setFinderSource] = useState('past'); // 'past' | 'festival' | 'tour'
   const [inlineFestival, setInlineFestival] = useState(false); // show lineup inside Quick log
-  const [tourArtist, setTourArtist] = useState(''); // Going/Wishlist "full tour" browse
+  const [tourArtist, setTourArtist] = useState((!editingShow && prefill?.tourArtist) || ''); // Going/Wishlist "full tour" browse
   const [finderArtist, setFinderArtist] = useState('');
   const [finderCity, setFinderCity] = useState('');
   const [finderYear, setFinderYear] = useState('');
@@ -614,8 +619,18 @@ export default function LogShow({ onClose, editingShow = null }) {
     }
   };
 
+  // Opened via prefill (e.g. a tapped tour/genre-alert notification) straight
+  // into Full Tour mode with an artist already known — auto-run the search
+  // once on mount instead of making the user retype what they just tapped.
+  useEffect(() => {
+    if (!editingShow && prefill?.mode === 'tour' && prefill?.tourArtist) {
+      runTourSearch(prefill.tourArtist);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const showFinder = isAttendedTab && logMode === 'finder';
-  const showFestival = isAttendedTab && logMode === 'festival';
+  const showFestival = (isAttendedTab || isFutureTab) && logMode === 'festival';
   const showTour = isFutureTab && logMode === 'tour';
   const showQuick = !showFinder && !showFestival && !showTour;
 
@@ -805,6 +820,13 @@ export default function LogShow({ onClose, editingShow = null }) {
               </button>
               <button
                 type="button"
+                className={`log-mode-btn ${logMode === 'festival' ? 'active' : ''}`}
+                onClick={() => switchMode('festival')}
+              >
+                Festival
+              </button>
+              <button
+                type="button"
                 className={`log-mode-btn ${logMode === 'tour' ? 'active' : ''}`}
                 onClick={() => switchMode('tour')}
               >
@@ -854,7 +876,7 @@ export default function LogShow({ onClose, editingShow = null }) {
               <div className="log-section">
                 <p className="log-finder-hint">
                   Which festival? Pick it or type it and we'll pull the whole
-                  lineup — tap the acts you saw, then log them all at once.
+                  day-by-day lineup — tap the acts {isFutureTab ? "you want to catch" : "you saw"}, then {isFutureTab ? 'add' : 'log'} them all at once.
                 </p>
                 <FestivalAutocomplete
                   value={finderFestival}
@@ -1158,7 +1180,7 @@ export default function LogShow({ onClose, editingShow = null }) {
               onSelect={(name) => pullFestivalLineup(name)}
               placeholder="e.g. Coachella, Lollapalooza, Electric Forest"
             />
-            {festival.trim() && isAttendedTab && (
+            {festival.trim() && (isAttendedTab || isFutureTab) && (
               <button
                 type="button"
                 className="log-finder-search"
@@ -1169,7 +1191,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                 🎪 Find this festival's lineup →
               </button>
             )}
-            {isAttendedTab && inlineFestival && festival.trim() && (
+            {(isAttendedTab || isFutureTab) && inlineFestival && festival.trim() && (
               <div className="log-finder" style={{ marginTop: 12 }}>
                 {finderLoading && (
                   <p className="log-finder-hint" style={{ textAlign: 'center', margin: '4px 0' }}>

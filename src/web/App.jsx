@@ -7,7 +7,7 @@ import * as showsDb from './lib/db/shows';
 import { registerForPush, onPushTap } from './lib/push';
 import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
-import { isGoing, daysUntil } from './store';
+import { isGoing, daysUntil, SHOW_STATUS } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
 import ShareCardView from './components/ShareCardView';
@@ -70,6 +70,10 @@ export default function App() {
   // by Home's "How was [show]?" CTA on past Going shows so the user
   // lands directly in the score/vibes editor with all fields prefilled.
   const [logEditTarget, setLogEditTarget] = useState(null);
+  // Opens LogShow straight into a specific mode instead of a blank form —
+  // e.g. a tapped tour/genre-alert notification opens Wishlist's Full Tour
+  // view, pre-searched for that artist. { status, mode, tourArtist } | null.
+  const [logPrefill, setLogPrefill] = useState(null);
   const [selectedShow, setSelectedShow] = useState(null);
   // The very-first-logged-show celebration: auto-opens the share card once.
   const [firstCardShow, setFirstCardShow] = useState(null);
@@ -204,9 +208,17 @@ export default function App() {
       }
       return done();
     }
-    // Tour / city alerts → there's no local show yet; offer the tickets
-    // link via a tappable toast so the user stays in the app.
-    if (kind === 'tour_alert' || kind === 'city_match') {
+    // Tour / city / genre alerts → there's no local show yet. Previously
+    // this ONLY showed a tappable toast, which either got missed or (for
+    // genre_alert, added later) wasn't handled at all — reported by a user
+    // as "the notification didn't take me anywhere, just Home." Now it
+    // opens Wishlist's Full Tour view pre-searched for that artist — a real
+    // screen with every upcoming date, not a toast that can vanish — while
+    // still offering the direct tickets link as a fast-path toast on top.
+    if (kind === 'tour_alert' || kind === 'city_match' || kind === 'genre_alert') {
+      if (pushNav.artist) {
+        setLogPrefill({ status: SHOW_STATUS.WISHLIST, mode: 'tour', tourArtist: pushNav.artist });
+      }
       if (pushNav.ticketUrl) {
         const url = pushNav.ticketUrl;
         showToast({
@@ -214,7 +226,7 @@ export default function App() {
           onClick: () => { try { window.open(url, '_blank'); } catch {} },
           durationMs: 8000,
         });
-      } else {
+      } else if (!pushNav.artist) {
         setSubPage('festivals');
       }
       return done();
@@ -586,10 +598,11 @@ export default function App() {
     <AppContext.Provider value={ctx}>
       <div className="app">
         {renderPage()}
-        {(showLog || logEditTarget) && (
+        {(showLog || logEditTarget || logPrefill) && (
           <LogShow
             editingShow={logEditTarget}
-            onClose={() => { setShowLog(false); setLogEditTarget(null); }}
+            prefill={logPrefill}
+            onClose={() => { setShowLog(false); setLogEditTarget(null); setLogPrefill(null); }}
           />
         )}
         {selectedShow && (

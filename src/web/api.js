@@ -405,10 +405,19 @@ export async function searchFestivalByName(name, { year } = {}) {
           }
           if (!resolvedYear) resolvedYear = (primary?.dates?.start?.localDate || '').slice(0, 4);
         }
+        // Multi-day festivals often list a "thin" GA/VIP ticket event per day
+        // alongside the real lineup event — its only "attraction" is the
+        // festival's own name (verified live against Windy City Smokeout:
+        // duplicate same-date events, one full lineup + one whose sole
+        // attraction is "Windy City Smokeout" itself). Filter that out so it
+        // never shows up as a fake headliner.
+        const targetNorm = normalizeFestival(label);
         pool.forEach((ev) => {
           const d = ev?.dates?.start?.localDate || '';
           (ev?._embedded?.attractions || []).forEach((a) => {
-            if (a.name) lineup.push({ artist: a.name, date: d });
+            if (a.name && normalizeFestival(a.name) !== targetNorm) {
+              lineup.push({ artist: a.name, date: d });
+            }
           });
         });
       }
