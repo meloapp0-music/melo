@@ -776,9 +776,11 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
                     {r.displayDate ? ` · ${r.displayDate}` : r.date ? ` · ${formatDate(r.date)}` : ''}
                   </div>
                 </div>
-                {r.songCount > 0 && (
+                {r.isFestival ? (
+                  <div className="log-finder-result-songs">🎪 Whole event</div>
+                ) : r.songCount > 0 ? (
                   <div className="log-finder-result-songs">{r.songCount} songs</div>
-                )}
+                ) : null}
               </div>
             );
           })}
@@ -1005,8 +1007,9 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
             <div className="log-finder">
               <div className="log-section">
                 <p className="log-finder-hint">
-                  Which festival? Pick it or type it and we'll pull the whole
-                  day-by-day lineup — tap the acts {isFutureTab ? "you want to catch" : "you saw"}, then {isFutureTab ? 'add' : 'log'} them all at once.
+                  {isFutureTab
+                    ? "Pick a festival — we'll pull its dates and lineup. Add the whole festival (even before the lineup drops), or tap the acts you want to catch."
+                    : "Which festival? Pick it or type it and we'll pull the whole day-by-day lineup — tap the acts you saw, then log them all at once."}
                 </p>
                 <FestivalAutocomplete
                   value={finderFestival}

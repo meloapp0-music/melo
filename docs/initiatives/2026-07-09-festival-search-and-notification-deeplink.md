@@ -151,7 +151,41 @@ I should be able to deselect all."
   selected the button reads "Deselect all" and clears them; otherwise "Select
   all". Applies to festival lineups AND tour results (shared finder block).
 
+## Follow-up (2026-07-10): add a festival by its DATES, before any lineup
+User: "if a user wants to simply look up a festival date even before artists
+get announced, how can they do that?" — a real gap: Festival mode was built
+entirely around picking acts from a lineup, so a not-yet-announced festival
+returned the "couldn't find that festival" empty state even though Ticketmaster
+already knows its dates.
+
+Root cause: `searchFestivalByName` resolved the festival's venue/city/date from
+the TM primary event but only ever RETURNED lineup/setlist rows — with no
+lineup and no past setlists, `rows` came back empty and the date was discarded.
+
+Fix (api.js): capture the festival's own date span (`festStart`/`festEnd`) from
+the strict TM match — future-only dates for a Wishlist/Going search, so a
+recurring festival resolves to THIS edition. When `futureOnly` and a date
+resolved, prepend a single "festival itself" row: `{ artist: label, festival:
+label, date: festStart, displayDate: "Jul 8 – 12, 2026", isFestival: true }`.
+Added `festivalRangeDisplay()` for the friendly range. It's the FIRST item, so
+a user can look up a festival and add it by its dates even with zero acts
+announced; when acts ARE announced they appear below it and the user can add
+the whole festival OR specific acts. Verified live: Windy City Smokeout →
+festStart 2026-07-08, festEnd 2026-07-12.
+
+Rendering (LogShow.jsx): the placeholder shows a "🎪 Whole event" badge to
+distinguish it from act rows; the future festival-mode hint now says "Add the
+whole festival (even before the lineup drops), or tap the acts you want."
+`logSelected` needs no change — it maps the row's existing fields (artist/
+date/festival/genre/songs) and ignores the extra `isFestival`/`endDate`.
+
+Gated on `futureOnly`: Attended festival logging is unchanged (you pick the
+acts you actually saw, not "the festival itself").
+
 ## Open questions / follow-ups
+- The festival placeholder's `date` is the first day only; MyShows shows that
+  single date, not the range. The range is captured (`endDate`) but not yet
+  surfaced on the show card — a small future enhancement.
 - Live festival autocomplete inherits substring matching — an abbreviation like
   "ACL" won't surface "Austin City Limits" (pre-existing; curated list is also
   substring-based). Fine for now.

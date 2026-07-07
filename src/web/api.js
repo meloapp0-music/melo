@@ -347,6 +347,26 @@ function isoToDisplay(iso) {
   return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
 }
 
+// Friendly festival date range, e.g. "Jul 8 – 12, 2026" (same month) or
+// "Jul 30 – Aug 2, 2026" (cross-month). Single day → "Jul 8, 2026".
+function festivalRangeDisplay(start, end) {
+  if (!start) return '';
+  try {
+    const s = new Date(start + 'T00:00:00');
+    const md = { month: 'short', day: 'numeric' };
+    if (!end || end === start) {
+      return s.toLocaleDateString('en-US', { ...md, year: 'numeric' });
+    }
+    const e = new Date(end + 'T00:00:00');
+    const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+    const startStr = s.toLocaleDateString('en-US', md);
+    const endStr = sameMonth ? String(e.getDate()) : e.toLocaleDateString('en-US', md);
+    return `${startStr} – ${endStr}, ${e.getFullYear()}`;
+  } catch {
+    return isoToDisplay(start);
+  }
+}
+
 export async function searchFestivalByName(name, { year, futureOnly } = {}) {
   const label = (name || '').trim();
   if (!label) return [];
@@ -355,6 +375,8 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
   let city = '';
   let state = '';
   let resolvedYear = year ? String(year) : '';
+  let festStart = ''; // festival's own first/last day (from strict TM match),
+  let festEnd = '';   // so we can offer the festival itself by its dates.
   const lineup = []; // { artist, date } — only from a STRICT Ticketmaster hit
 
   // --- 1) Curated map (reliable for past festivals) ---
@@ -404,6 +426,15 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
             state = v.state?.stateCode || v.state?.name || '';
           }
           if (!resolvedYear) resolvedYear = (primary?.dates?.start?.localDate || '').slice(0, 4);
+        }
+        // Capture the festival's own date span (first → last day). For a
+        // future-tab search we use only upcoming dates, so a recurring
+        // festival resolves to THIS edition, not last year's.
+        const spanDates = pool.map((ev) => ev?.dates?.start?.localDate).filter(Boolean).sort();
+        if (spanDates.length) {
+          const todayIso = new Date().toISOString().slice(0, 10);
+          const relevant = futureOnly ? spanDates.filter((d) => d >= todayIso) : spanDates;
+          if (relevant.length) { festStart = relevant[0]; festEnd = relevant[relevant.length - 1]; }
         }
         // Multi-day festivals often list a "thin" GA/VIP ticket event per day
         // alongside the real lineup event — its only "attraction" is the
@@ -496,6 +527,29 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
       (a.date || '').localeCompare(b.date || '') ||
       (a.artist || '').localeCompare(b.artist || '')
   );
+
+  // Offer the festival ITSELF as the first, addable item on a Wishlist/Going
+  // search — so a user can look up a festival and add it by its DATES even
+  // before a single act is announced (that's the whole "look up a festival
+  // date" case). Only when we resolved an upcoming date for it.
+  if (futureOnly && festStart) {
+    rows.unshift({
+      artist: label,
+      festival: label,
+      venue,
+      city,
+      state,
+      country: '',
+      date: festStart,
+      endDate: festEnd || festStart,
+      displayDate: festivalRangeDisplay(festStart, festEnd),
+      songs: [],
+      songCount: 0,
+      tour: '',
+      isFestival: true, // renders a "🎪 Whole event" badge in the finder
+    });
+  }
+
   return rows;
 }
 
