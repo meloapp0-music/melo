@@ -4,7 +4,7 @@ import {
   VIBES, CITIES, VENUES_BY_CITY, GENRES, generateId, formatDate,
   SHOW_STATUS, getShowStatus,
 } from '../store';
-import { fetchSetlists, fetchUpcomingEventsMulti, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs, searchPastShows, searchFestivalByName, FESTIVAL_NAMES } from '../api';
+import { fetchSetlists, fetchUpcomingEventsMulti, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs, searchPastShows, searchFestivalByName, searchFestivalNames, FESTIVAL_NAMES } from '../api';
 import { listFriends } from '../lib/db/friendships';
 import { tagAttendee, untagAttendee, listAttendees } from '../lib/db/shows';
 import { track } from '../lib/analytics';
@@ -25,8 +25,36 @@ const titleCase = (s) =>
 // user picks one, so the caller can immediately pull that festival's lineup.
 function FestivalAutocomplete({ value, onChange, onSelect, placeholder }) {
   const [open, setOpen] = useState(false);
+  const [live, setLive] = useState([]); // live TM festival-name matches
+  const debounceRef = useRef(null);
   const q = (value || '').trim().toLowerCase();
-  const matches = (q ? FESTIVAL_NAMES.filter((n) => n.toLowerCase().includes(q)) : FESTIVAL_NAMES).slice(0, 6);
+
+  // Curated matches are instant and reliable — they also cover big festivals
+  // TM doesn't currently list as on-sale events (e.g. Coachella).
+  const curated = (q ? FESTIVAL_NAMES.filter((n) => n.toLowerCase().includes(q)) : FESTIVAL_NAMES).slice(0, 6);
+
+  // Live Ticketmaster festival-name search (debounced) so ANY festival —
+  // Windy City Smokeout and the long tail — autofills, not just the curated
+  // list. Only runs while the dropdown is open and 2+ chars are typed.
+  useEffect(() => {
+    if (!open || q.length < 2) { setLive([]); return; }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try { setLive(await searchFestivalNames((value || '').trim(), 6)); }
+      catch { setLive([]); }
+    }, 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [q, open, value]);
+
+  // Merge curated first, then live names not already shown (case-insensitive).
+  const seen = new Set(curated.map((n) => n.toLowerCase()));
+  const matches = [...curated];
+  for (const n of live) {
+    const lc = n.toLowerCase();
+    if (!seen.has(lc)) { seen.add(lc); matches.push(n); }
+  }
+  const shown = matches.slice(0, 8);
+
   return (
     <div className="log-input-wrap">
       <input
@@ -37,12 +65,13 @@ function FestivalAutocomplete({ value, onChange, onSelect, placeholder }) {
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
       />
-      {open && matches.length > 0 && (
+      {open && shown.length > 0 && (
         <div className="log-autocomplete">
-          {matches.map((n) => (
+          {shown.map((n) => (
             <div
               key={n}
               className="log-autocomplete-item"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => { onChange(n); setOpen(false); onSelect?.(n); }}
             >
               🎪 {n}
@@ -562,10 +591,20 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
     });
   };
 
-  const selectAllInGroup = (rows) => {
+  // Whether every row in a group is currently selected — drives the
+  // Select all / Deselect all toggle label + behavior.
+  const groupAllSelected = (rows) =>
+    rows.length > 0 && rows.every((r) => finderSelected[resultKey(r)]);
+
+  const toggleAllInGroup = (rows) => {
+    const allOn = groupAllSelected(rows);
     setFinderSelected((cur) => {
       const next = { ...cur };
-      rows.forEach((r) => { next[resultKey(r)] = r; });
+      rows.forEach((r) => {
+        const k = resultKey(r);
+        if (allOn) delete next[k];   // all were selected → deselect all
+        else next[k] = r;            // otherwise → select all
+      });
       return next;
     });
   };
@@ -715,9 +754,9 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
             <button
               type="button"
               className="log-finder-selectall"
-              onClick={() => selectAllInGroup(rows)}
+              onClick={() => toggleAllInGroup(rows)}
             >
-              Select all
+              {groupAllSelected(rows) ? 'Deselect all' : 'Select all'}
             </button>
           </div>
           {rows.map((r) => {

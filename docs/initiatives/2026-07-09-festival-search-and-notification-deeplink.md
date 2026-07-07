@@ -127,7 +127,34 @@ authenticated session) — the fix is grounded in directly reading and
 correcting an objective asymmetry in the code (one branch filtered, the
 sibling branch didn't), not a guess. Worth a real re-test on device.
 
+## Follow-up (2026-07-10): live festival autocomplete + Select/Deselect all
+User: "I want Windy City Smokeout to autofill when I type it in Festivals …
+how can we make it so … every single festival autofills. Also if I select all,
+I should be able to deselect all."
+
+- **Live festival-name autocomplete.** The `FestivalAutocomplete` only filtered
+  the curated ~19-name `FESTIVAL_NAMES` list, so anything off that list (Windy
+  City Smokeout and the long tail) never suggested. Added
+  `searchFestivalNames(query)` in api.js — a keyword search against TM's
+  Festival classification (Music segment) that dedupes multi-day/ticket-type
+  events into clean base names. The autocomplete now shows curated matches
+  instantly (they also cover big fests TM doesn't list as on-sale, e.g.
+  Coachella) then merges debounced live TM matches. Verified live: "windy" →
+  "Windy City Smokeout". **Important:** TM keyword search is fuzzy (a search
+  for "riot" returned Nocturnal Wonderland / Bass Canyon — no "riot" in them),
+  so `searchFestivalNames` filters live results to only names that actually
+  contain the query, preventing wrong suggestions. Selecting a name still
+  resolves through the (already-fixed) `searchFestivalByName`, which handles
+  any TM-listed festival.
+- **Select all → Deselect all.** The group header button was add-only. Now
+  `toggleAllInGroup` + `groupAllSelected`: when every row in a group is
+  selected the button reads "Deselect all" and clears them; otherwise "Select
+  all". Applies to festival lineups AND tour results (shared finder block).
+
 ## Open questions / follow-ups
+- Live festival autocomplete inherits substring matching — an abbreviation like
+  "ACL" won't surface "Austin City Limits" (pre-existing; curated list is also
+  substring-based). Fine for now.
 - Notification-triggered `logPrefill` always targets Wishlist, never Going —
   reasonable default (you're being told about something new, not confirming
   you already have tickets), but worth revisiting if it feels wrong in practice.

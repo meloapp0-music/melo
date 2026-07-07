@@ -987,6 +987,71 @@ export async function fetchAllUpcomingEvents(artistNames) {
 // Params (all optional): `{ city, stateCode, size }`.
 // Degrades gracefully without VITE_TICKETMASTER_KEY (returns []),
 // matching `fetchUpcomingEvents`.
+// Live festival-name autocomplete. The old Festival field only suggested a
+// curated ~19-name list, so most real festivals (e.g. Windy City Smokeout)
+// never appeared. This queries Ticketmaster's Festival classification by
+// keyword and returns a deduped list of festival NAMES to suggest as the
+// user types. Selecting one still resolves through searchFestivalByName,
+// which handles any TM-listed festival (curated or not). Best-effort — an
+// empty return (no key / no match / rate-limited) just means no live
+// suggestions, and the curated list still shows.
+export async function searchFestivalNames(query, limit = 6) {
+  const q = (query || '').trim();
+  if (q.length < 2) return [];
+  const key = import.meta.env.VITE_TICKETMASTER_KEY;
+  if (!key) return [];
+  try {
+    const params = new URLSearchParams({
+      apikey: key,
+      keyword: q,
+      classificationName: 'Festival',
+      segmentName: 'Music',
+      sort: 'relevance,desc',
+      size: '40',
+    });
+    const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const events = data?._embedded?.events || [];
+    // Multi-day festivals list one event per day / per ticket type, often
+    // with a suffix (" - Saturday", " 3 Day Pass", " 2026"). Group by a
+    // stripped base name and keep the SHORTEST raw name per group (usually
+    // the cleanest, e.g. "Windy City Smokeout" over "…- Saturday").
+    const stripSuffix = (name) =>
+      String(name || '')
+        .replace(/\s*[-–—:|]\s*(mon|tues|wednes|thurs|fri|satur|sun)day\b.*$/i, '')
+        .replace(/\s*[-–—:|(]?\s*\d+\s*[- ]?day(?:\s*pass)?\b.*$/i, '')
+        .replace(/\s*[-–—:|(]?\s*(single day|weekend|ga|vip|day \d)\b.*$/i, '')
+        .replace(/\s*\b(19|20)\d{2}\b\s*$/,'')
+        .replace(/\s+/g, ' ')
+        .trim();
+    // TM keyword search is fuzzy — a search for "riot" returned unrelated
+    // festivals (Nocturnal Wonderland, Bass Canyon) that don't contain the
+    // query at all. Keep only names that actually match what was typed, so
+    // the autocomplete never suggests a wrong festival. (Real matches like
+    // "Windy City Smokeout" for "windy" pass; the curated list still covers
+    // big fests TM doesn't currently list, e.g. Coachella.)
+    const qNorm = normalizeFestival(q);
+    const qLc = q.toLowerCase();
+    const byBase = new Map(); // normalized base -> cleanest display name
+    for (const ev of events) {
+      const raw = (ev?.name || '').trim();
+      if (!raw) continue;
+      const display = stripSuffix(raw) || raw;
+      const base = normalizeFestival(display);
+      if (!base) continue;
+      if (!display.toLowerCase().includes(qLc) && !base.includes(qNorm)) continue;
+      const cur = byBase.get(base);
+      if (!cur || display.length < cur.length) byBase.set(base, display);
+    }
+    return [...byBase.values()].slice(0, limit);
+  } catch (err) {
+    console.warn('[Melo] Festival name search failed for', q, err?.message);
+    return [];
+  }
+}
+
 export async function fetchFestivals(opts = {}) {
   const key = import.meta.env.VITE_TICKETMASTER_KEY;
   if (!key) {
