@@ -139,8 +139,9 @@ export default function LogShow({ onClose, editingShow = null }) {
   // typing each artist. Per v1.0.7 festival-past-show-finder initiative.
   const [logMode, setLogMode] = useState('quick'); // 'quick' | 'finder'
   const [finderFestival, setFinderFestival] = useState('');
-  const [finderSource, setFinderSource] = useState('past'); // 'past' | 'festival'
+  const [finderSource, setFinderSource] = useState('past'); // 'past' | 'festival' | 'tour'
   const [inlineFestival, setInlineFestival] = useState(false); // show lineup inside Quick log
+  const [tourArtist, setTourArtist] = useState(''); // Going/Wishlist "full tour" browse
   const [finderArtist, setFinderArtist] = useState('');
   const [finderCity, setFinderCity] = useState('');
   const [finderYear, setFinderYear] = useState('');
@@ -577,19 +578,46 @@ export default function LogShow({ onClose, editingShow = null }) {
       buddies: [],
       openers: [],
       photos: [],
-      status: SHOW_STATUS.ATTENDED,
-      wishlist: false,
+      status,
+      wishlist: status === SHOW_STATUS.WISHLIST,
       createdAt: new Date().toISOString(),
     }));
     onClose();
     const created = await addShows(payloads);
     const n = (created && created.length) || payloads.length;
-    if (showToast) showToast({ message: `✓ Logged ${n} show${n === 1 ? '' : 's'}` });
+    const verb = status === SHOW_STATUS.WISHLIST ? 'Added' : status === SHOW_STATUS.GOING ? 'Added' : 'Logged';
+    const dest = status === SHOW_STATUS.WISHLIST ? ' to Wishlist' : status === SHOW_STATUS.GOING ? ' to Going' : '';
+    if (showToast) showToast({ message: `✓ ${verb} ${n} show${n === 1 ? '' : 's'}${dest}` });
+  };
+
+  // Full-tour browse: pull EVERY upcoming date for one artist (any city —
+  // matches "search Noah Kahan, see the next N months of shows", not just
+  // what's playing near you), multi-select, add several at once. Reuses the
+  // same finderSelected/toggleResult/logSelected plumbing as the festival
+  // picker — the results render is source-aware (see finderResultsBlock).
+  const runTourSearch = async (nameArg) => {
+    const name = (typeof nameArg === 'string' ? nameArg : tourArtist).trim();
+    if (!name) return;
+    if (typeof nameArg === 'string') setTourArtist(name);
+    setFinderLoading(true);
+    setFinderSearched(false);
+    setFinderSelected({});
+    setFinderSource('tour');
+    try {
+      const results = await fetchUpcomingEventsMulti(name);
+      setFinderResults(results);
+    } catch {
+      setFinderResults([]);
+    } finally {
+      setFinderLoading(false);
+      setFinderSearched(true);
+    }
   };
 
   const showFinder = isAttendedTab && logMode === 'finder';
   const showFestival = isAttendedTab && logMode === 'festival';
-  const showQuick = !showFinder && !showFestival;
+  const showTour = isFutureTab && logMode === 'tour';
+  const showQuick = !showFinder && !showFestival && !showTour;
 
   // Switching modes clears any stale finder results/selection so one mode's
   // results don't bleed into another.
@@ -601,6 +629,17 @@ export default function LogShow({ onClose, editingShow = null }) {
     setInlineFestival(false);
   };
 
+  // Attended's modes ('quick'/'festival'/'finder') and Going/Wishlist's
+  // ('quick'/'tour') share the same logMode namespace but aren't valid across
+  // each other — e.g. leaving Attended in 'festival' mode and switching to
+  // Wishlist would leave neither of Wishlist's own tabs looking selected.
+  // Reset to 'quick' on every status change so the right tab-set always
+  // starts from a clean, correctly-highlighted state.
+  const switchStatus = (s) => {
+    setStatus(s);
+    switchMode('quick');
+  };
+
   // Shared results UI — rendered by the "Find a past show" finder AND inline in
   // Quick log after "Find this festival's lineup". Only one is ever mounted at a
   // time (quick-log form vs. finder), so there's no duplicate render.
@@ -610,7 +649,9 @@ export default function LogShow({ onClose, editingShow = null }) {
         <div className="log-show-empty">
           {finderSource === 'festival'
             ? "Couldn't find that festival yet. Check the spelling, add the year, or use the details fields. Setlists also keep filling in over the days after a festival."
-            : "No shows found. Try a nearby/bigger city, a different year, or the festival's venue name."}
+            : finderSource === 'tour'
+              ? "No upcoming shows found for that artist. Check the spelling, or they may not have announced dates yet."
+              : "No shows found. Try a nearby/bigger city, a different year, or the festival's venue name."}
         </div>
       )}
 
@@ -618,7 +659,9 @@ export default function LogShow({ onClose, editingShow = null }) {
         <div key={festival} className="log-finder-group">
           <div className="log-finder-group-head">
             <span className="log-finder-group-name">
-              {festival === '__individual__' ? 'Individual shows' : `🎪 ${festival}`}
+              {festival === '__individual__'
+                ? (finderSource === 'tour' ? 'Upcoming shows' : 'Individual shows')
+                : `🎪 ${festival}`}
             </span>
             <button
               type="button"
@@ -642,7 +685,7 @@ export default function LogShow({ onClose, editingShow = null }) {
                   <div className="log-finder-result-artist">{r.artist}</div>
                   <div className="log-finder-result-meta">
                     {[r.venue, r.city].filter(Boolean).join(' · ')}
-                    {r.displayDate ? ` · ${r.displayDate}` : ''}
+                    {r.displayDate ? ` · ${r.displayDate}` : r.date ? ` · ${formatDate(r.date)}` : ''}
                   </div>
                 </div>
                 {r.songCount > 0 && (
@@ -658,13 +701,19 @@ export default function LogShow({ onClose, editingShow = null }) {
         <div className="log-show-attr">
           {finderSource === 'festival'
             ? 'Powered by Ticketmaster + Setlist.fm'
-            : 'Powered by Setlist.fm'}
+            : finderSource === 'tour'
+              ? 'Powered by Ticketmaster + JamBase'
+              : 'Powered by Setlist.fm'}
         </div>
       )}
 
       {selectedCount > 0 && (
         <button className="log-submit" onClick={logSelected}>
-          Log {selectedCount} show{selectedCount === 1 ? '' : 's'}
+          {status === SHOW_STATUS.WISHLIST
+            ? `Add ${selectedCount} to Wishlist`
+            : status === SHOW_STATUS.GOING
+              ? `Add ${selectedCount} to Going`
+              : `Log ${selectedCount} show${selectedCount === 1 ? '' : 's'}`}
         </button>
       )}
     </>
@@ -697,19 +746,19 @@ export default function LogShow({ onClose, editingShow = null }) {
           <div className="log-status-tabs">
             <button
               className={`shows-tab ${status === SHOW_STATUS.ATTENDED ? 'active' : ''}`}
-              onClick={() => setStatus(SHOW_STATUS.ATTENDED)}
+              onClick={() => switchStatus(SHOW_STATUS.ATTENDED)}
             >
               Attended
             </button>
             <button
               className={`shows-tab ${status === SHOW_STATUS.GOING ? 'active' : ''}`}
-              onClick={() => setStatus(SHOW_STATUS.GOING)}
+              onClick={() => switchStatus(SHOW_STATUS.GOING)}
             >
               Going
             </button>
             <button
               className={`shows-tab ${status === SHOW_STATUS.WISHLIST ? 'active' : ''}`}
-              onClick={() => setStatus(SHOW_STATUS.WISHLIST)}
+              onClick={() => switchStatus(SHOW_STATUS.WISHLIST)}
             >
               Wishlist
             </button>
@@ -740,6 +789,61 @@ export default function LogShow({ onClose, editingShow = null }) {
               >
                 Past show
               </button>
+            </div>
+          )}
+
+          {/* Mode toggle — Going/Wishlist: quick single-show log, or browse an
+              artist's whole upcoming tour and add several dates at once. */}
+          {isFutureTab && (
+            <div className="log-mode-toggle">
+              <button
+                type="button"
+                className={`log-mode-btn ${logMode === 'quick' ? 'active' : ''}`}
+                onClick={() => switchMode('quick')}
+              >
+                Quick log
+              </button>
+              <button
+                type="button"
+                className={`log-mode-btn ${logMode === 'tour' ? 'active' : ''}`}
+                onClick={() => switchMode('tour')}
+              >
+                Full Tour
+              </button>
+            </div>
+          )}
+
+          {/* Tour mode — artist-first: pull EVERY upcoming date (any city),
+              multi-select the ones you're considering, add them all at once.
+              Per user feedback: "search Noah Kahan, see the next N months of
+              shows" — not just the top few near me. */}
+          {showTour && (
+            <div className="log-finder">
+              <div className="log-section">
+                <p className="log-finder-hint">
+                  See an artist's whole upcoming tour — any city — and add the
+                  dates you're considering. Only where you'd travel? Use Quick
+                  log instead, it's scoped to your city.
+                </p>
+                <div className="log-input-wrap">
+                  <input
+                    className="log-input"
+                    placeholder="Artist (e.g. Noah Kahan)"
+                    value={tourArtist}
+                    onChange={(e) => setTourArtist(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runTourSearch(); } }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="log-finder-search"
+                  onClick={() => runTourSearch()}
+                  disabled={finderLoading || !tourArtist.trim()}
+                >
+                  {finderLoading ? 'Finding tour dates…' : 'Find tour dates'}
+                </button>
+              </div>
+              {finderResultsBlock}
             </div>
           )}
 
