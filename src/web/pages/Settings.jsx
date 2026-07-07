@@ -4,7 +4,6 @@ import { deleteMyAccount } from '../lib/db/account';
 import { checkUsernameAvailable, getProfilesByIds } from '../lib/db/profiles';
 import { listBlocked, unblockUser } from '../lib/db/friendships';
 import { showsToCsv, showsToJson, deliverFile } from '../lib/exportShows';
-import TasteEditor from '../components/TasteEditor';
 import { track } from '../lib/analytics';
 
 export default function Settings() {
@@ -203,7 +202,15 @@ export default function Settings() {
       </button>
       <h1>Settings</h1>
 
-      <MusicTaste />
+      <div className="settings-section">
+        <div className="settings-section-title">Music Taste</div>
+        <div className="settings-card">
+          <button className="settings-link-row" onClick={() => navigate('music-taste')}>
+            <span>Genres, artists &amp; home city</span>
+            <span className="settings-link-row-chevron">›</span>
+          </button>
+        </div>
+      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">Setlist.fm API Key (optional)</div>
@@ -576,46 +583,3 @@ function BlockedAccounts() {
   );
 }
 
-// Music taste — favorite genres/artists + home city. Editable here for
-// existing users; feeds the "artist in your city" cron + Discover. Per
-// docs/initiatives/2026-06-16-music-taste-onboarding.md.
-function MusicTaste() {
-  const { profile, updateProfile } = useApp();
-  const baseline = () => ({
-    genres: profile?.favGenres || [],
-    artists: profile?.favArtists || [],
-    city: profile?.homeCity || '',
-  });
-  const [taste, setTaste] = useState(baseline);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  const dirty = JSON.stringify(taste) !== JSON.stringify(baseline());
-
-  const save = async () => {
-    if (saving || !dirty) return;
-    setSaving(true);
-    try {
-      await updateProfile({ favGenres: taste.genres, favArtists: taste.artists, homeCity: taste.city });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="settings-section">
-      <div className="settings-section-title">Music taste</div>
-      <div className="settings-card">
-        <p className="settings-desc" style={{ marginTop: 0 }}>
-          Get alerts when artists you love play your city, and tune your Discover feed.
-        </p>
-        <TasteEditor value={taste} onChange={setTaste} />
-        <button className="settings-save-btn" onClick={save} disabled={saving || !dirty}>
-          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
-        </button>
-      </div>
-    </div>
-  );
-}

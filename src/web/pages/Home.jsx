@@ -10,6 +10,7 @@ import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
 import { MeloIcon } from '../components/MeloLogo';
 import FriendsFeed from '../components/FriendsFeed';
 import GetStarted from '../components/GetStarted';
+import TasteNudge from '../components/TasteNudge';
 
 // Day-precision local midnight; safer than `new Date()` for relative
 // "is this date in the past" comparisons against `YYYY-MM-DD` strings.
@@ -181,6 +182,12 @@ export default function Home() {
           that ticks off against real state and vanishes once complete.
           Subsumes the old zero-show block + the music-taste prompt. */}
       <GetStarted />
+
+      {/* Second chance at "turn on alerts" for anyone who got past
+          GetStarted without ever setting a taste — only shows in that gap
+          (see TasteNudge's own gating), so it never doubles up with the
+          GetStarted step above. */}
+      <TasteNudge />
 
       {/* Up Next — going shows within the week. Full-width hero cards,
           countdown-first, with Tickets + Details. The imminent shows

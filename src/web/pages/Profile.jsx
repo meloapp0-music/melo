@@ -250,6 +250,12 @@ export default function Profile() {
             </svg>
             Buddies
           </button>
+          <button className="profile-nav-btn" onClick={() => navigate('music-taste')}>
+            <svg viewBox="0 0 24 24">
+              <path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 10-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 000-7.8z" />
+            </svg>
+            Music Taste
+          </button>
           <button className="profile-nav-btn" onClick={() => navigate('settings')}>
             <svg viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="3" />

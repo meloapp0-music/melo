@@ -29,6 +29,7 @@ import Settings from './pages/Settings';
 import Wrapped from './pages/Wrapped';
 import Festivals from './pages/Festivals';
 import Artists from './pages/Artists';
+import MusicTaste from './pages/MusicTaste';
 import Legal from './pages/Legal';
 import ImportFromCalendar from './pages/ImportFromCalendar';
 import Onboarding from './pages/auth/Onboarding';
@@ -567,6 +568,7 @@ export default function App() {
     if (subPage === 'festivals') return <Festivals />;
     if (subPage === 'artists') return <Artists />;
     if (subPage === 'settings') return <Settings />;
+    if (subPage === 'music-taste') return <MusicTaste />;
     if (subPage === 'legal') return <Legal />;
     if (subPage === 'import-calendar') return <ImportFromCalendar onDone={() => setSubPage('settings')} />;
     switch (tab) {

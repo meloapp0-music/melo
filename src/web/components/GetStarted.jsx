@@ -50,7 +50,7 @@ export default function GetStarted() {
       key: 'taste', done: hasTaste, icon: '🔔',
       title: 'Turn on alerts',
       desc: 'Get a heads-up when artists you love tour.',
-      cta: 'Set', onClick: () => navigate('settings'),
+      cta: 'Set', onClick: () => navigate('music-taste'),
     },
   ];
   const doneCount = steps.filter((s) => s.done).length;

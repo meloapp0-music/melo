@@ -8906,6 +8906,75 @@ h4 { font-size: 17px; }
 }
 .gs-step-cta:active { transform: scale(0.97); }
 
+/* TasteNudge — a single-row card, same visual language as .gs-card/.gs-step
+   (it's the same "turn on alerts" prompt, just for users past GetStarted). */
+.taste-nudge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 24px;
+  padding: 14px 40px 14px 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(244, 162, 97, 0.08));
+  border: 1px solid rgba(232, 87, 58, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(232, 87, 58, 0.08);
+}
+.taste-nudge-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  font-size: 21px;
+  line-height: 1;
+  color: var(--brown-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.taste-nudge-icon {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  background: rgba(232, 87, 58, 0.10);
+}
+.taste-nudge-body { flex: 1; min-width: 0; }
+.taste-nudge-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
+  color: var(--brown);
+}
+.taste-nudge-desc {
+  font-size: 12px;
+  color: var(--brown-muted);
+  line-height: 1.35;
+  margin-top: 1px;
+}
+.taste-nudge-cta {
+  flex: 0 0 auto;
+  border: none;
+  background: linear-gradient(135deg, var(--amber), var(--orange));
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.taste-nudge-cta:active { transform: scale(0.97); }
+
 /* One-time attention pulse on the + (Log) button for first-time users
    (no shows yet). A soft ember ring on a ::after so it never clobbers the
    button's own drop shadow; auto-stops once they log their first show. */
