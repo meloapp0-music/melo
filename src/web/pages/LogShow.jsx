@@ -58,10 +58,10 @@ function FestivalAutocomplete({ value, onChange, onSelect, placeholder }) {
 // opened from the Home "How was X?" CTA — we hydrate all fields from
 // the existing record and call updateShow on save instead of addShow.
 // `prefill` lets a caller open LogShow straight into a specific mode instead
-// of the default blank Quick-log form — e.g. a tapped tour/genre-alert
-// notification opens Wishlist's Full Tour view, pre-searched for that
-// artist, instead of landing on a blank Home. Shape: { status, mode,
-// tourArtist }. Ignored while editing an existing show.
+// of the default blank form — e.g. a tapped tour/genre-alert notification
+// opens Wishlist's Search view (mode 'tour'), pre-searched for that artist,
+// instead of landing on a blank Home. Shape: { status, mode, tourArtist }.
+// Ignored while editing an existing show.
 export default function LogShow({ onClose, editingShow = null, prefill = null }) {
   const { addShow, addShows, updateShow, buddies, settings, navigate, session, showToast, setSelectedShow } = useApp();
   const userId = session?.user?.id || null;
@@ -142,11 +142,25 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   // ----- "Find a past show" finder mode (Attended tab) -----
   // Location-first search so festival-goers can find shows without
   // typing each artist. Per v1.0.7 festival-past-show-finder initiative.
-  const [logMode, setLogMode] = useState((!editingShow && prefill?.mode) || 'quick'); // 'quick' | 'finder' | 'festival' | 'tour'
+  // Attended modes: 'quick' | 'festival' | 'finder'. Going/Wishlist modes:
+  // 'tour' (labeled "Search" in the UI — kept 'tour' internally to avoid
+  // churn) | 'festival'. Going/Wishlist has no 'quick' form; its manual-entry
+  // escape hatch lives inside Search mode (see `manualEntry`).
+  // Editing ALWAYS uses the full quick-log form (that's the edit form), for
+  // any status — otherwise editing a Wishlist/Going show would land on the
+  // empty Search view instead of the show's fields. Only NEW future shows
+  // default to Search ('tour').
+  const [logMode, setLogMode] = useState(
+    editingShow
+      ? 'quick'
+      : prefill?.mode || (initialStatus === SHOW_STATUS.ATTENDED ? 'quick' : 'tour')
+  );
   const [finderFestival, setFinderFestival] = useState('');
   const [finderSource, setFinderSource] = useState('past'); // 'past' | 'festival' | 'tour'
-  const [inlineFestival, setInlineFestival] = useState(false); // show lineup inside Quick log
   const [tourArtist, setTourArtist] = useState((!editingShow && prefill?.tourArtist) || ''); // Going/Wishlist "full tour" browse
+  // Search mode's fallback for a show that's in no database — reveals a
+  // compact manual form (artist/date/city/venue) that reuses handleSubmit.
+  const [manualEntry, setManualEntry] = useState(false);
   const [finderArtist, setFinderArtist] = useState('');
   const [finderCity, setFinderCity] = useState('');
   const [finderYear, setFinderYear] = useState('');
@@ -205,6 +219,17 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   useEffect(() => {
     if (justPickedRef.current) {
       justPickedRef.current = false;
+      return;
+    }
+    // This autocomplete's results only render inside the quick-log form
+    // (showQuick = Attended, or any edit). On a NEW Going/Wishlist show the
+    // only artist field is Search mode's manual fallback, which shares this
+    // `artist` state — so skip the fetch there to avoid wasted Deezer/TM
+    // calls and a stale-results flash when switching back to Attended.
+    if (!isAttendedTab && !editingShow) {
+      setShowResults([]);
+      setArtistMatches([]);
+      setShowsLoading(false);
       return;
     }
     const q = artist.trim();
@@ -271,10 +296,13 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
     // city + date included so the Setlist.fm filter refines live as the
     // user fills in the other fields — enables retroactive logging of
     // historical shows (e.g. Goose at Salt Shed, Chicago, 2022).
-  }, [artist, status, apiKey, city, date, isAttendedTab, isFutureTab]);
+  }, [artist, status, apiKey, city, date, isAttendedTab, isFutureTab, editingShow]);
 
   // Keep artist artwork in sync as the user types (uses cached Deezer image).
+  // The avatar only shows in the quick-log form, so skip on a new future show
+  // (Search-mode manual entry shares `artist` but renders no avatar).
   useEffect(() => {
+    if (!isAttendedTab && !editingShow) { setArtistImage(null); return; }
     const q = artist.trim();
     if (q.length < 3) { setArtistImage(null); return; }
     const cached = getCachedImage(q);
@@ -284,7 +312,7 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
       fetchArtistImage(q).then((url) => { if (!cancelled && url) setArtistImage(url); });
     }, 700);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [artist]);
+  }, [artist, isAttendedTab, editingShow]);
 
   const filteredCities = city
     ? CITIES.filter((c) => c.toLowerCase().includes(city.toLowerCase()))
@@ -393,22 +421,30 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
       return;
     }
     setSaving(true);
+    // handleSubmit is shared by Attended's quick-log AND the Search-mode
+    // manual fallback (a NEW future show). The manual form only collects
+    // artist/date/city/venue, so the score/vibes/setlist/etc. state could
+    // still hold stale values from an Attended interaction earlier in the
+    // same open sheet — persist those ONLY for Attended or when editing an
+    // existing show (which legitimately loaded them). A new future show gets
+    // the same clean shape as a multi-selected one (see logSelected).
+    const keepAll = isAttendedTab || !!editingShow;
     const payload = {
       artist: artist.trim(),
       date: date || new Date().toISOString().split('T')[0],
       city: city.trim(),
       venue: venue.trim(),
       venueUrl: venueUrl.trim(),
-      festival: festival.trim(),
-      genre,
-      score,
-      vibes,
-      notes: notes.trim(),
-      setlist: setlist.filter((s) => s.trim()),
-      buddies: selBuddies,
-      openers,
-      photos,
-      videos,
+      festival: keepAll ? festival.trim() : '',
+      genre: keepAll ? genre : '',
+      score: keepAll ? score : 0,
+      vibes: keepAll ? vibes : [],
+      notes: keepAll ? notes.trim() : '',
+      setlist: keepAll ? setlist.filter((s) => s.trim()) : [],
+      buddies: keepAll ? selBuddies : [],
+      openers: keepAll ? openers : [],
+      photos: keepAll ? photos : [],
+      videos: keepAll ? videos : [],
       status,
       // Legacy boolean shadow — kept in sync with status so any stray
       // reader that hasn't been migrated to the helpers still does the
@@ -515,20 +551,6 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
     }
   };
 
-  // Pull a festival's lineup right inside Quick log — no screen switch. Runs the
-  // search and reveals the results inline under the Festival field. Accepts an
-  // optional name (from the autocomplete) since state updates are async.
-  const pullFestivalLineup = (nameArg) => {
-    const f = (typeof nameArg === 'string' ? nameArg : festival).trim();
-    if (!f) return;
-    const y = (date || '').slice(0, 4);
-    const yr = /^\d{4}$/.test(y) ? y : '';
-    if (typeof nameArg === 'string') setFestival(f);
-    setFinderFestival(f);
-    if (yr) setFinderYear(yr);
-    setInlineFestival(true);
-    runFinder({ festival: f, year: yr });
-  };
 
   const toggleResult = (r) => {
     const k = resultKey(r);
@@ -575,7 +597,10 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
       venue: r.venue || '',
       venueUrl: '',
       festival: r.festival || '',
-      genre: '',
+      // Autofilled from the event's Ticketmaster classification (Search tab).
+      // Festival / past-show finder rows carry no genre, so they stay '' —
+      // Attended's behavior is unchanged.
+      genre: r.genre || '',
       score: 0,
       vibes: [],
       notes: '',
@@ -620,8 +645,8 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   };
 
   // Opened via prefill (e.g. a tapped tour/genre-alert notification) straight
-  // into Full Tour mode with an artist already known — auto-run the search
-  // once on mount instead of making the user retype what they just tapped.
+  // into Search mode (internal mode 'tour') with an artist already known —
+  // auto-run the search once on mount instead of making the user retype it.
   useEffect(() => {
     if (!editingShow && prefill?.mode === 'tour' && prefill?.tourArtist) {
       runTourSearch(prefill.tourArtist);
@@ -631,8 +656,16 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
 
   const showFinder = isAttendedTab && logMode === 'finder';
   const showFestival = (isAttendedTab || isFutureTab) && logMode === 'festival';
-  const showTour = isFutureTab && logMode === 'tour';
-  const showQuick = !showFinder && !showFestival && !showTour;
+  // Search is the DEFAULT for a new Going/Wishlist show — anything that isn't
+  // Festival lands here (not a strict logMode === 'tour' check), so a stray/
+  // unknown logMode can never leave the body blank. Not shown while editing
+  // (edit always uses the quick form below).
+  const showTour = isFutureTab && !editingShow && logMode !== 'festival';
+  // Quick-log form: the Attended logging flow AND the edit form for a show of
+  // ANY status (editing forces logMode 'quick' above, so showFinder/showTour/
+  // showFestival are all false while editing). Going/Wishlist LOGGING (not
+  // editing) uses Search ('tour') + Festival instead and never renders this.
+  const showQuick = (isAttendedTab || editingShow) && !showFinder && !showFestival && !showTour;
 
   // Switching modes clears any stale finder results/selection so one mode's
   // results don't bleed into another.
@@ -641,18 +674,19 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
     setFinderResults([]);
     setFinderSelected({});
     setFinderSearched(false);
-    setInlineFestival(false);
+    setManualEntry(false);
   };
 
   // Attended's modes ('quick'/'festival'/'finder') and Going/Wishlist's
-  // ('quick'/'tour') share the same logMode namespace but aren't valid across
-  // each other — e.g. leaving Attended in 'festival' mode and switching to
-  // Wishlist would leave neither of Wishlist's own tabs looking selected.
-  // Reset to 'quick' on every status change so the right tab-set always
-  // starts from a clean, correctly-highlighted state.
+  // ('tour'/'festival') share the same logMode namespace but aren't valid
+  // across each other — e.g. leaving Attended in 'finder' mode and switching
+  // to Wishlist would leave none of Wishlist's own tabs looking selected, and
+  // (since Wishlist has no 'quick' form) render a blank body. Reset to each
+  // status's OWN default on every status change: Attended → 'quick', Going/
+  // Wishlist → 'tour' (Search).
   const switchStatus = (s) => {
     setStatus(s);
-    switchMode('quick');
+    switchMode(s === SHOW_STATUS.ATTENDED ? 'quick' : 'tour');
   };
 
   // Shared results UI — rendered by the "Find a past show" finder AND inline in
@@ -807,16 +841,18 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
             </div>
           )}
 
-          {/* Mode toggle — Going/Wishlist: quick single-show log, or browse an
-              artist's whole upcoming tour and add several dates at once. */}
-          {isFutureTab && (
+          {/* Mode toggle — Going/Wishlist: just two ways in. Search an artist
+              (see their whole upcoming schedule, add any dates — or add a show
+              manually if it's not listed), or pull a festival's lineup. Hidden
+              while editing (editing shows the full form directly, no modes). */}
+          {isFutureTab && !editingShow && (
             <div className="log-mode-toggle">
               <button
                 type="button"
-                className={`log-mode-btn ${logMode === 'quick' ? 'active' : ''}`}
-                onClick={() => switchMode('quick')}
+                className={`log-mode-btn ${logMode === 'tour' ? 'active' : ''}`}
+                onClick={() => switchMode('tour')}
               >
-                Quick log
+                Search
               </button>
               <button
                 type="button"
@@ -825,32 +861,24 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
               >
                 Festival
               </button>
-              <button
-                type="button"
-                className={`log-mode-btn ${logMode === 'tour' ? 'active' : ''}`}
-                onClick={() => switchMode('tour')}
-              >
-                Full Tour
-              </button>
             </div>
           )}
 
-          {/* Tour mode — artist-first: pull EVERY upcoming date (any city),
-              multi-select the ones you're considering, add them all at once.
-              Per user feedback: "search Noah Kahan, see the next N months of
-              shows" — not just the top few near me. */}
+          {/* Search mode — the single primary way to add a Going/Wishlist
+              show: type an artist, see their whole upcoming schedule (any
+              city), tap the dates you want. Genre autofills from the event.
+              A show in no database? The manual fallback below still adds it. */}
           {showTour && (
             <div className="log-finder">
               <div className="log-section">
                 <p className="log-finder-hint">
-                  See an artist's whole upcoming tour — any city — and add the
-                  dates you're considering. Only where you'd travel? Use Quick
-                  log instead, it's scoped to your city.
+                  Search an artist to see their upcoming shows — any city — and
+                  tap the dates you want to add.
                 </p>
                 <div className="log-input-wrap">
                   <input
                     className="log-input"
-                    placeholder="Artist (e.g. Noah Kahan)"
+                    placeholder="Search an artist (e.g. Noah Kahan)"
                     value={tourArtist}
                     onChange={(e) => setTourArtist(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runTourSearch(); } }}
@@ -862,10 +890,73 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
                   onClick={() => runTourSearch()}
                   disabled={finderLoading || !tourArtist.trim()}
                 >
-                  {finderLoading ? 'Finding tour dates…' : 'Find tour dates'}
+                  {finderLoading ? 'Finding shows…' : 'Find shows'}
                 </button>
               </div>
               {finderResultsBlock}
+
+              {/* Manual fallback — preserves the old Quick-log escape hatch so
+                  ANY show (even one in no database) can still be wishlisted.
+                  Reuses handleSubmit + the shared artist/date/city/venue
+                  state. Unobtrusive until opened. */}
+              <div className="log-section log-manual-section">
+                {!manualEntry ? (
+                  <button
+                    type="button"
+                    className="log-manual-toggle"
+                    onClick={() => {
+                      setManualEntry(true);
+                      if (!artist.trim() && tourArtist.trim()) setArtist(tourArtist.trim());
+                    }}
+                  >
+                    Can’t find it? Add a show manually →
+                  </button>
+                ) : (
+                  <>
+                    <div className="log-section-title">Add manually</div>
+                    <div className="log-input-wrap">
+                      <input
+                        className="log-input"
+                        placeholder="Artist / Band"
+                        value={artist}
+                        style={artistError ? { borderColor: 'var(--red, #E24B4A)' } : undefined}
+                        onChange={(e) => { setArtist(e.target.value); setArtistError(false); }}
+                      />
+                    </div>
+                    <div className="log-row">
+                      <input
+                        className="log-input"
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="log-input-wrap">
+                      <input
+                        className="log-input"
+                        placeholder="City"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="log-input-wrap">
+                      <input
+                        className="log-input"
+                        placeholder="Venue"
+                        value={venue}
+                        onChange={(e) => setVenue(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="log-submit"
+                      onClick={handleSubmit}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving…' : submitLabel}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
@@ -1167,41 +1258,9 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
             </div>
           </div>
 
-          {/* Festival — optional context for shows that were part of a
-              festival lineup. Auto-fills from Setlist.fm when the user
-              picks a setlist whose `info`/`tour`/`venue` mention one. */}
-          <div className="log-section">
-            <div className="log-section-title">
-              Festival <span className="log-section-hint">optional</span>
-            </div>
-            <FestivalAutocomplete
-              value={festival}
-              onChange={setFestival}
-              onSelect={(name) => pullFestivalLineup(name)}
-              placeholder="e.g. Coachella, Lollapalooza, Electric Forest"
-            />
-            {festival.trim() && (isAttendedTab || isFutureTab) && (
-              <button
-                type="button"
-                className="log-finder-search"
-                style={{ marginTop: 10 }}
-                onClick={() => pullFestivalLineup()}
-                disabled={finderLoading}
-              >
-                🎪 Find this festival's lineup →
-              </button>
-            )}
-            {(isAttendedTab || isFutureTab) && inlineFestival && festival.trim() && (
-              <div className="log-finder" style={{ marginTop: 12 }}>
-                {finderLoading && (
-                  <p className="log-finder-hint" style={{ textAlign: 'center', margin: '4px 0' }}>
-                    Finding the lineup…
-                  </p>
-                )}
-                {finderResultsBlock}
-              </div>
-            )}
-          </div>
+          {/* (The inline "Festival" field was removed here — festivals now
+              have their own dedicated Festival mode/tab, so tagging one inside
+              the quick-log form was redundant and confusing.) */}
 
           {/* Openers — opening acts. Auto-suggested from
               Ticketmaster's lineup (upcoming) or a Setlist.fm co-act

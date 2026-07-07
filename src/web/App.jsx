@@ -71,7 +71,7 @@ export default function App() {
   // lands directly in the score/vibes editor with all fields prefilled.
   const [logEditTarget, setLogEditTarget] = useState(null);
   // Opens LogShow straight into a specific mode instead of a blank form —
-  // e.g. a tapped tour/genre-alert notification opens Wishlist's Full Tour
+  // e.g. a tapped tour/genre-alert notification opens Wishlist's Search
   // view, pre-searched for that artist. { status, mode, tourArtist } | null.
   const [logPrefill, setLogPrefill] = useState(null);
   const [selectedShow, setSelectedShow] = useState(null);
@@ -212,7 +212,7 @@ export default function App() {
     // this ONLY showed a tappable toast, which either got missed or (for
     // genre_alert, added later) wasn't handled at all — reported by a user
     // as "the notification didn't take me anywhere, just Home." Now it
-    // opens Wishlist's Full Tour view pre-searched for that artist — a real
+    // opens Wishlist's Search view pre-searched for that artist — a real
     // screen with every upcoming date, not a toast that can vanish — while
     // still offering the direct tickets link as a fast-path toast on top.
     if (kind === 'tour_alert' || kind === 'city_match' || kind === 'genre_alert') {

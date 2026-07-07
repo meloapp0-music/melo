@@ -1084,6 +1084,29 @@ h4 { font-size: 17px; }
 .log-finder-search:disabled { opacity: 0.5; }
 .log-finder-search:active { transform: scale(0.98); }
 
+/* Search-mode manual fallback — the "add a show that's in no database"
+   escape hatch. Divider above it separates it from the results list. */
+.log-manual-section {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(61, 44, 30, 0.08);
+}
+.log-manual-toggle {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed rgba(61, 44, 30, 0.18);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--brown-muted);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.log-manual-toggle:active { transform: scale(0.98); }
+
 .log-finder-group {
   margin-top: 18px;
 }

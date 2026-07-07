@@ -557,6 +557,44 @@ let _tmNoKeyWarned = false;
 // several months out. With `city`, Ticketmaster's fuzzy city match
 // filters to a metro, so "Denver" surfaces Red Rocks shows even though
 // Red Rocks is technically in Morrison, CO.
+// Map a Ticketmaster classification genre name (e.g. "Hip-Hop/Rap",
+// "Dance/Electronic") onto Melo's own GENRES vocabulary (see store.js), so a
+// show pulled from Discovery can autofill its genre when added to a wishlist.
+// Contains-based and ordered specific→broad; returns '' for anything we can't
+// confidently place (we never guess a genre). Every non-empty return value is
+// an EXACT member of GENRES, so the genre chips highlight correctly.
+const TM_GENRE_RULES = [
+  [/hip[-\s]?hop|rap/, 'Hip-Hop'],
+  [/r&b|rhythm/, 'R&B'],
+  // Reggae is checked BEFORE the Electronic rule: "Dancehall" contains
+  // "dance", so without this ordering it would wrongly map to Electronic.
+  [/reggae|ska|dancehall/, 'Reggae'],
+  [/dance|electronic|edm|house|techno/, 'Electronic'],
+  [/metal/, 'Metal'],
+  [/punk/, 'Punk'],
+  [/country/, 'Country'],
+  [/bluegrass|folk/, 'Folk'],
+  [/alternative/, 'Alternative'],
+  [/indie/, 'Indie'],
+  [/classical|orchestra/, 'Classical'],
+  [/blues/, 'Blues'],
+  [/jazz/, 'Jazz'],
+  [/latin|reggaeton/, 'Latin'],
+  [/soul|funk/, 'Soul'],
+  [/world/, 'World'],
+  [/rock/, 'Rock'],
+  [/pop/, 'Pop'],
+];
+export function tmGenreToMelo(name) {
+  // Coerce defensively — a non-string (e.g. an object from a JamBase genre
+  // array) must yield '' rather than throw, which would collapse a whole
+  // fetch batch to [] inside its try/catch.
+  const n = (typeof name === 'string' ? name : '').toLowerCase().trim();
+  if (!n || n === 'undefined' || n === 'other') return '';
+  for (const [re, g] of TM_GENRE_RULES) if (re.test(n)) return g;
+  return '';
+}
+
 export async function fetchUpcomingEvents(artistName, opts = {}) {
   if (!artistName) return [];
 
@@ -604,6 +642,7 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
     return matching.slice(0, 8).map((ev) => {
       const venue = ev?._embedded?.venues?.[0] || {};
       const attractions = ev?._embedded?.attractions || [];
+      const cls = ev?.classifications?.[0];
       return {
         artist: attractions[0]?.name || artistName,
         venue: venue.name || '',
@@ -616,6 +655,9 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
         country: venue.country?.countryCode || venue.country?.name || '',
         date: ev?.dates?.start?.localDate || '',
         ticketUrl: ev.url || '',
+        // Autofills the show's genre when wishlisted (Search tab). Falls back
+        // to subGenre when the top genre is generic/undefined, else ''.
+        genre: tmGenreToMelo(cls?.genre?.name) || tmGenreToMelo(cls?.subGenre?.name),
         lineup: attractions.map((a) => a.name).filter(Boolean),
       };
     });
@@ -682,6 +724,10 @@ export async function fetchJamBaseEvents(artistName, opts = {}) {
           country: '',
           date: (ev.startDate || '').slice(0, 10),
           ticketUrl: primaryOffer?.url || '',
+          // JamBase's genre shape varies (array | string | absent) — best-
+          // effort map, degrades to '' so a small-venue show just has no
+          // autofilled genre rather than a wrong one.
+          genre: tmGenreToMelo(Array.isArray(ev.genre) ? ev.genre[0] : ev.genre),
           lineup: performers.map((p) => p.name).filter(Boolean),
           source: 'jambase',
         };
