@@ -7,7 +7,7 @@ type: project
 # Genre-Based Notifications (round-robin balanced)
 
 - Started: 2026-07-05
-- Status: shipped (code) — **not yet deployed** (awaiting go-ahead; see below)
+- Status: shipped — deployed to production
 - Last updated: 2026-07-05
 
 ## Context
@@ -77,10 +77,11 @@ table/policy. The Edge Function already runs with the service role
   console/server errors on reload. Could not run a Deno typecheck (CLI not
   installed locally) — verified by careful manual read-through of the whole
   file instead (types, braces, control-flow narrowing all check out).
-  **NOT YET DEPLOYED** — `supabase functions deploy tour-alerts` will push
-  this live to the daily cron, immediately changing what real users get
-  pushed; holding for explicit go-ahead before running it (same bar as the
-  video-uploads DB migration earlier this session).
+  **DEPLOYED** — user approved; `supabase functions deploy tour-alerts
+  --no-verify-jwt` pushed version 16 live (confirmed via `supabase functions
+  list`: ACTIVE, version 16). Runs on the existing daily schedule (~1pm ET) —
+  no separate schedule change needed, a deploy just updates the code the
+  next scheduled run executes.
 
 ## Open questions / follow-ups
 - `MAX_GENRE_NOTIFS_PER_USER = 2` and the 12-genre `GENRE_TM_MAP` are
