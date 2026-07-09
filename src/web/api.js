@@ -293,7 +293,7 @@ export async function searchPastShows({ artist, city, year, venue } = {}) {
 // are tuned against Setlist.fm's naming.
 const FESTIVAL_VENUES = {
   'electric forest': { q: { city: 'Rothbury' }, city: 'Rothbury', state: 'MI' },
-  'coachella': { q: { city: 'Indio' }, city: 'Indio', state: 'CA' },
+  'coachella': { q: { venue: 'Empire Polo Club' }, city: 'Indio', state: 'CA' },
   'bonnaroo': { q: { city: 'Manchester' }, city: 'Manchester', state: 'TN' },
   'lollapalooza': { q: { venue: 'Grant Park' }, city: 'Chicago', state: 'IL' },
   'pitchfork music festival': { q: { venue: 'Union Park' }, city: 'Chicago', state: 'IL' },
@@ -406,47 +406,113 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
         const target = normalizeFestival(label);
         // Only events whose NAME really contains the festival label — never a
         // fuzzy fallback (that's how we'd get "Electric Callboy" for "Electric
-        // Forest"). An empty result here is correct, not a bug.
-        let pool = events.filter((ev) => normalizeFestival(ev.name).includes(target) && target);
+        // Forest"). An empty result here is correct, not a bug. Also drop
+        // official "aftershow"/"afterparty" club gigs: they name-match the
+        // festival but are separate small shows at OTHER venues, so including
+        // them stamped aftershow acts onto the festival with the wrong dates.
+        // Catches aftershow(s), afterparty/parties, after hours, after dark,
+        // "afters", and pre-party — the common branding for the separate club
+        // gigs around a festival. Deliberately NOT "afterlife"/"aftershock",
+        // which are real event/festival names.
+        const isAftershow = (name) =>
+          /after[\s-]?(?:show|part|hour|dark)|\bafters\b|pre[\s-]?part/i.test(name || '');
+        let pool = events.filter(
+          (ev) => target && normalizeFestival(ev.name).includes(target) && !isAftershow(ev.name)
+        );
+        // STRICT year filter — keep ONLY the requested year, never fall back
+        // to all editions. Ticketmaster is upcoming-only, so a PAST year
+        // (e.g. Lollapalooza 2025) has zero TM events; the pool goes empty
+        // and we fall through to Setlist.fm for the real historical lineup —
+        // instead of silently stamping a FUTURE edition's acts and dates onto
+        // it (the "Lollapalooza 2025 → 2026 artists" bug).
         if (year) {
-          const yr = pool.filter((ev) =>
+          pool = pool.filter((ev) =>
             (ev?.dates?.start?.localDate || '').startsWith(String(year))
           );
-          if (yr.length) pool = yr;
+        }
+        // Isolate ONE edition. Bare "Lollapalooza" matches the Chicago, Berlin
+        // and South American editions. Narrow to the curated VENUE when we
+        // have one (Grant Park → main stage only), ELSE to the curated /
+        // most-common CITY. Venue and city are ALTERNATIVES, not sequential:
+        // once the venue narrows the pool we must NOT also city-filter it,
+        // because TM often labels a venue by its borough/suburb ("Flushing",
+        // not "New York"; "Allston", not "Boston") and an exact city match
+        // would then wipe the correctly-narrowed pool to empty. The city
+        // fallback is likewise guarded so a mismatch can never zero the pool.
+        if (pool.length) {
+          const evVenue = (ev) => ev?._embedded?.venues?.[0]?.name || '';
+          const evCity = (ev) => ev?._embedded?.venues?.[0]?.city?.name || '';
+          let narrowed = false;
+          if (venue) {
+            const vlc = venue.toLowerCase();
+            const byVenue = pool.filter((ev) => evVenue(ev).toLowerCase().includes(vlc));
+            if (byVenue.length) { pool = byVenue; narrowed = true; }
+          }
+          if (!narrowed) {
+            let tgtCity = city;
+            if (!tgtCity) {
+              const counts = {};
+              pool.forEach((ev) => { const c = evCity(ev); if (c) counts[c] = (counts[c] || 0) + 1; });
+              tgtCity = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+            }
+            if (tgtCity) {
+              const byCity = pool.filter((ev) => evCity(ev).toLowerCase() === tgtCity.toLowerCase());
+              if (byCity.length) pool = byCity;
+            }
+          }
         }
         pool.sort((a, b) =>
           (b?.dates?.start?.localDate || '').localeCompare(a?.dates?.start?.localDate || '')
         );
+        // Resolve venue/city from the pool — edition-independent, so any
+        // matched event does (used for the Setlist.fm search below).
         const primary = pool[0];
-        if (primary) {
+        if (primary && !venue && !city) {
           const v = primary?._embedded?.venues?.[0] || {};
-          if (!venue && !city) {
-            venue = v.name || '';
-            city = v.city?.name || '';
-            state = v.state?.stateCode || v.state?.name || '';
-          }
-          if (!resolvedYear) resolvedYear = (primary?.dates?.start?.localDate || '').slice(0, 4);
+          venue = v.name || '';
+          city = v.city?.name || '';
+          state = v.state?.stateCode || v.state?.name || '';
         }
-        // Capture the festival's own date span (first → last day). For a
-        // future-tab search we use only upcoming dates, so a recurring
-        // festival resolves to THIS edition, not last year's.
-        const spanDates = pool.map((ev) => ev?.dates?.start?.localDate).filter(Boolean).sort();
-        if (spanDates.length) {
-          const todayIso = new Date().toISOString().slice(0, 10);
-          const relevant = futureOnly ? spanDates.filter((d) => d >= todayIso) : spanDates;
-          if (relevant.length) { festStart = relevant[0]; festEnd = relevant[relevant.length - 1]; }
+        // The LINEUP, dates and resolvedYear come ONLY from direction-matching
+        // events: Wishlist/Going wants UPCOMING, Attended wants PAST. TM is
+        // upcoming-only, so on Attended this leaves no TM lineup and we rely on
+        // Setlist.fm — never stamping a future edition's acts onto a past log
+        // (the "no year typed on Attended → 2026 acts" bug).
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const dirPool = futureOnly
+          ? pool.filter((ev) => (ev?.dates?.start?.localDate || '') >= todayIso)
+          : pool.filter((ev) => (ev?.dates?.start?.localDate || '') < todayIso);
+        // Festival's own date span (first → last day of THIS edition). Cap the
+        // end to the SAME YEAR as the start, so an early-on-sale next-year
+        // edition at the same venue can't merge into a bogus >1-year span.
+        // Anchor on the nearest direction-appropriate day, then take every
+        // pool date within a festival-length window (16 days) of it — from the
+        // FULL pool, so a festival already underway still shows its true first
+        // day and a cross-year (NYE) edition isn't truncated, while a next-
+        // year edition (~365 days away) can't merge into the span.
+        const poolDates = pool.map((ev) => ev?.dates?.start?.localDate).filter(Boolean).sort();
+        const dirDates = dirPool.map((ev) => ev?.dates?.start?.localDate).filter(Boolean).sort();
+        const anchor = futureOnly ? dirDates[0] : dirDates[dirDates.length - 1];
+        if (anchor) {
+          const dayGap = (a, b) =>
+            Math.abs((new Date(a + 'T00:00:00') - new Date(b + 'T00:00:00')) / 86400000);
+          const edition = poolDates.filter((d) => dayGap(d, anchor) <= 16);
+          festStart = edition[0] || anchor;
+          festEnd = edition[edition.length - 1] || anchor;
         }
-        // Multi-day festivals often list a "thin" GA/VIP ticket event per day
-        // alongside the real lineup event — its only "attraction" is the
-        // festival's own name (verified live against Windy City Smokeout:
-        // duplicate same-date events, one full lineup + one whose sole
-        // attraction is "Windy City Smokeout" itself). Filter that out so it
-        // never shows up as a fake headliner.
-        const targetNorm = normalizeFestival(label);
-        pool.forEach((ev) => {
+        if (!resolvedYear && festStart) resolvedYear = festStart.slice(0, 4);
+        // Build the lineup from direction-matching events only. The name-match
+        // above already excluded aftershows; here we also drop any attraction
+        // that is just the festival's own name (the "thin" GA/VIP ticket event
+        // some festivals list per day — verified live on Windy City Smokeout).
+        dirPool.forEach((ev) => {
           const d = ev?.dates?.start?.localDate || '';
           (ev?._embedded?.attractions || []).forEach((a) => {
-            if (a.name && normalizeFestival(a.name) !== targetNorm) {
+            // Drop the festival's OWN name listed as an attraction — exact
+            // ("Windy City Smokeout") or the full official form ("Coachella
+            // Valley Music and Arts Festival" starts with "coachella").
+            const an = normalizeFestival(a.name);
+            if (a.name && an && !an.startsWith(target)) {
               lineup.push({ artist: a.name, date: d });
             }
           });
@@ -475,7 +541,16 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
   let rows = [];
   if (venue) {
     rows = await searchPastShows({ venue, year: resolvedYear || undefined });
-    if (lineupSet.size) rows = rows.filter((r) => lineupSet.has((r.artist || '').toLowerCase()));
+    if (lineupSet.size) {
+      rows = rows.filter((r) => lineupSet.has((r.artist || '').toLowerCase()));
+    } else if (city) {
+      // A venue name can be globally ambiguous — Shaky Knees' "Central Park"
+      // also matches NYC's Central Park. With no TM lineup to filter by (a
+      // past Attended search), constrain to the resolved city so another
+      // city's shows aren't stamped as this festival. If this empties rows,
+      // the city fallback below re-searches correctly.
+      rows = rows.filter((r) => (r.city || '').toLowerCase().includes(city.toLowerCase()));
+    }
   }
   if (!rows.length && city) {
     // City search is broader; if we have a Ticketmaster lineup, keep only those
@@ -488,6 +563,14 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
 
   // Stamp the festival label so everything groups together in the finder.
   rows = rows.map((r) => ({ ...r, festival: label }));
+
+  // Drop non-upcoming rows BEFORE the dedup below — otherwise a lineup act
+  // that also has a PAST setlist at this venue/year would populate `have` and
+  // suppress its own future-dated row, silently dropping it from Wishlist.
+  if (futureOnly) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    rows = rows.filter((r) => r.date && r.date >= todayIso);
+  }
 
   // --- 4) Add lineup acts Setlist.fm didn't return (no setlist logged yet) ---
   const have = new Set(rows.map((r) => (r.artist || '').toLowerCase()));
@@ -503,24 +586,13 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
       state,
       country: '',
       date: date || '',
-      displayDate: isoToDisplay(date),
+      displayDate: festivalRangeDisplay(date), // "Aug 2, 2026", not "02-08-2026"
       songs: [],
       songCount: 0,
       tour: '',
       festival: label,
     });
   });
-
-  // Called from Wishlist/Going, where a past show (this year's edition
-  // already happened, or a prior year's setlist for an artist who's also on
-  // THIS year's bill) is never useful — only ever a future date belongs on
-  // a wishlist. Requires a real, resolvable date; a dateless row can't be
-  // confirmed upcoming, so it's dropped too rather than risk showing stale
-  // noise.
-  if (futureOnly) {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    rows = rows.filter((r) => r.date && r.date >= todayIso);
-  }
 
   rows.sort(
     (a, b) =>

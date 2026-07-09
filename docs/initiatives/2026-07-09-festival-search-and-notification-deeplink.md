@@ -182,6 +182,116 @@ date/festival/genre/songs) and ignores the extra `isFestival`/`endDate`.
 Gated on `futureOnly`: Attended festival logging is unchanged (you pick the
 acts you actually saw, not "the festival itself").
 
+## Follow-up (2026-07-10): festival log returning wrong edition / wrong year
+User (Attended tab, screenshot): searched "Lollapalooza" year 2025 and got
+rows with 2026 dates and artists who clearly weren't Lolla Chicago (Danny
+Ocean, J Balvin, Elena Rose — South-American-edition acts), all stamped
+"Grant Park · Chicago."
+
+Diagnosed live against Ticketmaster (not guessed):
+- **TM is upcoming-only** — zero Lollapalooza 2025 events exist (2025 is past).
+- The **year filter wasn't strict**: `if (yr.length) pool = yr` — when the
+  requested year had no events, it silently kept ALL matched events, which
+  were 2026 editions.
+- **"Lollapalooza" matches many editions** — 52 Chicago + 4 Berlin events in
+  one response, PLUS dozens of "Official Lollapalooza Aftershow" club gigs
+  (House of Blues, Empty Bottle, Cobra Lounge…), all name-matching.
+- The `lineupSet` filter (added in the prior follow-up to fix United Center
+  bleed) then **suppressed the real Setlist.fm 2025 data**, because it
+  filtered real 2025 acts against the bogus 2026 TM lineup.
+
+Fix (`searchFestivalByName`, api.js):
+1. **Strict year filter** — when `year` is given, keep ONLY that year. A past
+   year → empty TM pool → falls through to Setlist.fm for the real historical
+   lineup (unfiltered, since lineupSet is now empty).
+2. **Edition isolation** — narrow the TM pool to the curated `venue`
+   (contains-match: "Grant Park" → main stage only, which also drops the
+   aftershows at other venues and the Berlin edition), else to the curated or
+   most-common `city`.
+3. **Cleaner dates** — lineup rows now use `festivalRangeDisplay` ("Aug 2,
+   2026") instead of `isoToDisplay`'s confusing "02-08-2026".
+
+Verified live: Lolla **2025** → 0 TM rows (→ Setlist.fm real data); Lolla
+**2026** → the REAL Chicago lineup (Tate McRae, Charli xcx, Lorde, Smashing
+Pumpkins, Lil Uzi Vert, Olivia Dean, Jennie, 5SOS…) at Grant Park, dated
+Jul 30 – Aug 2, 2026 — no Berlin, no aftershows, no phantom acts.
+
+### Also: Coachella (user report) — city not specific enough
+User: "when I type in coachella it just gives me this" (garbage). Diagnosed
+live: "Coachella" matches the real fest (Empire Polo Club, Indio) BUT ALSO
+"Coachella Valley Classical Voices" (a separate classical series, Plaza
+Theatre, Palm Springs) and dozens of casino shows in the CITY of Coachella,
+CA. Coachella was curated by CITY ONLY (Indio), which couldn't separate the
+fest from the noise. Fix: upgraded its curated entry to the VENUE (Empire
+Polo Club). Verified live: only the real "Coachella Music Festival" survives.
+
+### Adversarial review → rewrite (the fix had 4 bugs of its own)
+Ran a 4-lens adversarial review of the first fix; it confirmed 7 findings
+(one MAJOR regression I'd introduced). Rewrote the resolver to fix all:
+1. **MAJOR borough-city wipe**: the first fix ran the venue filter AND an
+   exact-equality city filter SEQUENTIALLY. For a festival whose TM
+   venue-city differs from the curated metro (Governors Ball → TM "Flushing"
+   vs curated "New York"; Boston Calling → "Allston" vs "Boston"), the city
+   `===` matched zero and WIPED the venue-narrowed pool to empty → the
+   festival returned nothing. Fix: venue and city are now ALTERNATIVES — a
+   successful venue match sets `narrowed=true` and SKIPS the city filter; the
+   city fallback is guarded (`if (byCity.length)`) so it can never empty the
+   pool.
+2. **MAJOR no-year direction bug**: the strict year filter is `if (year)`-
+   gated, so on the Attended tab with NO year typed, future editions survived
+   and 2026 acts were returned as "attended" (past editions unreachable).
+   Fix: a `dirPool` splits the pool by direction — Attended wants PAST,
+   Wishlist wants FUTURE. Lineup/spanDates/resolvedYear all derive from
+   dirPool. TM is upcoming-only, so Attended's dirPool is ~empty → relies on
+   Setlist.fm, never stamping future acts. Live-verified: Lolla Attended
+   no-year → 0 future acts (was 169); Lolla Wishlist no-year → 169 real acts.
+3. **MINOR aftershow pollution**: "Official … Aftershow" club gigs name-match
+   the festival. Fix: excluded via an `isAftershow` regex in the name filter.
+4. **MINOR cross-year span**: a no-year Wishlist could merge a 2026 + early-
+   on-sale 2027 edition into a bogus >1-year placeholder span. Fix: festEnd
+   capped to the same year as festStart.
+### Second adversarial review → 6 more findings fixed
+The review of the rewrite confirmed 6 more (2 major, 4 minor). Fixed:
+- **MAJOR ambiguous-venue leak**: a curated venue with a globally-common name
+  (Shaky Knees → "Central Park", which also matches NYC's Central Park) leaked
+  other cities' shows on Attended, because the Setlist.fm venue search passes
+  no city constraint and the lineupSet filter is empty on a past search. Fix:
+  when there's no lineup to filter by, constrain venue rows to the resolved
+  city.
+- **MAJOR/edge cross-year truncation + underway clipping**: the same-year
+  festEnd cap truncated a NYE festival (Dec 31 – Jan 1 → dropped Jan 1), and
+  deriving festStart from the direction pool clipped the first day of a
+  festival already underway (WCS Jul 8–12 with today Jul 9 → showed Jul 9).
+  Fix: anchor on the nearest direction-appropriate day, then take the full
+  pool's dates within a 16-day festival window — preserves the true first day,
+  keeps cross-year editions whole, and still excludes a next-year edition
+  (~365 days away). Unit-verified.
+- **MINOR aftershow gaps**: `isAftershow` missed "after hours / after dark /
+  afters / afterparties". Fix: broadened the regex (still spares real names
+  like "Aftershock", "Afterlife"). Unit-verified against 10 cases.
+- **MINOR dropped future act**: a lineup act that also had a PAST setlist that
+  year was deduped out before the futureOnly filter ran, silently dropping it
+  from Wishlist. Fix: run the futureOnly filter BEFORE the dedup.
+- Also tightened the festival-self-name filter from exact-equality to
+  `startsWith(target)`, so a festival's full official name listed as an
+  attraction ("Coachella Valley Music and Arts Festival") no longer shows as
+  a fake act alongside the "🎪 Whole event" row.
+
+Known remaining minors (documented, not fixed): (1) a city-only curated
+festival (e.g. BottleRock → Napa) on a past-year Attended search has no TM
+lineup to filter by, so the Setlist.fm city search can return unrelated
+same-city shows stamped with the festival label — mitigation is venue-based
+curation (done for Coachella; the majors the user hit are venue-based). (2)
+`normalizeFestival` strips the word "fest", so "Riot Fest" → target "riot"
+can name-match "Quiet Riot" when no real Riot Fest edition is on TM — mitigated
+by venue-narrowing whenever the real edition is present; changing
+normalizeFestival is riskier than the residual bug.
+
+Two full adversarial review rounds; the confirmed findings from both are fixed
+or documented. Final live check: Lolla Wishlist → 169 real 2026 acts; Lolla
+Attended no-year → 0 TM acts (→ Setlist.fm); Coachella → isolated to Empire
+Polo Club.
+
 ## Open questions / follow-ups
 - The festival placeholder's `date` is the first day only; MyShows shows that
   single date, not the range. The range is captured (`endDate`) but not yet
