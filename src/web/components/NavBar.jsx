@@ -25,14 +25,13 @@ const tabs = [
   },
   { id: 'plus' },
   {
-    id: 'buddies',
-    label: 'Buddies',
+    id: 'stats',
+    label: 'Stats',
     icon: (
       <svg viewBox="0 0 24 24">
-        <circle cx="9" cy="8" r="3.5" />
-        <circle cx="17" cy="9.5" r="2.5" />
-        <path d="M3 20v-1a4 4 0 014-4h4a4 4 0 014 4v1" />
-        <path d="M14.5 14.5h2a3 3 0 013 3V19" />
+        <line x1="6" y1="20" x2="6" y2="12" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="18" y1="20" x2="18" y2="9" />
       </svg>
     ),
   },
@@ -48,11 +47,10 @@ const tabs = [
   },
 ];
 
-// `map` and `songs` are real `tab` values (see App.jsx's navigate()) but have
-// no matching nav slot — they're only reached from Home's Cities stat and
-// Profile's Songs stat respectively. Fold them onto their launch point so the
-// bar still shows an active tab instead of going dark.
-const TAB_ALIAS = { map: 'home', songs: 'profile' };
+// Pages with no nav slot of their own fold onto the tab they launch from, so
+// the bar shows an active tab instead of going dark. Cities (map) and Songs
+// are Stats destinations; Buddies now lives under Profile.
+const TAB_ALIAS = { map: 'stats', songs: 'stats', buddies: 'profile' };
 
 export default function NavBar() {
   const { tab, subPage, navigate, shows } = useApp();

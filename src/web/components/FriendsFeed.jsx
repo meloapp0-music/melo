@@ -20,6 +20,9 @@ export function resetFeedCache() {
 
 const MAX_PER_FRIEND = 4;
 const MAX_ITEMS = 20;
+// How many feed items show before the "See more" reveal — keeps Home from
+// running long when a user has many active friends.
+const FEED_VISIBLE = 6;
 // Show-count milestones worth celebrating in the feed.
 const MILESTONES = new Set([10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750, 1000]);
 const RECAP_MIN = 5;   // shows this year before a friend earns a recap card
@@ -62,6 +65,7 @@ export default function FriendsFeed() {
   const [items, setItems] = useState(feedCacheOwner === meId ? feedCache : null);
   const [noFriends, setNoFriends] = useState(false);
   const [addedIds, setAddedIds] = useState(() => new Set());
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (selectedUserId) return; // refresh only when no profile overlay is open
@@ -185,6 +189,33 @@ export default function FriendsFeed() {
   );
   const showKey = (s) => `${(s.artist || '').toLowerCase().trim()}|${s.date}`;
 
+  // Upcoming shows I'M going to → lets a group card lead with "You + …".
+  const myGoing = useMemo(
+    () => new Set(shows.filter((s) => isGoing(s) && daysUntil(s.date) >= 0).map(showKey)),
+    [shows]
+  );
+
+  // Collapse multiple friends GOING to the same upcoming show into ONE group
+  // card ("You + Julia + Claire are going to Noah Kahan") instead of a stack of
+  // near-identical "You + <friend>" cards — even when those friends aren't
+  // friends with each other. Attended cards are never merged (each carries its
+  // own review/score). A group sits at its most-recent member's feed position.
+  const displayItems = useMemo(() => {
+    if (!items) return items;
+    const isUpcomingGoing = (s) => isGoing(s) && !isAttended(s) && daysUntil(s.date) >= 0;
+    const groups = new Map();
+    const out = [];
+    for (const it of items) {
+      if (it.type !== 'show' || !isUpcomingGoing(it.show)) { out.push(it); continue; }
+      const k = `${(it.show.artist || '').toLowerCase().trim()}|${it.show.date}`;
+      let g = groups.get(k);
+      if (!g) { g = { type: 'goingGroup', key: k, members: [] }; groups.set(k, g); out.push(g); }
+      g.members.push(it);
+    }
+    // A group of one is just a normal card — keep today's "You + <friend>" render.
+    return out.map((it) => (it.type === 'goingGroup' && it.members.length === 1 ? it.members[0] : it));
+  }, [items, shows]);
+
   // Patch one show item's reaction summary in both live state and the
   // session cache (so navigating away and back keeps the like).
   const patchReactions = (showId, reactions) => {
@@ -258,11 +289,15 @@ export default function FriendsFeed() {
 
   if (!items || items.length === 0) return null;
 
+  const list = displayItems || [];
+  const visibleItems = expanded ? list : list.slice(0, FEED_VISIBLE);
+  const hiddenCount = list.length - visibleItems.length;
+
   return (
     <div className="feed-section fade-in">
       <div className="home-section-title"><h3>Friends</h3></div>
       <div className="feed-list">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           // Year-recap card ("Claire's 2026 so far").
           if (item.type === 'recap') {
             const rn = item.friend.displayName || item.friend.username;
@@ -285,6 +320,109 @@ export default function FriendsFeed() {
             );
           }
 
+          // Grouped "going" card — 2+ friends going to the same upcoming show.
+          if (item.type === 'goingGroup') {
+            const rep = item.members[0]; // most recent (feed is recency-ordered)
+            const gshow = rep.show;
+            const gfriends = item.members.map((m) => m.friend);
+            const gnames = gfriends.map((f) => f.displayName || f.username);
+            const userGoing = myGoing.has(item.key);
+            const alreadyHave = myShowKeys.has(item.key);
+            const gadded = addedIds.has(gshow.id);
+            const shownNames = gnames.slice(0, 3);
+            const extra = gnames.length - shownNames.length;
+            const label = (userGoing ? ['You', ...shownNames] : shownNames).join(' + ')
+              + (extra > 0 ? ` +${extra} more` : '');
+
+            const gHeroPhoto = gshow.photos?.[0] || null;
+            const gArtistImg = getArtistImage(gshow.artist);
+            const gHeroStyle = (gHeroPhoto || gArtistImg)
+              ? { backgroundImage: `url(${gHeroPhoto || gArtistImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : { background: getArtistGradient(gshow.artist) };
+            const gd = daysUntil(gshow.date);
+            const gcountdown = gd === 0 ? 'Tonight' : gd === 1 ? 'Tomorrow' : `In ${gd} days`;
+            const gliked = rep.reactions?.mine === '❤️';
+            const glikeCount = rep.reactions?.count || 0;
+            const canGo = !userGoing && !alreadyHave && !gadded;
+
+            return (
+              <div
+                key={`grp-${item.key}`}
+                className="feed-card-v2"
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedShow(gshow)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(gshow); }}
+              >
+                <div className="feedv2-hero" style={gHeroStyle}>
+                  <div className="feedv2-hero-overlay" />
+                  <div className="feedv2-countdown">{gcountdown}</div>
+                  <div className="feedv2-together">
+                    🎟️ {userGoing ? 'Going together' : `${item.members.length} friends going`}
+                  </div>
+                </div>
+
+                <div className="feedv2-foot">
+                  <div className="feed-avatar-stack">
+                    {gfriends.slice(0, 3).map((f) => {
+                      const fn = f.displayName || f.username || '?';
+                      return (
+                        <button
+                          key={f.userId}
+                          className="feed-avatar"
+                          aria-label={`View ${fn}`}
+                          onClick={(e) => { e.stopPropagation(); setSelectedUserId(f.userId); }}
+                          style={f.avatarUrl
+                            ? { backgroundImage: `url(${f.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                            : { background: f.avatarColor || '#E8573A' }}
+                        >
+                          {!f.avatarUrl && fn[0].toUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="feed-body">
+                    <div className="feed-text">{label} are going to <b>{gshow.artist}</b></div>
+                    <div className="feed-meta-row">
+                      <span className="feed-meta">
+                        {[gshow.venue, gshow.city].filter(Boolean).join(', ')}
+                        {gshow.date ? ` · ${formatDate(gshow.date)}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="feedv2-bar">
+                  <button
+                    className={`feedv2-like ${gliked ? 'active' : ''}`}
+                    onClick={(e) => toggleLike(e, rep)}
+                    aria-label={gliked ? 'Remove your like' : 'Like this show'}
+                  >
+                    <span className="feedv2-like-emoji">{gliked ? '❤️' : '🤍'}</span>
+                    {glikeCount > 0 && <span>{glikeCount}</span>}
+                  </button>
+                  <button
+                    className="feedv2-cmt"
+                    onClick={(e) => { e.stopPropagation(); setSelectedShow(gshow); }}
+                    aria-label="Comment"
+                  >
+                    💬{rep.comments > 0 ? ` ${rep.comments}` : ''}
+                  </button>
+                  {(canGo || gadded) && (
+                    <button
+                      className={`feed-gotoo ${gadded ? 'added' : ''}`}
+                      onClick={(e) => goToo(e, gshow)}
+                      disabled={gadded}
+                    >
+                      {gadded ? '✓ Going' : "+ I'm going too"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
           const { show, friend, reactions, comments, coAttendees, coAnon, milestone } = item;
           const name = friend.displayName || friend.username;
           const attended = isAttended(show);
@@ -292,6 +430,9 @@ export default function FriendsFeed() {
           const together = attended && mine.has(showKey(show));
           const alreadyHave = myShowKeys.has(showKey(show));
           const upcoming = isGoing(show) && daysUntil(show.date) >= 0 && !alreadyHave;
+          // Friend is going to a show you're ALSO going to → merge it into a
+          // "you + them" plan instead of a card that just repeats your Up Next.
+          const goingTogether = isGoing(show) && alreadyHave && daysUntil(show.date) >= 0;
           const added = addedIds.has(show.id);
 
           // Hero is photo-first: the friend's own concert photo (the
@@ -328,6 +469,7 @@ export default function FriendsFeed() {
                 )}
                 {upcoming && <div className="feedv2-countdown">{countdown}</div>}
                 {together && <div className="feedv2-together">🎸 You were there too</div>}
+                {goingTogether && <div className="feedv2-together">🎟️ Going together</div>}
               </div>
 
               <div className="feedv2-foot">
@@ -346,7 +488,9 @@ export default function FriendsFeed() {
 
                 <div className="feed-body">
                   <div className="feed-text">
-                    <b>{name}</b> {verb} <b>{show.artist}</b>
+                    {goingTogether
+                      ? <>You + <b>{name}</b> are going to <b>{show.artist}</b></>
+                      : <><b>{name}</b> {verb} <b>{show.artist}</b></>}
                   </div>
                   <div className="feed-meta-row">
                     <span className="feed-meta">
@@ -423,6 +567,11 @@ export default function FriendsFeed() {
           );
         })}
       </div>
+      {hiddenCount > 0 && (
+        <button type="button" className="feed-see-more" onClick={() => setExpanded(true)}>
+          See {hiddenCount} more
+        </button>
+      )}
     </div>
   );
 }

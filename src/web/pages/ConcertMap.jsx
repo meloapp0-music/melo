@@ -82,8 +82,22 @@ export default function ConcertMap() {
           iconAnchor: [size / 2, size / 2],
         });
 
+        // Hover popup: the venues/shows in this city (so the map reads at a
+        // glance, not just as dots). Tap/click still opens the full card below.
+        const esc = (t) => String(t || '').replace(/[&<>"]/g, (c) =>
+          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const here = attended.filter((s) => s.city === city);
+        const rows = here.slice(0, 5).map((s) =>
+          `<div class="map-pop-row"><b>${esc(s.artist)}</b>${s.venue ? ` · ${esc(s.venue)}` : ''}</div>`
+        ).join('');
+        const more = here.length > 5 ? `<div class="map-pop-more">+ ${here.length - 5} more</div>` : '';
+        const popup = `<div class="map-pop"><div class="map-pop-city">${esc(city)}</div>${rows}${more}</div>`;
+
         const marker = L.marker([g.lat, g.lng], { icon })
           .addTo(map)
+          .bindPopup(popup, { closeButton: false, offset: [0, -4], className: 'map-pop-wrap' })
+          .on('mouseover', function () { this.openPopup(); })
+          .on('mouseout', function () { this.closePopup(); })
           .on('click', () => setSelectedCity(city));
         markersRef.current.push(marker);
       });

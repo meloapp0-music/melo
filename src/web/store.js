@@ -92,7 +92,15 @@ export const isGoing    = (s) => getShowStatus(s) === SHOW_STATUS.GOING;
 export const isWishlist = (s) => getShowStatus(s) === SHOW_STATUS.WISHLIST;
 
 // A festival's grouping key (case-insensitive festival name).
-export const festivalKey = (s) => (s?.festival || '').trim().toLowerCase();
+// Key a festival by NAME + YEAR so each edition is its own outing — otherwise
+// "Austin City Limits" 2025 and 2026 would collapse into one card. (A festival
+// that straddles New Year is a rare edge that would split; acceptable.)
+export const festivalKey = (s) => {
+  const f = (s?.festival || '').trim().toLowerCase();
+  if (!f) return '';
+  const yr = (s?.date || '').slice(0, 4);
+  return yr ? `${f}|${yr}` : f;
+};
 
 // Collapse shows that share a festival into a single "outing". A festival then
 // counts as ONE show in stats and renders as ONE card in My Shows, while its
@@ -133,6 +141,17 @@ export function groupIntoOutings(shows) {
     o.date = o.dateEnd; // newest-first sorting elsewhere keys off .date
   }
   return outings;
+}
+
+// The user's own most-recent uploaded photo across a set of shows — used as a
+// venue's picture (a real shot of the room, from a night you were there). Beats
+// any stock/Wikimedia photo for personal feel and fills the gap for new/indie
+// venues Wikipedia doesn't cover. Returns '' when none of the shows has a photo.
+export function latestShowPhoto(shows) {
+  const withPhotos = (shows || [])
+    .filter((s) => Array.isArray(s.photos) && s.photos.length)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return withPhotos[0]?.photos?.[0] || '';
 }
 
 // Placeholder id — ignored by the Supabase data layer (the DB assigns

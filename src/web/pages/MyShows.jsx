@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../App';
 import {
   getArtistGradient, formatDate, daysUntil,
@@ -21,7 +21,7 @@ function upcomingLabel(dateStr) {
 }
 
 export default function MyShows() {
-  const { shows, setSelectedShow, getArtistImage } = useApp();
+  const { shows, setSelectedShow, getArtistImage, setSelectedFestival } = useApp();
   const [search, setSearch] = useState('');
   const [view, setView] = useState('grid');
   const [activeTab, setActiveTab] = useState(SHOW_STATUS.ATTENDED);
@@ -36,7 +36,6 @@ export default function MyShows() {
   }, [activeTab]);
 
   const [festivalsOnly, setFestivalsOnly] = useState(false);
-  const [expandedFest, setExpandedFest] = useState(() => new Set());
 
   const base = shows.filter((s) => getShowStatus(s) === activeTab);
 
@@ -93,13 +92,6 @@ export default function MyShows() {
     o.dateStart && o.dateEnd && o.dateStart !== o.dateEnd
       ? `${formatDate(o.dateStart)} – ${formatDate(o.dateEnd)}`
       : formatDate(o.dateStart || o.date);
-
-  const toggleFest = (key) =>
-    setExpandedFest((cur) => {
-      const next = new Set(cur);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
 
   // Attended tab collapses festivals into one card; Going/Wishlist have no
   // festivals, so their shows pass straight through as single-show items.
@@ -250,50 +242,28 @@ export default function MyShows() {
         <div className="shows-grid fade-in">
           {displayItems.map((item) =>
             item.isFestival ? (
-              <Fragment key={item.key}>
-                <div className="show-poster" style={{ cursor: 'pointer' }} onClick={() => toggleFest(item.key)}>
-                  <div className="show-poster-bg" style={festivalBg(item)} />
-                  {!festivalImg(item) && (
-                    <div className="poster-letter" aria-hidden="true">
-                      {(item.festival || '?').trim().charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="show-poster-overlay" />
-                  <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 2, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>
-                    🎪 {item.artistCount} acts
-                  </div>
-                  {item.score > 0 && (
-                    <div className="show-poster-score">
-                      {Number.isInteger(item.score) ? item.score : item.score.toFixed(1)}
-                    </div>
-                  )}
-                  <div className="show-poster-info">
-                    <div className="show-poster-artist">{item.festival}</div>
-                    <div className="show-poster-date">{festivalDateLabel(item)}</div>
-                  </div>
-                  <div className="show-poster-venue">
-                    {expandedFest.has(item.key) ? 'Tap to collapse' : (item.venue || item.city)}
-                  </div>
-                </div>
-                {expandedFest.has(item.key) && (
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8, padding: '2px 2px 10px' }}>
-                    {item.shows.map((s) => (
-                      <div key={s.id} className="show-list-item" onClick={() => setSelectedShow(s)}>
-                        <div className="show-list-thumb" style={bgStyle(s.artist)} />
-                        <div className="show-list-info">
-                          <div className="show-list-artist">{s.artist}</div>
-                          <div className="show-list-meta">{formatDate(s.date)}</div>
-                        </div>
-                        {s.score > 0 && (
-                          <div className="show-list-score">
-                            {Number.isInteger(s.score) ? s.score : s.score.toFixed(1)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+              <div key={item.key} className="show-poster" style={{ cursor: 'pointer' }} onClick={() => setSelectedFestival(item)}>
+                <div className="show-poster-bg" style={festivalBg(item)} />
+                {!festivalImg(item) && (
+                  <div className="poster-letter" aria-hidden="true">
+                    {(item.festival || '?').trim().charAt(0).toUpperCase()}
                   </div>
                 )}
-              </Fragment>
+                <div className="show-poster-overlay" />
+                <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 2, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>
+                  🎪 {item.artistCount} acts
+                </div>
+                {item.score > 0 && (
+                  <div className="show-poster-score">
+                    {Number.isInteger(item.score) ? item.score : item.score.toFixed(1)}
+                  </div>
+                )}
+                <div className="show-poster-info">
+                  <div className="show-poster-artist">{item.festival}</div>
+                  <div className="show-poster-date">{festivalDateLabel(item)}</div>
+                </div>
+                <div className="show-poster-venue">{item.venue || item.city}</div>
+              </div>
             ) : (
               <div
                 key={item.show.id}
@@ -331,42 +301,20 @@ export default function MyShows() {
         <div className="shows-list fade-in">
           {displayItems.map((item) =>
             item.isFestival ? (
-              <Fragment key={item.key}>
-                <div className="show-list-item" onClick={() => toggleFest(item.key)}>
-                  <div className="show-list-thumb" style={festivalBg(item)} />
-                  <div className="show-list-info">
-                    <div className="show-list-artist">🎪 {item.festival}</div>
-                    <div className="show-list-meta">
-                      {item.artistCount} artists &middot; {festivalDateLabel(item)}
-                    </div>
+              <div key={item.key} className="show-list-item" onClick={() => setSelectedFestival(item)}>
+                <div className="show-list-thumb" style={festivalBg(item)} />
+                <div className="show-list-info">
+                  <div className="show-list-artist">🎪 {item.festival}</div>
+                  <div className="show-list-meta">
+                    {item.artistCount} artists &middot; {festivalDateLabel(item)}
                   </div>
-                  {item.score > 0 && (
-                    <div className="show-list-score">
-                      {Number.isInteger(item.score) ? item.score : item.score.toFixed(1)}
-                    </div>
-                  )}
                 </div>
-                {expandedFest.has(item.key) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 14, marginBottom: 6 }}>
-                    {item.shows.map((s) => (
-                      <div key={s.id} className="show-list-item" onClick={() => setSelectedShow(s)}>
-                        <div className="show-list-thumb" style={bgStyle(s.artist)} />
-                        <div className="show-list-info">
-                          <div className="show-list-artist">{s.artist}</div>
-                          <div className="show-list-meta">
-                            {s.venue} &middot; {formatDate(s.date)}
-                          </div>
-                        </div>
-                        {s.score > 0 && (
-                          <div className="show-list-score">
-                            {Number.isInteger(s.score) ? s.score : s.score.toFixed(1)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                {item.score > 0 && (
+                  <div className="show-list-score">
+                    {Number.isInteger(item.score) ? item.score : item.score.toFixed(1)}
                   </div>
                 )}
-              </Fragment>
+              </div>
             ) : (
               <div
                 key={item.show.id}

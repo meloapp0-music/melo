@@ -1145,6 +1145,9 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
                           <div className="log-show-item-title">
                             {s.artist || titleCase(artist.trim())}
                           </div>
+                          {s.festival && (
+                            <div className="log-show-item-fest">🎪 {s.festival}</div>
+                          )}
                           <div className="log-show-item-venue">{s.venue || 'Venue TBA'}</div>
                           <div className="log-show-item-meta">
                             {showResultLocation(s)}
@@ -1300,9 +1303,22 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
             </div>
           </div>
 
-          {/* (The inline "Festival" field was removed here — festivals now
-              have their own dedicated Festival mode/tab, so tagging one inside
-              the quick-log form was redundant and confusing.) */}
+          {/* Festival tag (optional). Re-added: when you only caught a FEW acts
+              at a festival, digging through the whole lineup in Festival mode is
+              overkill — just log the artist here and tag the festival. It groups
+              the show into that festival's card/outing via festivalKey, same as
+              if you'd used Festival mode. */}
+          <div className="log-section">
+            <div className="log-section-title">
+              Festival <span className="log-section-hint">optional</span>
+            </div>
+            <FestivalAutocomplete
+              value={festival}
+              onChange={setFestival}
+              onSelect={setFestival}
+              placeholder="Was this at a festival? (e.g. Lollapalooza)"
+            />
+          </div>
 
           {/* Openers — opening acts. Auto-suggested from
               Ticketmaster's lineup (upcoming) or a Setlist.fm co-act

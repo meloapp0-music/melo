@@ -4,9 +4,11 @@ import { useApp } from '../App';
 import {
   getArtistGradient, getGreeting, formatDate, daysUntil,
   calculateStreak, getWrappedYears, wrappedLabel, DISCOVERY_ARTISTS,
-  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, groupIntoOutings,
+  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, groupIntoOutings, festivalKey,
 } from '../store';
 import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
+import { attendeesForShows, friendsMatchingShows } from '../lib/db/shows';
+import { getProfilesByIds } from '../lib/db/profiles';
 import { MeloIcon } from '../components/MeloLogo';
 import FriendsFeed from '../components/FriendsFeed';
 import GetStarted from '../components/GetStarted';
@@ -21,7 +23,7 @@ const today = () => {
 };
 
 export default function Home() {
-  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget, showToast } = useApp();
+  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget, showToast, profile } = useApp();
 
   const attended = shows.filter(isAttended);
   const cities = new Set(attended.map((s) => s.city));
@@ -62,6 +64,50 @@ export default function Home() {
       .slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shows, dayStamp]);
+
+  // Tagged co-attendees for the Up Next shows → "Going with …" on each card.
+  const [upNextWith, setUpNextWith] = useState({}); // showId → [{userId,name,avatarUrl,avatarColor}]
+  useEffect(() => {
+    const ids = upNext.map((s) => s.id);
+    if (!ids.length) { setUpNextWith({}); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        // "Going with" = tagged co-attendees ∪ friends who logged the SAME
+        // artist+date as going (independent match, like the feed's group card).
+        const pairs = upNext.map((s) => ({ artist: s.artist, date: s.date, festival: s.festival }));
+        const [tagMap, indMap] = await Promise.all([
+          attendeesForShows(ids).catch(() => new Map()),
+          friendsMatchingShows(pairs, 'going').catch(() => new Map()),
+        ]);
+        // Festival acts match at the festival level (any day); else exact show.
+        const key = (s) => festivalKey(s) || `${(s.artist || '').toLowerCase().trim()}|${s.date}`;
+        const uids = [...new Set([
+          ...[...tagMap.values()].flat(),
+          ...[...indMap.values()].flat(),
+        ].filter((id) => id && id !== profile?.id))];
+        const profs = uids.length ? await getProfilesByIds(uids).catch(() => new Map()) : new Map();
+        if (cancelled) return;
+        const out = {};
+        for (const s of upNext) {
+          const merged = [...new Set([...(tagMap.get(s.id) || []), ...(indMap.get(key(s)) || [])])]
+            .filter((id) => id && id !== profile?.id);
+          if (!merged.length) continue;
+          out[s.id] = merged.map((id) => {
+            const p = profs.get(id);
+            return { userId: id, name: p?.displayName || p?.username || 'Friend', avatarUrl: p?.avatarUrl, avatarColor: p?.avatarColor };
+          });
+        }
+        setUpNextWith(out);
+      } catch { if (!cancelled) setUpNextWith({}); }
+    })();
+    return () => { cancelled = true; };
+  }, [upNext, profile?.id]);
+
+  const withLabel = (people) => {
+    const names = people.map((p) => p.name);
+    return names.length <= 2 ? names.join(' & ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+  };
 
   const goingFuture = useMemo(() => {
     return shows
@@ -169,6 +215,21 @@ export default function Home() {
       <div className="home-hero">
         <div className="home-brand-row">
           <MeloIcon size={32} />
+          <div className="home-brand-actions">
+            {streak.current > 0 && (
+              <span className="home-streak-chip" title="Your logging streak">🔥 {streak.current}</span>
+            )}
+            <button
+              className="home-taste-btn"
+              onClick={() => navigate('music-taste')}
+              aria-label="Music taste & alerts"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </button>
+          </div>
         </div>
         <h1 className="home-greeting">{getGreeting()}</h1>
         <p className="home-greeting-sub">
@@ -221,6 +282,22 @@ export default function Home() {
                     {[show.venue, show.city].filter(Boolean).join(', ')}
                     {show.date ? ` · ${formatDate(show.date)}` : ''}
                   </div>
+                  {upNextWith[show.id]?.length > 0 && (
+                    <div className="upnext-with">
+                      <div className="upnext-with-avatars">
+                        {upNextWith[show.id].slice(0, 3).map((f) => (
+                          <span
+                            key={f.userId}
+                            className="upnext-with-avatar"
+                            style={f.avatarUrl ? { backgroundImage: `url(${f.avatarUrl})` } : { background: f.avatarColor || '#E8573A' }}
+                          >
+                            {!f.avatarUrl && f.name[0].toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="upnext-with-text">Going with {withLabel(upNextWith[show.id])}</span>
+                    </div>
+                  )}
                   <div className="upnext-btns">
                     <a
                       className="upnext-btn upnext-btn-tickets"
@@ -266,86 +343,9 @@ export default function Home() {
         </div>
       )}
 
-      <div className="home-stats">
-        <button
-          type="button"
-          className="home-stat home-stat-btn"
-          onClick={() => navigate('shows')}
-          aria-label={`${outings.length} shows — view all`}
-        >
-          <div className="home-stat-num">{outings.length}</div>
-          <div className="home-stat-label">Shows</div>
-        </button>
-        <div className="home-stat-divider" />
-        <button
-          type="button"
-          className="home-stat home-stat-btn"
-          onClick={() => navigate('artists')}
-          aria-label={`${artists.size} artists — view all`}
-        >
-          <div className="home-stat-num">{artists.size}</div>
-          <div className="home-stat-label">Artists</div>
-        </button>
-        <div className="home-stat-divider" />
-        <button
-          type="button"
-          className="home-stat home-stat-btn"
-          onClick={() => navigate('map')}
-          aria-label={`${cities.size} cities — view map`}
-        >
-          <div className="home-stat-num">{cities.size}</div>
-          <div className="home-stat-label">Cities</div>
-        </button>
-        {songsHeard > 0 && (
-          <>
-            <div className="home-stat-divider" />
-            <button
-              type="button"
-              className="home-stat home-stat-btn"
-              onClick={() => navigate('songs')}
-              aria-label={`${songsHeard} songs — view all`}
-            >
-              <div className="home-stat-num">{songsHeard}</div>
-              <div className="home-stat-label">Songs</div>
-            </button>
-          </>
-        )}
-        <div className="home-stat-divider" />
-        <div className="home-stat">
-          <div className="home-stat-num">{ratedOutings.length === 0 ? '—' : avgScore}</div>
-          <div className="home-stat-label">Avg Score</div>
-        </div>
-        {streak.current > 0 && (
-          <>
-            <div className="home-stat-divider" />
-            <div className="home-stat">
-              <div className="home-stat-num streak-flame">🔥 {streak.current}</div>
-              <div className="home-stat-label">Streak</div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Streak nudge */}
-      {streak.atRisk && (
-        <div className="streak-nudge fade-in">
-          🔥 Keep your streak alive — log a show this month!
-        </div>
-      )}
-
-      {/* Wrapped Banner */}
-      {latestWrappedYear && (
-        <div
-          className="wrapped-banner"
-          onClick={() => setWrappedYear(latestWrappedYear)}
-        >
-          <div className="wrapped-banner-text">
-            <span className="wrapped-banner-title">Your {latestWrappedYear} {wrappedLabel(latestWrappedYear)}</span>
-            <span className="wrapped-banner-sub">See your year in music 🎶</span>
-          </div>
-          <span className="wrapped-banner-arrow">→</span>
-        </div>
-      )}
+      {/* Stats + Wrapped moved: Home leads with what's next + who's going.
+          A slim 3-stat glance sits lower (below), and the full stat set +
+          Wrapped live in Profile. See the v1.5 home-declutter initiative. */}
 
       {/* Friends activity feed — "Claire went to Mumford & Sons".
           Renders nothing until the user has friends with visible shows. */}
@@ -403,6 +403,16 @@ export default function Home() {
         </div>
       )}
 
+      {/* Stats live on their own Stats tab now — Home stays feed-first
+          (Up Next + Friends). See v1.5 home-declutter initiative. */}
+
+      {/* Streak nudge — only when the streak is about to lapse. */}
+      {streak.atRisk && (
+        <div className="streak-nudge fade-in">
+          🔥 Keep your streak alive — log a show this month!
+        </div>
+      )}
+
       {/* Discover CTA — opens the Discover page (city shows + festivals) */}
       <div
         className="home-festival-cta"
@@ -417,89 +427,9 @@ export default function Home() {
         <span className="home-festival-cta-arrow">→</span>
       </div>
 
-      {recent.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="home-section-title">
-            <h3>Recent Shows</h3>
-            <button className="home-see-all" onClick={() => navigate('shows')}>See All</button>
-          </div>
-          <div className="home-scroll">
-            {recent.map((show) => {
-              const img = getArtistImage(show.artist);
-              return (
-              <div key={show.id} className="home-show-card" onClick={() => setSelectedShow(show)}>
-                <div className="home-show-card-bg" style={bgStyle(show.artist)} />
-                {!img && (
-                  <div className="poster-letter" aria-hidden="true">
-                    {(show.artist || '?').trim().charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="home-show-card-overlay" />
-                <div className="home-show-card-score">{Math.round(show.score)}</div>
-                <div className="home-show-card-info">
-                  <div className="home-show-card-artist">{show.artist}</div>
-                  <div className="home-show-card-venue">{show.venue}</div>
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Discovery Feed */}
-      {(discovery.length > 0 || discoveryLoading) && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="home-section-title">
-            <h3>You Might Like</h3>
-          </div>
-          {discoveryLoading && discovery.length === 0 ? (
-            <div className="upcoming-loading">Finding shows for you...</div>
-          ) : (
-            <div className="home-scroll">
-              {discovery.map((ev, i) => (
-                <div key={i} className="upcoming-card">
-                  <div className="upcoming-card-img" style={bgStyle(ev.artist)}>
-                    <div className="upcoming-card-date">{formatDate(ev.date)}</div>
-                  </div>
-                  <div className="upcoming-card-body">
-                    <div className="upcoming-card-artist">{ev.artist}</div>
-                    <div className="upcoming-card-venue">{ev.venue}{ev.city ? `, ${ev.city}` : ''}</div>
-                    <div className="upcoming-card-btns">
-                      {ev.ticketUrl && (
-                        <a className="upcoming-btn upcoming-btn-tickets" href={ev.ticketUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                          Get Tickets
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {topRated && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="home-section-title"><h3>Top Rated</h3></div>
-          <div className="home-top-card" onClick={() => setSelectedShow(topRated)}>
-            <div className="gradient-bg" style={bgStyle(topRated.artist)} />
-            {!getArtistImage(topRated.artist) && (
-              <div className="poster-letter poster-letter--lg" aria-hidden="true">
-                {(topRated.artist || '?').trim().charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="home-top-overlay" />
-            <div className="home-top-score">{Math.round(topRated.score)}</div>
-            <div className="home-top-info">
-              <div className="home-top-badge">&#9733; TOP RATED</div>
-              <div className="home-top-artist">{topRated.artist}</div>
-              <div className="home-top-meta">{topRated.venue} &middot; {formatDate(topRated.date)}</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Home is feed-first now: Recent Shows (→ Shows tab), Top Rated
+          (→ Rankings/Stats), and the genre "You Might Like" rail were pulled
+          to keep the bottom from piling up. One discovery rail stays below. */}
 
       {/* Upcoming Shows */}
       {(upcoming.length > 0 || upcomingLoading) && (

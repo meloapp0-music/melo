@@ -3,6 +3,7 @@
 // ============================
 
 import { supabase } from './lib/supabase';
+import { resolveCity, haversineMiles } from './lib/geo';
 
 // VITE_API_PROXY_URL points at our Supabase Edge Function (e.g.
 // https://<project>.functions.supabase.co/api-proxy?url=). Falls back to
@@ -104,6 +105,336 @@ export async function prefetchArtistImages(artistNames, onUpdate) {
     if (i < missing.length - 1) await new Promise((r) => setTimeout(r, 300));
   }
 
+  return results;
+}
+
+// ===== VENUE IMAGES (Wikimedia Commons) =====
+// Real venue photos, resolved on demand from Wikipedia's pageimages API
+// (keyless, CORS via origin=*, unmetered — the same infra `lookupVenueUrl`
+// already uses). ~90% coverage for arenas/amphitheatres/stadiums/festival
+// grounds; small clubs with no Wikipedia article fall back to the gradient.
+// Waterfall: Wikipedia pageimages -> Wikidata P18 -> null. Guarded by a
+// coordinate + name-token check so we never render the wrong building (or a
+// person/album that a fuzzy search happened to rank first).
+// See docs/initiatives/2026-07-13-venue-photos.md.
+const VENUE_IMG_KEY = 'melo_venue_image_cache.v1';
+const VENUE_IMG_TTL = 1000 * 60 * 60 * 24 * 90; // 90 days — venue photos are stable
+
+function getVenueImageCache() {
+  try { return JSON.parse(localStorage.getItem(VENUE_IMG_KEY) || '{}'); }
+  catch { return {}; }
+}
+function setVenueImageEntry(key, rec) {
+  const c = getVenueImageCache();
+  c[key] = rec;
+  try { localStorage.setItem(VENUE_IMG_KEY, JSON.stringify(c)); }
+  catch { /* ignore quota */ }
+}
+const venueImageKey = (name, city = '') => `${name}|${city}`.toLowerCase().trim();
+
+// Sync getter — returns the cached record { url, source, credit, ts } or null.
+// A negative-cache hit (url:'') returns null so the caller shows a gradient;
+// a stale entry (past TTL) also returns null so it gets refetched.
+export function getCachedVenueImage(name, city = '') {
+  if (!name) return null;
+  const rec = getVenueImageCache()[venueImageKey(name, city)];
+  if (!rec) return null;
+  if (Date.now() - (rec.ts || 0) > VENUE_IMG_TTL) return null;
+  return rec.url ? rec : null;
+}
+
+// Significant name tokens (drop venue-type filler + articles) for the
+// false-match guard — a candidate page must share one with the venue name.
+const VENUE_STOPWORDS = new Set(['the', 'at', 'of', 'and', 'a', 'center', 'centre',
+  'theatre', 'theater', 'arena', 'stadium', 'hall', 'club', 'tavern', 'room', 'live',
+  'music', 'amphitheatre', 'amphitheater', 'pavilion', 'park', 'field', 'house', 'bar', 'lounge']);
+function venueTokens(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+    .filter((w) => w.length >= 3 && !VENUE_STOPWORDS.has(w));
+}
+function venueNameOverlap(a, b) {
+  const ta = new Set(venueTokens(a));
+  if (!ta.size) return false;
+  return venueTokens(b).some((w) => ta.has(w));
+}
+const stripTags = (s) => (s || '').replace(/<[^>]*>/g, '').trim();
+
+// Filename heuristics to steer AWAY from sports-game shots and TOWARD concert
+// or neutral-exterior photos. Melo is a concert app — a stadium mid-football
+// game feels wrong. All scored files come from the venue's verified Wikipedia
+// article, so this only re-ranks trusted candidates, it doesn't loosen safety.
+const VP_SPORTS = /\b(game|games|match|matchup|nba|wnba|nfl|nhl|mlb|mls|ncaa|basketball|football|hockey|baseball|soccer|playoffs?|championship|finals?|scoreboard|wrestling|wwe|ufc|boxing|gridiron|tip ?off|face ?off|puck|dunk|touchdown|end ?zone|outfield|infield|home ?plate|rink|ice)\b/i;
+const VP_CONCERT = /\b(concert|concerts|show|shows|performance|performing|perform|stage|live|tour|touring|gig|band|festival|crowd|audience|music|singer|singing|dj|lights?)\b/i;
+const VP_NEUTRAL = /\b(exterior|entrance|facade|marquee|signage|night|evening|dusk|panorama|aerial|view|street|plaza|outside|frontage|skyline)\b/i;
+const VP_JUNK_WORDS = /\b(logo|map|locator|location|icon|flag|seal|crest|diagram|floor ?plan|floorplan|blueprint|schematic|chart|graph|ticket|poster|banner|wordmark|nameplate|plaque)\b/i;
+const VP_BAD_EXT = /\.(svg|ogg|oga|wav|mid|midi|pdf|gif|webm|tif|tiff)$/i;
+
+// Wikidata "instance of" (P31) types that mean a fuzzy name match landed on the
+// WRONG subject — a company HQ, an office tower, a disambiguation page — rather
+// than the venue. Generic corporate venue names ("Wells Fargo Center") collide
+// with same-named buildings/companies in the same city, which the coordinate
+// guard can't separate. We only run this check on non-exact-name matches.
+const VP_NON_VENUE_QIDS = new Set([
+  'Q4830453', 'Q6881511', 'Q891723', 'Q783794', 'Q730038', 'Q22687', 'Q650241', // company / bank types
+  'Q11303', 'Q1021645', 'Q11755880', // skyscraper / office building / high-rise
+  'Q4167410', // Wikimedia disambiguation page
+  'Q5', // human
+  'Q482994', 'Q182832', // musical album / concert tour
+]);
+
+// Score a File: title. null = reject (sports or non-photo junk); higher is
+// better. isLead nudges the article's prominent lead image on ties.
+function scoreVenueFile(fileTitle, isLead) {
+  if (!fileTitle) return null;
+  if (VP_BAD_EXT.test(fileTitle)) return null;
+  const t = fileTitle.replace(/^file:/i, '').replace(/\.[a-z0-9]+$/i, '')
+    .replace(/[_-]+/g, ' ').toLowerCase();
+  if (VP_JUNK_WORDS.test(t)) return null;
+  if (VP_SPORTS.test(t)) return null;
+  let s = 0;
+  if (VP_CONCERT.test(t)) s += 3;
+  if (VP_NEUTRAL.test(t)) s += 1;
+  if (isLead) s += 0.5;
+  return s;
+}
+
+// Best-effort license/credit for a Commons file, for the VenueDetail caption.
+async function fetchWikimediaCredit(fileName, signal) {
+  if (!fileName) return null;
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+      `&titles=${encodeURIComponent('File:' + fileName)}&prop=imageinfo` +
+      `&iiprop=extmetadata&iiextmetadatafilter=LicenseShortName%7CArtist%7CLicenseUrl`;
+    const res = await fetch(url, { signal });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const page = Object.values(data?.query?.pages || {})[0];
+    const meta = page?.imageinfo?.[0]?.extmetadata || {};
+    return {
+      artist: stripTags(meta.Artist?.value) || '',
+      license: stripTags(meta.LicenseShortName?.value) || '',
+      licenseUrl: meta.LicenseUrl?.value || '',
+      file: fileName,
+    };
+  } catch { return null; }
+}
+
+// Resolve ONE venue -> a photo record, or null (caller shows a gradient).
+export async function fetchVenueImage(name, city = '', coords = null) {
+  if (!name) return null;
+  const key = venueImageKey(name, city);
+  const hit = getCachedVenueImage(name, city);
+  if (hit) return hit;
+  // A fresh negative-cache entry means "already looked, found nothing" — bail
+  // without a network call so we don't re-walk dead venues on every render.
+  const raw = getVenueImageCache()[key];
+  if (raw && !raw.url && Date.now() - (raw.ts || 0) <= VENUE_IMG_TTL) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const expected = coords || (city ? await resolveCity(city) : null);
+    const query = city ? `${name} ${city}` : name;
+
+    // Tier 1: one call gets lead thumbnail + coordinates + wikibase_item for
+    // the top candidates. `query.pages` is keyed by pageid (unordered); sort
+    // by `.index` to recover search rank.
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+      `&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=6&gsrnamespace=0` +
+      `&prop=pageimages%7Ccoordinates%7Cpageprops&piprop=thumbnail%7Cname&pithumbsize=600` +
+      `&colimit=6&ppprop=wikibase_item`;
+    const res = await fetch(searchUrl, { signal: controller.signal });
+    if (!res.ok) { setVenueImageEntry(key, { url: '', ts: Date.now() }); return null; }
+    const data = await res.json();
+    const pages = Object.values(data?.query?.pages || {})
+      .sort((a, b) => (a.index || 0) - (b.index || 0));
+
+    // Keep every candidate that passes the false-match guard, then choose:
+    // an exact-name page that HAS a photo wins (the iconic shot + clean
+    // credit), else the best-ranked page with a photo, else the best-ranked
+    // page at all (its Wikidata item may still yield a Tier-2 photo).
+    const passing = pages.filter((page) => {
+      if (!venueNameOverlap(name, page.title)) return false; // wrong subject
+      if (!expected) return true;
+      const c = page.coordinates?.[0];
+      if (!c) return false; // known city but no coords -> likely a person/album
+      return haversineMiles(
+        { lat: expected.lat, lng: expected.lng },
+        { lat: c.lat, lng: c.lon }
+      ) <= 25; // right name, right city
+    });
+    if (!passing.length) { setVenueImageEntry(key, { url: '', ts: Date.now() }); return null; }
+
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const nName = norm(name);
+    const withThumb = passing.filter((p) => p.thumbnail?.source);
+    const best =
+      withThumb.find((p) => norm(p.title) === nName) ||
+      withThumb[0] ||
+      passing.find((p) => norm(p.title) === nName) ||
+      passing[0];
+    const chosen = {
+      title: best.title,
+      thumb: best.thumbnail?.source || '',
+      file: best.pageimage || '',
+      qid: best.pageprops?.wikibase_item || '',
+    };
+
+    // Non-exact match (a fuzzy / renamed / generic-corporate-name case) — verify
+    // via Wikidata that we didn't land on a company HQ, office tower, or
+    // disambiguation page. Exact-name matches skip this (no extra request).
+    let p18Prefetched = '';
+    if (chosen.qid && norm(chosen.title) !== nName) {
+      try {
+        const gRes = await fetch(
+          `https://www.wikidata.org/wiki/Special:EntityData/${chosen.qid}.json`,
+          { signal: controller.signal }
+        );
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          const claims = gData?.entities?.[chosen.qid]?.claims || {};
+          const types = (claims.P31 || []).map((c) => c?.mainsnak?.datavalue?.value?.id).filter(Boolean);
+          if (types.some((t) => VP_NON_VENUE_QIDS.has(t))) {
+            setVenueImageEntry(key, { url: '', ts: Date.now() }); // wrong subject → gradient
+            return null;
+          }
+          p18Prefetched = claims.P18?.[0]?.mainsnak?.datavalue?.value || '';
+        }
+      } catch { /* Wikidata unreachable — trust the name+coord guard and proceed */ }
+    }
+
+    let url = '';
+    let source = 'wikipedia';
+    let file = '';
+    let credit = null;
+
+    // Concert-biased selection: pull the venue article's whole image set and
+    // score by filename so we skip sports-game shots and prefer concert /
+    // neutral-exterior photos. The lead image is a scored candidate too, so a
+    // plain exterior still wins when no concert photo exists. Every candidate
+    // is on the verified article, so this doesn't loosen the false-match guard.
+    const leadScore = chosen.thumb ? scoreVenueFile(chosen.file, true) : null;
+    try {
+      const imgsUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+        `&titles=${encodeURIComponent(chosen.title)}&prop=images&imlimit=80`;
+      const iRes = await fetch(imgsUrl, { signal: controller.signal });
+      if (iRes.ok) {
+        const iData = await iRes.json();
+        const page = Object.values(iData?.query?.pages || {})[0];
+        const scored = (page?.images || [])
+          .map((x) => x.title)
+          .filter((tt) => /\.(jpe?g|png|webp)$/i.test(tt))
+          .map((tt) => ({ title: tt, file: tt.replace(/^File:/i, ''), score: scoreVenueFile(tt, false) }))
+          // Require a real concert/exterior signal (>= 1). A score-0 body image
+          // has no positive signal and is often a logo or product shot — e.g.
+          // The Salt Shed's only article image is the Morton Salt brand logo.
+          // Better a clean gradient than a wrong picture. The editorial lead
+          // image is exempt (handled via leadScore below).
+          .filter((x) => x.score >= 1)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 6);
+        // Only bother fetching URLs if an article photo beats the lead's score.
+        const topArticle = scored[0];
+        if (topArticle && topArticle.score > (leadScore ?? -1)) {
+          const titles = scored.map((x) => x.title).join('|');
+          const infoUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*` +
+            `&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url%7Cextmetadata` +
+            `&iiurlwidth=600&iiextmetadatafilter=LicenseShortName%7CArtist%7CLicenseUrl`;
+          const infoRes = await fetch(infoUrl, { signal: controller.signal });
+          if (infoRes.ok) {
+            const infoData = await infoRes.json();
+            const byTitle = {};
+            Object.values(infoData?.query?.pages || {}).forEach((p) => {
+              if (p.title) byTitle[p.title] = p.imageinfo?.[0];
+            });
+            for (const cand of scored) { // sorted best-first
+              const ii = byTitle[cand.title];
+              const u = ii?.thumburl || ii?.url;
+              if (u) {
+                url = u;
+                file = cand.file;
+                credit = {
+                  artist: stripTags(ii?.extmetadata?.Artist?.value) || '',
+                  license: stripTags(ii?.extmetadata?.LicenseShortName?.value) || '',
+                  licenseUrl: ii?.extmetadata?.LicenseUrl?.value || '',
+                  file: cand.file,
+                };
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch { /* fall back to the lead image below */ }
+
+    // Fall back to the lead image if it's acceptable (not sports/junk) and we
+    // didn't find a better article photo.
+    if (!url && leadScore !== null) { url = chosen.thumb; file = chosen.file; }
+
+    // Tier 2: no usable Wikipedia photo — try the Wikidata P18 building image
+    // (reusing the entity we may have already fetched for the guard above).
+    if (!url && chosen.qid) {
+      try {
+        let p18 = p18Prefetched;
+        if (!p18 && norm(chosen.title) === nName) {
+          const eRes = await fetch(
+            `https://www.wikidata.org/wiki/Special:EntityData/${chosen.qid}.json`,
+            { signal: controller.signal }
+          );
+          if (eRes.ok) {
+            const eData = await eRes.json();
+            p18 = eData?.entities?.[chosen.qid]?.claims?.P18?.[0]?.mainsnak?.datavalue?.value || '';
+          }
+        }
+        if (p18 && scoreVenueFile(p18, false) !== null) { // don't let P18 be a sports shot either
+          url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(p18)}?width=600`;
+          source = 'wikidata';
+          file = p18;
+        }
+      } catch { /* ignore — fall through to gradient */ }
+    }
+    if (!url) { setVenueImageEntry(key, { url: '', ts: Date.now() }); return null; }
+
+    if (!credit) credit = await fetchWikimediaCredit(file, controller.signal);
+    const rec = { url, source, credit, ts: Date.now() };
+    setVenueImageEntry(key, rec);
+    return rec;
+  } catch {
+    // Network error / abort — transient, so DON'T negative-cache; retry later.
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Batch-resolve venue images (serial + staggered 300ms — Wikimedia etiquette).
+// `venues`: [{ name, city, coords? }]. Calls onUpdate({...}) as each resolves.
+export async function prefetchVenueImages(venues, onUpdate) {
+  if (!venues?.length) return {};
+  const results = {};
+  const seen = new Set();
+  const list = [];
+  for (const v of venues) {
+    if (!v?.name) continue;
+    const key = venueImageKey(v.name, v.city || '');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const cached = getCachedVenueImage(v.name, v.city || '');
+    if (cached) { results[key] = cached; continue; }
+    // Skip fresh negative-cache entries (already looked, found nothing).
+    const raw = getVenueImageCache()[key];
+    if (raw && Date.now() - (raw.ts || 0) <= VENUE_IMG_TTL) continue;
+    list.push({ name: v.name, city: v.city || '', coords: v.coords || null, key });
+  }
+  for (let i = 0; i < list.length; i++) {
+    const v = list[i];
+    const rec = await fetchVenueImage(v.name, v.city, v.coords);
+    if (rec) {
+      results[v.key] = rec;
+      onUpdate?.({ ...results });
+    }
+    if (i < list.length - 1) await new Promise((r) => setTimeout(r, 300));
+  }
   return results;
 }
 
@@ -322,6 +653,21 @@ export const FESTIVAL_NAMES = [
   'Summerfest', 'Hangout', 'Railbird',
 ];
 
+// Clean a Ticketmaster festival EVENT name into the festival's short name,
+// e.g. "Austin City Limits Music Festival - Weekend One" → "Austin City
+// Limits", "Coachella Music Festival - Weekend 1" → "Coachella".
+function cleanFestivalEventName(name) {
+  return String(name || '')
+    .replace(/\s*[-–—:|(]?\s*(weekend|week|day)\s*(one|two|three|four|1|2|3|4|\d+).*$/i, '')
+    .replace(/\s*[-–—:|]\s*(mon|tues|wednes|thurs|fri|satur|sun)day\b.*$/i, '')
+    .replace(/\s+presented by.*$/i, '')
+    .replace(/\s+music (and arts )?festival\b/i, '')
+    .replace(/\s+festival\b/i, '')
+    .replace(/\s+\b(19|20)\d{2}\b/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function normalizeFestival(s) {
   return String(s || '')
     .toLowerCase()
@@ -377,6 +723,8 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
   let resolvedYear = year ? String(year) : '';
   let festStart = ''; // festival's own first/last day (from strict TM match),
   let festEnd = '';   // so we can offer the festival itself by its dates.
+  let festMonths = null; // Set of 'MM' the festival runs in (from TM), to keep
+                         // a year-round venue's other months out of Setlist.fm.
   const lineup = []; // { artist, date } — only from a STRICT Ticketmaster hit
 
   // --- 1) Curated map (reliable for past festivals) ---
@@ -491,6 +839,7 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
         // day and a cross-year (NYE) edition isn't truncated, while a next-
         // year edition (~365 days away) can't merge into the span.
         const poolDates = pool.map((ev) => ev?.dates?.start?.localDate).filter(Boolean).sort();
+        if (poolDates.length) festMonths = new Set(poolDates.map((d) => d.slice(5, 7)));
         const dirDates = dirPool.map((ev) => ev?.dates?.start?.localDate).filter(Boolean).sort();
         const anchor = futureOnly ? dirDates[0] : dirDates[dirDates.length - 1];
         if (anchor) {
@@ -501,6 +850,17 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
           festEnd = edition[edition.length - 1] || anchor;
         }
         if (!resolvedYear && festStart) resolvedYear = festStart.slice(0, 4);
+        // Attended (past) search with no year: TM is upcoming-only, so dirPool
+        // is empty and festStart never gets set — and Setlist.fm with no year
+        // returns EVERY show ever at the venue (Zilker Park, Grant Park etc.
+        // host events all year → "ACL" spanned a full calendar year). The
+        // upcoming edition in `pool` tells us the festival's month, so default
+        // to the MOST RECENT PAST edition (the user can type a year to override).
+        if (!resolvedYear && !futureOnly && poolDates.length) {
+          const monthDay = poolDates[0].slice(5); // 'MM-DD' of the soonest edition
+          const y = new Date().getFullYear();
+          resolvedYear = String(`${y}-${monthDay}` <= todayIso ? y : y - 1);
+        }
         // Build the lineup from direction-matching events only. The name-match
         // above already excluded aftershows; here we also drop any attraction
         // that is just the festival's own name (the "thin" GA/VIP ticket event
@@ -559,6 +919,30 @@ export async function searchFestivalByName(name, { year, futureOnly } = {}) {
     rows = lineupSet.size
       ? cityRows.filter((r) => lineupSet.has((r.artist || '').toLowerCase()))
       : cityRows;
+  }
+
+  // Sister festivals share a venue: Empire Polo Club hosts BOTH Coachella and
+  // Stagecoach (same April), so a venue search returns both. Setlist.fm tags
+  // the festival per setlist (mapSetlistRow → extractFestivalFromSetlist), so
+  // when we have no TM lineup to filter by, drop any row EXPLICITLY tagged
+  // with a DIFFERENT festival (Zach Bryan → "Stagecoach"), while keeping
+  // untagged rows (assumed to be this festival, given the venue + month).
+  if (!lineupSet.size && rows.length) {
+    const t = normalizeFestival(label);
+    rows = rows.filter((r) => {
+      const rf = normalizeFestival(r.festival || '');
+      return !rf || rf.includes(t) || t.includes(rf);
+    });
+  }
+
+  // Constrain to the festival's month(s) (known from the upcoming TM edition)
+  // so a year-round venue's OTHER events don't get returned as the festival —
+  // uses a Set of months, so a festival that straddles a month boundary (e.g.
+  // Lollapalooza, late Jul → early Aug) keeps its whole lineup. Guarded so it
+  // can never wipe all rows.
+  if (festMonths && festMonths.size && rows.length) {
+    const inMonth = rows.filter((r) => festMonths.has((r.date || '').slice(5, 7)));
+    if (inMonth.length) rows = inMonth;
   }
 
   // Stamp the festival label so everything groups together in the finder.
@@ -769,8 +1153,24 @@ export async function fetchUpcomingEvents(artistName, opts = {}) {
       const venue = ev?._embedded?.venues?.[0] || {};
       const attractions = ev?._embedded?.attractions || [];
       const cls = ev?.classifications?.[0];
+      // Which attraction did the search actually match? On a festival event
+      // attractions[0] is often the festival itself, so pick the one matching
+      // what the user typed — else fall back to the first / the search term.
+      const matched = attractions.find((a) =>
+        (a.name || '').toLowerCase().includes(lcArtist) ||
+        lcArtist.includes((a.name || '').toLowerCase())
+      ) || attractions[0] || {};
+      // Festival appearance? Detect by name or the TM "Festival" classification,
+      // so a user can log a festival act by searching the ARTIST (the show is
+      // tagged with the festival and groups into that festival's card).
+      const isFest =
+        /festival/i.test(ev.name || '') ||
+        (ev.classifications || []).some((c) =>
+          /festival/i.test(c?.genre?.name || '') || /festival/i.test(c?.subGenre?.name || '')
+        );
       return {
-        artist: attractions[0]?.name || artistName,
+        artist: matched.name || artistName,
+        festival: isFest ? cleanFestivalEventName(ev.name) : '',
         venue: venue.name || '',
         // Note: Ticketmaster's `venue.url` points to the Ticketmaster
         // venue listing, NOT the official venue website. We deliberately

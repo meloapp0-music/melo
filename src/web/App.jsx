@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback, useMemo, useRef } from 'react';
-import { prefetchArtistImages, getCachedImage } from './api';
+import { prefetchArtistImages, getCachedImage, getCachedVenueImage, prefetchVenueImages as prefetchVenueImagesUtil } from './api';
 import { useSession, signOut } from './lib/auth';
 import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
@@ -10,6 +10,9 @@ import { identify, resetAnalytics, track } from './lib/analytics';
 import { isGoing, daysUntil, SHOW_STATUS } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
+import FestivalDetail from './components/FestivalDetail';
+import VenueDetail from './components/VenueDetail';
+import ArtistDetail from './components/ArtistDetail';
 import ShareCardView from './components/ShareCardView';
 import HypeCard from './components/HypeCard';
 import RatePromptCard from './components/RatePromptCard';
@@ -22,6 +25,8 @@ import LogShow from './pages/LogShow';
 import MyShows from './pages/MyShows';
 import Rankings from './pages/Rankings';
 import ConcertMap from './pages/ConcertMap';
+import Stats from './pages/Stats';
+import Venues from './pages/Venues';
 import Songs from './pages/Songs';
 import Buddies from './pages/Buddies';
 import Profile from './pages/Profile';
@@ -75,11 +80,17 @@ export default function App() {
   // view, pre-searched for that artist. { status, mode, tourArtist } | null.
   const [logPrefill, setLogPrefill] = useState(null);
   const [selectedShow, setSelectedShow] = useState(null);
+  // A festival outing opened as its own detail page (from the My Shows card).
+  const [selectedFestival, setSelectedFestival] = useState(null);
+  // A venue opened as its own page ({ name, city }) — from Stats / Venues.
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [selectedArtist, setSelectedArtist] = useState(null);
   // The very-first-logged-show celebration: auto-opens the share card once.
   const [firstCardShow, setFirstCardShow] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [subPage, setSubPage] = useState(null);
   const [artistImages, setArtistImages] = useState({});
+  const [venueImages, setVenueImages] = useState({}); // `${name}|${city}` -> photo record
   const [wrappedYear, setWrappedYear] = useState(null);
   const [compareShow, setCompareShow] = useState(null);
   const [showQuickLog, setShowQuickLog] = useState(false);
@@ -350,6 +361,22 @@ export default function App() {
     });
   }, []);
 
+  // Venue photos (Wikimedia). Same sync-getter + async-fill pattern as artist
+  // images, but lazy — venues aren't in the boot prefetch, so the pages that
+  // render them (Venues, VenueDetail) call prefetchVenueImages themselves.
+  const getVenueImage = useCallback((name, city = '') => {
+    if (!name) return null;
+    const k = `${name}|${city}`.toLowerCase().trim();
+    return venueImages[k] || getCachedVenueImage(name, city) || null;
+  }, [venueImages]);
+
+  const prefetchVenueImages = useCallback((venues) => {
+    if (!venues || venues.length === 0) return;
+    prefetchVenueImagesUtil(venues, (updated) => {
+      setVenueImages((prev) => ({ ...prev, ...updated }));
+    });
+  }, []);
+
   // ---- Mutation helpers (optimistic; reconcile with server result) ----
   const addShow = async (show) => {
     if (!userId) return null;
@@ -473,7 +500,7 @@ export default function App() {
   const navigate = (page) => {
     if (page === 'log') {
       setShowLog(true);
-    } else if (['home', 'shows', 'map', 'songs', 'profile', 'buddies'].includes(page)) {
+    } else if (['home', 'shows', 'map', 'songs', 'profile', 'buddies', 'stats'].includes(page)) {
       setSubPage(null);
       setTab(page);
     } else {
@@ -507,6 +534,9 @@ export default function App() {
     setShowLog,
     setLogEditTarget,
     setSelectedShow,
+    setSelectedFestival,
+    setSelectedVenue,
+    setSelectedArtist,
     selectedUserId,
     setSelectedUserId,
     subPage,
@@ -516,6 +546,8 @@ export default function App() {
     showToast,
     getArtistImage,
     prefetchImages,
+    getVenueImage,
+    prefetchVenueImages,
     setWrappedYear,
     setCompareShow,
     setShowQuickLog,
@@ -581,6 +613,7 @@ export default function App() {
     if (subPage === 'artists') return <Artists />;
     if (subPage === 'settings') return <Settings />;
     if (subPage === 'music-taste') return <MusicTaste />;
+    if (subPage === 'venues') return <Venues />;
     if (subPage === 'legal') return <Legal />;
     if (subPage === 'import-calendar') return <ImportFromCalendar onDone={() => setSubPage('settings')} />;
     switch (tab) {
@@ -589,6 +622,7 @@ export default function App() {
       case 'buddies': return <Buddies />;
       case 'map': return <ConcertMap />;
       case 'songs': return <Songs />;
+      case 'stats': return <Stats />;
       case 'profile': return <Profile />;
       default: return <Home />;
     }
@@ -603,6 +637,27 @@ export default function App() {
             editingShow={logEditTarget}
             prefill={logPrefill}
             onClose={() => { setShowLog(false); setLogEditTarget(null); setLogPrefill(null); }}
+          />
+        )}
+        {selectedFestival && (
+          <FestivalDetail
+            outing={selectedFestival}
+            onClose={() => setSelectedFestival(null)}
+            onOpenShow={(s) => setSelectedShow(s)}
+          />
+        )}
+        {selectedVenue && (
+          <VenueDetail
+            venue={selectedVenue}
+            onClose={() => setSelectedVenue(null)}
+            onOpenShow={(s) => setSelectedShow(s)}
+          />
+        )}
+        {selectedArtist && (
+          <ArtistDetail
+            artist={selectedArtist}
+            onClose={() => setSelectedArtist(null)}
+            onOpenShow={(s) => setSelectedShow(s)}
           />
         )}
         {selectedShow && (

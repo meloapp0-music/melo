@@ -81,6 +81,46 @@ User requests (2026-06-14):
   `supabase/migrations/0011_social.sql`, run). Until then, reactions/
   comments error and the feed shows no co-attendees. (Edge function
   already deployed.)
+- 2026-07-13: **Grouped "going" cards.** When 2+ friends are going to the SAME
+  upcoming show (same artist+date) the feed used to render a stack of near-
+  identical "You + <friend> are going to X" cards. They now collapse into one
+  group card — "You + Julia + Claire are going to Noah Kahan" — with an
+  overlapping avatar cluster (`.feed-avatar-stack`), even when those friends
+  aren't friends with each other. `displayItems` memo in `FriendsFeed.jsx` groups
+  upcoming-going show items by artist+date (singletons unwrap to today's render);
+  attended cards are never merged (each keeps its own review/score). Like/comment
+  act on the most-recent friend's row; "I'm going too" still works.
+
+- 2026-07-13: **"Going with" surfaced on the show card.** Tagged co-attendees
+  (`show_attendees`, set when logging via `tagAttendee`) were only ever shown in
+  the feed's "with …" line — invisible on ShowDetail itself. Now ShowDetail loads
+  them (`listAttendees` + `getProfilesByIds`) and shows an up-front orange strip at
+  the top of the body: overlapping friend avatars + "Going with Julia & Claire"
+  (or "You were there with …" for attended), each avatar tappable to the profile.
+  (Follow-up idea: also match friends going to the same artist+date who WEREN'T
+  explicitly tagged, like the feed's group card does.)
+- 2026-07-13: **"Going with" on Home's Up Next cards.** Each Up Next card already
+  had artist/where/date/countdown/Tickets/Details and opened ShowDetail on tap;
+  added the missing piece — a "Going with {avatars} Julia & Claire" row (tagged
+  co-attendees via `attendeesForShows` + `getProfilesByIds`, batched for the ≤3
+  up-next shows).
+- 2026-07-13: **Independent match added** (both the Up Next cards AND the
+  ShowDetail strip). New `friendsMatchingShows(pairs, status)` in `lib/db/shows.js`
+  finds friends who logged the SAME artist+date with the same status WITHOUT being
+  tagged (scoped to the friend graph + RLS). "Going with" is now `tagged ∪
+  independent` — so a friend going to the same show shows up even if you never
+  tagged them, matching the feed's group card. ShowDetail uses `going` for
+  upcoming shows and `attended` for past ("You were there with …").
+- 2026-07-13: **Festival matching loosened + festival companions.** For festival
+  shows, `friendsMatchingShows` now matches at the FESTIVAL level (name+year via
+  `festKeyOf`, inlined in the db layer) instead of exact artist+date — so you and a
+  friend count as "together" at a festival even if you saw different acts on
+  different days. Callers key by `festivalKey(show) || artist|date`. FestivalDetail
+  gained a "You were there with / Going with {friends}" strip up front (reuses
+  `.detail-goingwith`) showing everyone who logged the same festival. Relies on the
+  existing shows RLS (0010 can_view_shows) — no new policy; friends already see
+  each other's festival shows. Caveat: festival-name match is exact (case-sensitive
+  `.in`); resolver-produced names are consistent, manual entries could miss.
 
 ## Open questions / follow-ups
 - **Streak milestones** ("on a 6-month streak") — not yet; show-count

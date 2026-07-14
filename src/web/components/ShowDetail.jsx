@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil } from '../store';
+import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil, festivalKey } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl, fetchShowWeather, fetchEventStartTime, appleMapsUrl, venuePolicySearchUrl } from '../api';
 import { track } from '../lib/analytics';
+import { listAttendees, friendsMatchingShows } from '../lib/db/shows';
+import { getProfilesByIds } from '../lib/db/profiles';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 import ShowSocial from './ShowSocial';
@@ -23,7 +25,7 @@ function timeAgoLabel(dateStr) {
 }
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile, setSelectedUserId } = useApp();
 
   // Whose show is this? fromRow always populates userId now, so this is
   // a straight match. Non-owners get a view-only detail (no edit /
@@ -46,6 +48,40 @@ export default function ShowDetail({ show, onClose }) {
   // Wishlist → Going when the user buys tickets.
   const [statusOverride, setStatusOverride] = useState(null);
   const effectiveStatus = statusOverride || getShowStatus(show);
+
+  // Tagged co-attendees — the real friends you're going WITH. They were only
+  // ever shown in the feed's "with …" line; surface them UP FRONT on the card.
+  const [coFriends, setCoFriends] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    // "Going with" = tagged co-attendees ∪ friends who logged the SAME show
+    // (artist+date, matching status) independently — not just people you tagged.
+    const status = isAttended(show) ? 'attended' : 'going';
+    Promise.all([
+      listAttendees(show.id).catch(() => []),
+      friendsMatchingShows([{ artist: show.artist, date: show.date, festival: show.festival }], status).catch(() => new Map()),
+    ])
+      .then(async ([rows, indMap]) => {
+        // Festival act → match anyone at the same festival (any day); else exact.
+        const key = festivalKey(show) || `${(show.artist || '').toLowerCase().trim()}|${show.date}`;
+        const ids = [...new Set([...rows.map((r) => r.user_id), ...(indMap.get(key) || [])])]
+          .filter((id) => id && id !== profile?.id);
+        if (!ids.length) { if (!cancelled) setCoFriends([]); return; }
+        const profs = await getProfilesByIds(ids).catch(() => new Map());
+        if (cancelled) return;
+        setCoFriends(ids.map((id) => {
+          const p = profs.get(id);
+          return { userId: id, name: p?.displayName || p?.username || 'Friend', avatarUrl: p?.avatarUrl, avatarColor: p?.avatarColor };
+        }));
+      })
+      .catch(() => { if (!cancelled) setCoFriends([]); });
+    return () => { cancelled = true; };
+  }, [show.id, show.artist, show.date, profile?.id]);
+
+  const coNames = coFriends.map((f) => f.name);
+  const goingWithLabel = coNames.length <= 2
+    ? coNames.join(' & ')
+    : `${coNames.slice(0, 2).join(', ')} & ${coNames.length - 2} more`;
   const markGoing = () => {
     setStatusOverride(SHOW_STATUS.GOING);
     try { updateShow(show.id, { status: SHOW_STATUS.GOING }); } catch { /* optimistic */ }
@@ -256,6 +292,20 @@ export default function ShowDetail({ show, onClose }) {
               </svg>
             </button>
           )}
+          {isOwner && (
+            <button
+              className="detail-del-top"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Delete show"
+            >
+              <svg viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+            </button>
+          )}
           <button className="detail-close" onClick={onClose}>
             <svg viewBox="0 0 24 24">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -265,6 +315,32 @@ export default function ShowDetail({ show, onClose }) {
         </div>
 
         <div className="detail-body">
+          {/* Going with — tagged friends, surfaced up front. */}
+          {coFriends.length > 0 && (
+            <div className="detail-goingwith">
+              <div className="detail-goingwith-avatars">
+                {coFriends.slice(0, 4).map((f) => (
+                  <button
+                    key={f.userId}
+                    type="button"
+                    className="detail-goingwith-avatar"
+                    onClick={() => setSelectedUserId?.(f.userId)}
+                    aria-label={`View ${f.name}`}
+                    style={f.avatarUrl
+                      ? { backgroundImage: `url(${f.avatarUrl})` }
+                      : { background: f.avatarColor || '#E8573A' }}
+                  >
+                    {!f.avatarUrl && f.name[0].toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div className="detail-goingwith-text">
+                {isAttended(show) ? 'You were there with ' : 'Going with '}
+                <b>{goingWithLabel}</b>
+              </div>
+            </div>
+          )}
+
           {/* Tickets / find-tickets — only for shows the user hasn't been to
               yet. For attended shows, the ticketing flow is over. */}
           {!isAttended(show) && (

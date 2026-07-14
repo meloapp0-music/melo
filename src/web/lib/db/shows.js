@@ -3,6 +3,7 @@
 // Postgres columns are snake_case. This module does the mapping.
 
 import { supabase } from '../supabase';
+import { listFriends } from './friendships';
 
 // Backfill `status` from legacy `wishlist` boolean for rows that
 // haven't been migrated yet (or for any in-flight payload that only
@@ -11,6 +12,15 @@ import { supabase } from '../supabase';
 function deriveStatus(input) {
   if (input?.status) return input.status;
   return input?.wishlist ? 'wishlist' : 'attended';
+}
+
+// Festival grouping key — mirrors festivalKey() in store.js (kept inline so the
+// db layer stays free of UI imports). `name|year`, or '' for non-festival shows.
+function festKeyOf(festival, date) {
+  const f = (festival || '').trim().toLowerCase();
+  if (!f) return '';
+  const yr = (date || '').slice(0, 4);
+  return yr ? `${f}|${yr}` : f;
 }
 
 function fromRow(row) {
@@ -196,6 +206,65 @@ export async function attendeesForShows(showIds) {
     const arr = map.get(r.show_id) || [];
     arr.push(r.user_id);
     map.set(r.show_id, arr);
+  }
+  return map;
+}
+
+// Friends (per the friend graph) who INDEPENDENTLY logged a show matching one of
+// the given (artist, date) pairs with the given status — i.e. going to / were at
+// the same show WITHOUT being explicitly tagged. Returns
+// Map(`${artistLower}|${date}` → [userId]). RLS also limits rows to shows the
+// viewer may see. Powers "going with …" beyond tagged co-attendees.
+// Pairs: { artist, date, festival? }. A FESTIVAL pair matches any friend who
+// logged the SAME festival (name+year) with the matching status — regardless of
+// which acts/days they picked (loosened, per user request). A non-festival pair
+// matches the exact artist+date. Returned Map keys are the festivalKey for
+// festival pairs, else `${artistLower}|${date}` — callers look up with the same.
+export async function friendsMatchingShows(pairs, status = 'going') {
+  const clean = (pairs || []).filter((p) => p?.date && (p.artist || p.festival));
+  if (!clean.length) return new Map();
+  const friends = await listFriends().catch(() => []);
+  const friendIds = friends.map((f) => f.userId).filter(Boolean);
+  if (!friendIds.length) return new Map();
+
+  const festPairs = clean.filter((p) => (p.festival || '').trim());
+  const soloPairs = clean.filter((p) => !(p.festival || '').trim());
+  const dates = [...new Set(soloPairs.map((p) => p.date))];
+  const festNames = [...new Set(festPairs.map((p) => p.festival.trim()))];
+  const wantedSolo = new Set(soloPairs.map((p) => `${p.artist.toLowerCase().trim()}|${p.date}`));
+  const wantedFest = new Set(festPairs.map((p) => festKeyOf(p.festival, p.date)));
+
+  const base = () => supabase
+    .from('shows')
+    .select('user_id, artist, date, status, wishlist, festival')
+    .in('user_id', friendIds);
+  const rows = [];
+  if (dates.length) {
+    const { data } = await base().in('date', dates);
+    if (data) rows.push(...data);
+  }
+  if (festNames.length) {
+    const { data } = await base().in('festival', festNames);
+    if (data) rows.push(...data);
+  }
+
+  const map = new Map();
+  const add = (key, uid) => {
+    const arr = map.get(key) || [];
+    if (!arr.includes(uid)) arr.push(uid);
+    map.set(key, arr);
+  };
+  const seen = new Set();
+  for (const r of rows) {
+    const dedupe = `${r.user_id}|${r.artist}|${r.date}|${r.festival || ''}`;
+    if (seen.has(dedupe)) continue;
+    seen.add(dedupe);
+    const rStatus = r.status || (r.wishlist ? 'wishlist' : 'attended');
+    if (rStatus !== status) continue;
+    const fk = festKeyOf(r.festival, r.date);
+    if (fk && wantedFest.has(fk)) add(fk, r.user_id);           // festival-level (any day)
+    const ek = `${(r.artist || '').toLowerCase().trim()}|${r.date}`;
+    if (wantedSolo.has(ek)) add(ek, r.user_id);                 // exact artist+date
   }
   return map;
 }

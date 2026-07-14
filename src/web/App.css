@@ -251,10 +251,14 @@ h4 { font-size: 17px; }
   /* Top padding = status bar height + breathing room, so the cream
      gradient extends edge-to-edge but the MeloIcon + greeting clear
      the time/dynamic island. */
-  padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 52px;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 60px;
+  /* Warm glow that DISSOLVES into the page. Fade to the cream bg at zero alpha
+     (not `transparent`, which greys off-tone through transparent-black), and
+     finish the fade well before the box bottom so the lower strip is already
+     pure page color — no hard seam where the header "ends". */
   background:
-    radial-gradient(120% 90% at 16% 0%, rgba(232, 87, 58, 0.12), transparent 58%),
-    linear-gradient(165deg, rgba(244, 162, 97, 0.15) 0%, rgba(232, 87, 58, 0.08) 50%, transparent 100%);
+    radial-gradient(115% 78% at 15% -12%, rgba(232, 87, 58, 0.13), rgba(250, 248, 245, 0) 60%),
+    linear-gradient(180deg, rgba(244, 162, 97, 0.16) 0%, rgba(244, 162, 97, 0.06) 44%, rgba(250, 248, 245, 0) 84%);
   position: relative;
   overflow: hidden;
 }
@@ -266,12 +270,53 @@ h4 { font-size: 17px; }
   right: -40px;
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(244, 162, 97, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(244, 162, 97, 0.10) 0%, rgba(250, 248, 245, 0) 70%);
   border-radius: 50%;
 }
 
 .home-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
+}
+.home-brand-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.home-streak-chip {
+  font-size: 13px;
+  font-weight: 800;
+  color: #C6461F;
+  background: rgba(232, 87, 58, 0.10);
+  padding: 5px 11px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.home-taste-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(61, 44, 30, 0.05);
+  color: #9B8A7E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-taste-btn:active { transform: scale(0.9); }
+.home-taste-btn svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .home-greeting {
@@ -367,6 +412,318 @@ h4 { font-size: 17px; }
   position: relative;
   z-index: 2;
 }
+
+/* Demoted "your story so far" glance — no hero overlap, lighter presence,
+   sits below what's next / who's going. */
+.home-stats.home-stats-slim {
+  margin: 8px 4px 26px;
+  box-shadow: 0 2px 12px rgba(90, 60, 30, 0.07);
+}
+
+/* ===== Stats page ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 22px;
+}
+.stats-tile {
+  background: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 18px 8px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(90, 60, 30, 0.06);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.stats-tile:active { transform: scale(0.97); }
+.stats-tile-num {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: #2B1D12;
+  font-variant-numeric: tabular-nums;
+}
+.stats-tile-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9B8A7E;
+  margin-top: 3px;
+}
+.stats-artists {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stats-artist-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.stats-artist-row:active { transform: scale(0.99); }
+.stats-artist-rank {
+  flex: 0 0 auto;
+  width: 18px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #C9BCB0;
+  font-variant-numeric: tabular-nums;
+}
+.stats-artist-thumb {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+}
+.stats-artist-name {
+  flex: 1;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2B1D12;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats-artist-count {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 800;
+  color: #E8573A;
+  font-variant-numeric: tabular-nums;
+}
+.stats-city-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stats-city-chip {
+  background: #fff;
+  border: 1px solid #EEE7DF;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #2B1D12;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.stats-city-chip:active { transform: scale(0.96); }
+
+.feed-see-more {
+  display: block;
+  width: 100%;
+  margin: 6px 0 10px;
+  padding: 13px;
+  border: 1px solid rgba(232, 87, 58, 0.2);
+  background: rgba(232, 87, 58, 0.05);
+  color: #E8573A;
+  border-radius: 14px;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.feed-see-more:active { transform: scale(0.99); }
+
+/* Venues page — a list of every venue you've been to. */
+.venues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.venue-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  background: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 13px 15px;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.venue-row:active { transform: scale(0.99); }
+.venue-row-pin {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(232, 87, 58, 0.10);
+  color: #E8573A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.venue-row-body { flex: 1; min-width: 0; }
+.venue-row-name {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #2B1D12;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.venue-row-meta {
+  font-size: 12.5px;
+  color: #9B8A7E;
+  margin-top: 2px;
+}
+.venue-row-count {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: #9B8A7E;
+  font-variant-numeric: tabular-nums;
+}
+.venues-year-group { margin-bottom: 22px; }
+.venues-year-head {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 17px;
+  color: #2B1D12;
+  margin: 0 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.venue-group-count { font-size: 13px; font-weight: 700; color: #9B8A7E; }
+
+/* Venues = "Your Rooms" collection */
+.venue-personality {
+  font-size: 15px;
+  color: #6E6055;
+  margin: 2px 4px 16px;
+  line-height: 1.4;
+}
+.venue-personality b { color: #E8573A; font-weight: 800; }
+
+.venue-hero {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 150px;
+  border: none;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  margin-bottom: 18px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.venue-hero:active { transform: scale(0.99); }
+.venue-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.55));
+}
+.venue-hero-badge {
+  position: absolute; top: 12px; left: 14px; z-index: 2;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.05em;
+  color: #fff; background: rgba(0,0,0,0.35);
+  padding: 5px 11px; border-radius: 999px;
+}
+.venue-hero-icon { position: absolute; top: 9px; right: 14px; z-index: 2; font-size: 34px; }
+.venue-hero-info { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; }
+.venue-hero-name {
+  font-family: var(--font-heading); font-weight: 800; font-size: 23px;
+  color: #fff; letter-spacing: -0.02em; line-height: 1.05;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+}
+.venue-hero-meta { font-size: 13px; color: rgba(255,255,255,0.9); margin-top: 4px; font-weight: 500; }
+
+.venue-photo-credit {
+  font-size: 11px; color: #9B8A7E; margin-top: 4px; line-height: 1.4;
+}
+.venue-photo-credit a { color: #9B8A7E; text-decoration: underline; }
+
+.venue-search {
+  display: flex; align-items: center; gap: 8px; background: #EFE9E1;
+  border-radius: 14px; padding: 0 12px; margin-bottom: 14px; height: 44px;
+}
+.venue-search svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: #9B8A7E; stroke-width: 2; stroke-linecap: round; }
+.venue-search input {
+  flex: 1; border: none; background: transparent; outline: none;
+  font-size: 15px; color: #2B1D12; font-family: inherit; min-width: 0;
+}
+.venue-search input::placeholder { color: #9B8A7E; }
+.venue-search-clear {
+  display: flex; align-items: center; justify-content: center; border: none; background: transparent;
+  padding: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.venue-search-clear svg { width: 16px; height: 16px; stroke: #8B7D70; }
+
+.venue-seg {
+  display: flex; gap: 6px; background: #EFE9E1; border-radius: 14px; padding: 4px; margin-bottom: 16px;
+}
+.venue-seg-btn {
+  flex: 1; text-align: center; padding: 9px 0; border: none; background: transparent;
+  border-radius: 10px; font-size: 14px; font-weight: 600; color: #8B7D70; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.venue-seg-btn.active { background: #fff; color: #2B1D12; font-weight: 750; box-shadow: 0 2px 6px rgba(90,60,30,0.1); }
+
+.venue-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.venue-card {
+  position: relative; height: 128px; border: none; border-radius: 16px; overflow: hidden;
+  cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
+}
+.venue-card:active { transform: scale(0.97); }
+.venue-card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.02) 40%, rgba(0,0,0,0.6));
+}
+.venue-card-icon {
+  position: absolute; top: 10px; left: 12px; z-index: 2; font-size: 24px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+.venue-card-count {
+  position: absolute; top: 11px; right: 12px; z-index: 2;
+  font-size: 12px; font-weight: 800; color: #fff;
+  background: rgba(0,0,0,0.4); padding: 3px 8px; border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.venue-card-info { position: absolute; left: 12px; right: 12px; bottom: 11px; z-index: 2; }
+.venue-card-name {
+  font-size: 14px; font-weight: 750; color: #fff; line-height: 1.15; letter-spacing: -0.01em;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.venue-card-city {
+  font-size: 11.5px; color: rgba(255,255,255,0.85); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Map hover popup — venues/shows in a city. */
+.map-pop { min-width: 150px; max-width: 220px; }
+.map-pop-city {
+  font-weight: 800;
+  font-size: 14px;
+  color: #2B1D12;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+.map-pop-row { font-size: 12.5px; color: #6E6055; padding: 2px 0; line-height: 1.3; }
+.map-pop-row b { color: #2B1D12; font-weight: 700; }
+.map-pop-more { font-size: 11.5px; color: #9B8A7E; margin-top: 4px; font-weight: 600; }
+.map-pop-wrap .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(70, 40, 20, 0.22);
+}
+.map-pop-wrap .leaflet-popup-content { margin: 11px 14px; }
 
 .home-stat {
   display: flex;
@@ -861,6 +1218,16 @@ h4 { font-size: 17px; }
   font-size: 14px;
   color: #5c4a3b;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-show-item-fest {
+  font-size: 12.5px;
+  color: #E8573A;
+  font-weight: 700;
+  margin: 1px 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1918,6 +2285,13 @@ h4 { font-size: 17px; }
   overflow: hidden;
   margin: 0 20px;
   box-shadow: var(--shadow-lg);
+  /* Leaflet sets z-indexes up to ~700 on its panes (and the city card is
+     1000). Without a bounded stacking context those leak into the root and
+     punch through modals opened from the map (a show card would show the map
+     inside its hero). `isolation` seals the whole map into its own context. */
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }
 
 .map-wrap .leaflet-container {
@@ -2822,7 +3196,10 @@ h4 { font-size: 17px; }
 .detail-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  /* Above any map layer (Leaflet panes ≤700, the map city card is 1000) so a
+     show/venue/artist card opened FROM the map can't have the map bleed through
+     its hero. Stays below the global toast (9999). */
+  z-index: 1200;
   max-width: 430px;
   margin: 0 auto;
 }
@@ -2930,6 +3307,69 @@ h4 { font-size: 17px; }
   stroke-width: 2;
   fill: none;
 }
+
+/* Quick-delete in the ShowDetail header — sits left of the star so you never
+   have to scroll to the bottom to delete. Opens the same confirm sheet. */
+.detail-del-top {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: 104px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(8px);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  -webkit-tap-highlight-color: transparent;
+}
+.detail-del-top:active { transform: scale(0.86); }
+.detail-del-top svg {
+  width: 18px;
+  height: 18px;
+  stroke: #FF9B8A;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Delete affordances inside an expanded festival card (My Shows). */
+.show-del-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(226, 75, 74, 0.10);
+  color: #E24B4A;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.show-del-btn:active { transform: scale(0.88); }
+.fest-del-btn {
+  align-self: flex-start;
+  margin: 2px 0 4px 4px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 75, 74, 0.25);
+  background: rgba(226, 75, 74, 0.06);
+  color: #E24B4A;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.fest-del-btn:active { transform: scale(0.97); }
 
 /* ★ Favorite toggle — sits just left of the close button in the hero.
    Per docs/initiatives/2026-05-15-v1-0-5-favorite-and-vibes.md. */
@@ -3328,6 +3768,25 @@ h4 { font-size: 17px; }
   flex-shrink: 0;
 }
 
+.detail-goingwith {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(232, 87, 58, 0.07);
+  border: 1px solid rgba(232, 87, 58, 0.14);
+  border-radius: 14px; padding: 10px 14px; margin-bottom: 16px;
+}
+.detail-goingwith-avatars { display: flex; flex-shrink: 0; }
+.detail-goingwith-avatar {
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: var(--font-heading); font-weight: 800; font-size: 14px;
+  margin-right: -10px; box-shadow: 0 0 0 2px var(--bg, #FAF8F5); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background-size: cover; background-position: center;
+}
+.detail-goingwith-avatar:last-child { margin-right: 0; }
+.detail-goingwith-text { font-size: 14px; color: var(--brown); font-weight: 500; line-height: 1.35; }
+.detail-goingwith-text b { font-weight: 750; }
+
 .detail-buddies {
   display: flex;
   flex-wrap: wrap;
@@ -3387,7 +3846,7 @@ h4 { font-size: 17px; }
 .detail-confirm-scrim {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 220;
   background: rgba(12, 8, 5, 0.55);
   display: flex;
   align-items: center;
@@ -7621,6 +8080,27 @@ h4 { font-size: 17px; }
   margin-top: 3px;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
 }
+.upnext-with {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.upnext-with-avatars { display: flex; flex-shrink: 0; }
+.upnext-with-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-family: var(--font-heading); font-weight: 800; font-size: 11px;
+  margin-right: -8px; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.65);
+  background-size: cover; background-position: center;
+}
+.upnext-with-avatar:last-child { margin-right: 0; }
+.upnext-with-text {
+  font-size: 13px; font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+}
+
 .upnext-btns {
   display: flex;
   gap: 8px;
@@ -7907,6 +8387,18 @@ h4 { font-size: 17px; }
   font-size: 16px;
   font-weight: 800;
 }
+/* Overlapping avatar cluster for a grouped "going" card (multiple friends). */
+.feed-avatar-stack {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+.feed-avatar-stack .feed-avatar {
+  margin-right: -12px;
+  box-shadow: 0 0 0 2px var(--bg, #FAF8F5);
+}
+.feed-avatar-stack .feed-avatar:last-child { margin-right: 0; }
+
 .feed-body {
   flex: 1;
   min-width: 0;
