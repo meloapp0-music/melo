@@ -65,10 +65,56 @@ house `.detail-*` pattern (ShowDetail / VenueDetail / FestivalDetail / ArtistDet
   lives on the show rows. **⚠️ Requires applying migration 0015 to Supabase before
   it persists** (uploads hit storage but URLs won't save until the table exists).
 
+- 2026-07-14: **Map travel band + interactive city rail shipped.** `ConcertMap.jsx`
+  gains (1) a travel-story band above the map — "N cities · N states · N miles for
+  live music", from the existing `geoSpread` + `totalMilesTraveled` helpers; states
+  and miles need resolved coords so they fill in a beat after cities, and each is
+  omitted rather than rendered as a hollow "0". (2) A city rail under the map,
+  most-seen city first. Cross-highlights **both** directions: tapping a chip flies
+  the map to that city and opens its card; tapping a pin lights the chip and scrolls
+  it into view. Markers moved from an array to a city-keyed map so the highlight
+  effect mutates the existing pins instead of rebuilding every marker on each
+  selection. Map height shrunk by the ~150px the band + rail take, with a 260px
+  floor so it can't collapse on small phones.
+- 2026-07-14: **"Your Anthems" shipped** on Songs — a quick-play strip of the top 5
+  songs you've heard live **more than once**, most-heard first, each an artist-photo
+  card with the existing 30s-preview jukebox wired in (reuses `playPreview`, so
+  play/stop/loading state is shared with the per-artist track rows). It supersedes
+  the old "Most Seen" spotlight, whose song is just anthem #1 — they never both
+  render; with no repeats yet there are no anthems, and the spotlight still gives
+  the page a centrepiece.
+
+- 2026-07-14: **Review pass on the savepoint commit (`6eccdb9`).**
+  - **DATA LOSS in festival media (fixed).** `getFestivalMedia` returned
+    `{photos: [], videos: []}` on a read *error*, which is indistinguishable from
+    "this festival has no media yet" — and FestivalDetail unlocked the pickers on
+    it. Since a save upserts the FULL array, adding one photo after a failed read
+    overwrote every photo and video already stored (Storage objects orphaned, not
+    recoverable in-app). It now returns an `ok` flag; a failed read keeps the
+    pickers locked and shows "Couldn't load this festival's photos and videos"
+    instead of an empty, editable gallery.
+  - **Out-of-order saves (fixed).** The photo picker and video picker each upsert
+    the whole row, so a photo save and a video save issued back-to-back that landed
+    reversed left the DB holding the older payload. Writes are now serialized per
+    (user, festival) through a promise chain.
+  - **Your Lineup hero could crown an artist with no card (fixed).** The hero read
+    `artists[0]` — the unfolded list — so an act seen ONLY at a big festival (folded
+    into the festival tile by design) could still headline the page. Log nothing but
+    Coachella and you'd get one festival tile under a hero for an act with no card.
+    Now reads the folded `soloArtists`.
+  - The rest of the fold logic was re-verified as correct: the "seen anywhere
+    outside a big festival keeps their own card" rule and the search-bypasses-
+    folding rule both hold.
+
 ## Open questions / follow-ups
 - Widen `festival_media` read to friends later (mirror `can_view_shows`) so a
   festival gallery can be shared, not just self-only.
-- **Map** travel-stat band + interactive city rail (next).
-- **Songs** "Your Anthems" quick-play strip (after Map).
 - Consider routing Stats' "Most Seen" artist rows through `setSelectedArtist` (open
   ArtistDetail) instead of `navigate('artists')`.
+- The city rail's chip-scroll uses `scrollIntoView({behavior:'smooth'})`. Verified
+  correct by targeting (it centres the chip exactly), but the *animation* could not
+  be observed — smooth scrolling is disabled in the automated browser, including on
+  a bare control element. Worth an eyeball on a real device.
+- Map + Songs were verified against the real `App.css` via throwaway harnesses
+  (`public/_map_harness.html`, `_anthem_harness.html`, both deleted) because the app
+  is behind a sign-in wall. Neither was exercised against a real logged-in account.

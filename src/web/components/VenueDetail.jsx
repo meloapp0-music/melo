@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useApp } from '../App';
-import { isAttended, formatDate, getArtistGradient, latestShowPhoto } from '../store';
+import { isAttended, formatDate, getArtistGradient, latestShowPhoto, festivalKey } from '../store';
 
 // A page for one venue — every show you've seen there. Opened by tapping a
 // venue anywhere (Stats' Top Venues, the Venues list). Modal like ShowDetail /
@@ -9,11 +9,21 @@ export default function VenueDetail({ venue, onClose, onOpenShow }) {
   const { shows, getArtistImage, getVenueImage, prefetchVenueImages } = useApp();
   const name = venue?.name || '';
 
+  // A venue is (name, city) — NOT name alone. Venues.jsx keys its cards by
+  // `venue|city`, so "House of Blues" is two separate rooms in Chicago and
+  // Boston. Matching on name only would pool both into whichever card you
+  // tapped, mislabel it with the other city, and ask for a photo under a
+  // different cache key than the card prefetched. Same festival-stage exclusion
+  // as Venues.jsx, so a festival's stage rows don't leak back into the count.
+  const city = venue?.city || '';
   const members = shows
-    .filter((s) => isAttended(s) && (s.venue || '') === name)
+    .filter((s) => (
+      isAttended(s)
+      && !festivalKey(s)
+      && (s.venue || '') === name
+      && (s.city || '') === city
+    ))
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
-  const city = members.find((s) => s.city)?.city || venue?.city || '';
 
   // Resolve this venue's photo even when opened from somewhere that didn't
   // prefetch it (e.g. Stats' Top Venues). Cache-aware, so it's a no-op if warm.

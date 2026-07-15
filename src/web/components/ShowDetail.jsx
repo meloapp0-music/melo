@@ -51,8 +51,19 @@ export default function ShowDetail({ show, onClose }) {
 
   // Tagged co-attendees — the real friends you're going WITH. They were only
   // ever shown in the feed's "with …" line; surface them UP FRONT on the card.
+  //
+  // OWNER-ONLY, and deliberately so. This block is first-person ("You were there
+  // with …"), which is only true on your own show — ShowDetail also opens for a
+  // FRIEND'S show straight from the feed. It would be a privacy leak besides:
+  // `listAttendees` is gated by can_view_show_id, so on Claire's show it returns
+  // everyone CLAIRE tagged, and they only have to be HER accepted friends — so a
+  // stranger's real name and avatar would render on a show you weren't even at.
+  // On your own show the same call can only return people you tagged, who must
+  // be your own accepted friends.
   const [coFriends, setCoFriends] = useState([]);
+  const [coAnon, setCoAnon] = useState(0);
   useEffect(() => {
+    if (!isOwner) { setCoFriends([]); setCoAnon(0); return undefined; }
     let cancelled = false;
     // "Going with" = tagged co-attendees ∪ friends who logged the SAME show
     // (artist+date, matching status) independently — not just people you tagged.
@@ -66,22 +77,32 @@ export default function ShowDetail({ show, onClose }) {
         const key = festivalKey(show) || `${(show.artist || '').toLowerCase().trim()}|${show.date}`;
         const ids = [...new Set([...rows.map((r) => r.user_id), ...(indMap.get(key) || [])])]
           .filter((id) => id && id !== profile?.id);
-        if (!ids.length) { if (!cancelled) setCoFriends([]); return; }
+        if (!ids.length) { if (!cancelled) { setCoFriends([]); setCoAnon(0); } return; }
         const profs = await getProfilesByIds(ids).catch(() => new Map());
         if (cancelled) return;
-        setCoFriends(ids.map((id) => {
-          const p = profs.get(id);
-          return { userId: id, name: p?.displayName || p?.username || 'Friend', avatarUrl: p?.avatarUrl, avatarColor: p?.avatarColor };
-        }));
+        // An id RLS won't resolve stays ANONYMOUS — a placeholder "Friend" avatar
+        // is a fake identity and taps through to an empty profile. Same treatment
+        // the feed gives them: fold into a "+N" count.
+        const resolved = ids.map((id) => [id, profs.get(id)]).filter(([, p]) => p);
+        setCoFriends(resolved.map(([id, p]) => ({
+          userId: id,
+          name: p.displayName || p.username,
+          avatarUrl: p.avatarUrl,
+          avatarColor: p.avatarColor,
+        })));
+        setCoAnon(ids.length - resolved.length);
       })
-      .catch(() => { if (!cancelled) setCoFriends([]); });
+      .catch(() => { if (!cancelled) { setCoFriends([]); setCoAnon(0); } });
     return () => { cancelled = true; };
-  }, [show.id, show.artist, show.date, profile?.id]);
+  }, [isOwner, show.id, show.artist, show.date, show.festival, profile?.id]);
 
   const coNames = coFriends.map((f) => f.name);
-  const goingWithLabel = coNames.length <= 2
-    ? coNames.join(' & ')
-    : `${coNames.slice(0, 2).join(', ')} & ${coNames.length - 2} more`;
+  const coTotal = coNames.length + coAnon;
+  const goingWithLabel = coNames.length === 0
+    ? `${coAnon} ${coAnon === 1 ? 'other' : 'others'}`
+    : coTotal <= 2
+      ? coNames.join(' & ')
+      : `${coNames.slice(0, 2).join(', ')} & ${coTotal - Math.min(coNames.length, 2)} more`;
   const markGoing = () => {
     setStatusOverride(SHOW_STATUS.GOING);
     try { updateShow(show.id, { status: SHOW_STATUS.GOING }); } catch { /* optimistic */ }
@@ -315,8 +336,10 @@ export default function ShowDetail({ show, onClose }) {
         </div>
 
         <div className="detail-body">
-          {/* Going with — tagged friends, surfaced up front. */}
-          {coFriends.length > 0 && (
+          {/* Going with — tagged friends, surfaced up front. Owner-only: see the
+              coFriends effect. `coTotal` counts the anonymous ones too, so a
+              lone unresolvable co-attendee still reads "with 1 other". */}
+          {coTotal > 0 && (
             <div className="detail-goingwith">
               <div className="detail-goingwith-avatars">
                 {coFriends.slice(0, 4).map((f) => (

@@ -101,8 +101,38 @@ page. Grid thumbnails carry no caption but link through to VenueDetail (CC's
   Salt Shed's only article image is the Morton Salt logo). Better a clean gradient
   than a wrong picture. The editorial lead image is exempt.
 
+- 2026-07-14: **Review pass on the savepoint commit (`6eccdb9`) — 3 resolver bugs
+  fixed.**
+  1. *Transient errors were cached for 90 days.* A non-OK HTTP response (429 /
+     5xx) took the negative-cache path, pinning that venue to a gradient for the
+     full TTL with nothing to retry it — even though the outer catch deliberately
+     does NOT cache network failures for exactly that reason. Rate-limiting is the
+     likely failure mode too, since a full Your Rooms load fires several Wikimedia
+     requests per venue. A search that genuinely finds nothing returns 200 with no
+     pages, so `!res.ok` now just returns null without caching.
+  2. *The false-match guard collapsed when a show had no city.* `city` is optional,
+     and with no city the coordinate check was skipped entirely (`if (!expected)
+     return true`) — while an exact title match also skips the Wikidata P31 check
+     by design. Net: an exact-titled page passed with a single shared name token as
+     the ONLY verification, so a show at "Forum"/"Metro"/"The Vic" could cache a
+     famous unrelated place as its venue photo. Now a candidate must always carry
+     coordinates (a venue is a place; people/albums/tours carry none), and the P31
+     check also runs on exact titles when there's no city to corroborate them.
+  3. *`VenueDetail` matched shows by name only.* `Venues.jsx` keys cards by
+     `venue|city`, so "House of Blues" is two rooms (Chicago, Boston) — but the
+     detail sheet filtered on name alone, then re-derived the city from the most
+     recent match. Tapping the Chicago card opened a sheet titled *Boston* listing
+     all 5 shows and requested the photo under a different cache key than the card
+     had prefetched, so card and hero could disagree. It also skipped the
+     festival-stage exclusion, leaking stage rows back into the count. Now matches
+     on (name, city) and applies the same exclusion.
+
 ## Open questions / follow-ups
 - Ship the Mapbox static-map fallback for club-tier venues? (Needs a public token;
   shows rooftops not facades. Deferred behind a flag for now.)
+- `setVenueImageEntry` read-modify-writes the whole localStorage blob and
+  `prefetchVenueImages` has no in-flight dedupe, so opening VenueDetail mid-prefetch
+  can re-fetch a venue and drop a concurrently-written entry. Wasted requests only,
+  and self-healing — left alone.
 - Consider a shared Supabase `venue_images` table so a photo is resolved once
   across all users instead of per-device (currently per-device localStorage).

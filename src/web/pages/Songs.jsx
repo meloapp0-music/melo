@@ -74,6 +74,22 @@ export default function Songs() {
     return { totalSongs: unique, heardMultiple: repeats, mostSeen: topSong };
   }, [artistGroups]);
 
+  // "Your Anthems" — the songs that follow you around: the ones you've caught
+  // live more than once, most-heard first. A song heard only once isn't an
+  // anthem, so the strip stays empty until there's a genuine repeat to show
+  // (in which case the Most Seen spotlight carries the page instead).
+  const anthems = useMemo(() => {
+    const repeated = [];
+    artistGroups.forEach((g) => {
+      g.repeatMap.forEach((v) => {
+        if (v.count >= 2) repeated.push({ name: v.name, count: v.count, artist: g.artist });
+      });
+    });
+    return repeated
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .slice(0, 5);
+  }, [artistGroups]);
+
   // Top-N artist images for the hero collage. Falls back to a branded
   // gradient when the user hasn't logged enough setlists for us to have
   // any artist images cached yet.
@@ -195,7 +211,54 @@ export default function Songs() {
         </div>
       </div>
 
-      {mostSeen && (
+      {/* The strip supersedes the Most Seen spotlight (whose song is just
+          anthem #1), so they never both render. With no repeats yet, there are
+          no anthems — the spotlight still gives the page a centrepiece. */}
+      {anthems.length > 0 ? (
+        <div className="anthems">
+          <div className="anthems-head">
+            <h3 className="anthems-title">Your Anthems</h3>
+            <p className="anthems-sub">The songs that follow you around</p>
+          </div>
+          <div className="anthems-strip">
+            {anthems.map((a) => {
+              const key = `${a.artist}|${a.name}`;
+              const isPlaying = playing === key;
+              const isLoading = loading === key;
+              return (
+                <button
+                  key={key}
+                  className={`anthem-card ${isPlaying ? 'playing' : ''}`}
+                  style={artistBg(a.artist)}
+                  onClick={() => playPreview(a.artist, a.name)}
+                  aria-label={`${isPlaying ? 'Stop' : 'Play'} ${a.name} by ${a.artist}`}
+                >
+                  <div className="anthem-scrim" aria-hidden="true" />
+                  <span className="anthem-count">{a.count}×</span>
+                  <span className="anthem-play" aria-hidden="true">
+                    {isLoading ? (
+                      <span className="anthem-spinner" />
+                    ) : isPlaying ? (
+                      <svg viewBox="0 0 24 24">
+                        <rect x="6" y="5" width="4" height="14" rx="1" />
+                        <rect x="14" y="5" width="4" height="14" rx="1" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24">
+                        <polygon points="7 4 20 12 7 20 7 4" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="anthem-meta">
+                    <span className="anthem-song">{a.name}</span>
+                    <span className="anthem-artist">{a.artist}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : mostSeen ? (
         <div className="songs-spotlight">
           <div className="songs-spotlight-label">Most Seen</div>
           <div className="songs-spotlight-title">{mostSeen.name}</div>
@@ -203,7 +266,7 @@ export default function Songs() {
             Heard {mostSeen.count}x &middot; {mostSeen.artist}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div style={{ marginBottom: 12 }}>
         <h3>By Artist</h3>

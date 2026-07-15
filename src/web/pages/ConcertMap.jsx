@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
-import { resolveCities } from '../lib/geo';
+import { resolveCities, geoSpread, totalMilesTraveled } from '../lib/geo';
 
 export default function ConcertMap() {
   const { shows, setSelectedShow, getArtistImage, navigate } = useApp();
@@ -10,12 +10,28 @@ export default function ConcertMap() {
   const [selectedCity, setSelectedCity] = useState(null);
   const [resolvedGeo, setResolvedGeo] = useState({});
   const [mapReady, setMapReady] = useState(false);
+  // Bumped once the markers exist. Leaflet is imported lazily, so the pins are
+  // built inside a promise — this lets the cross-highlight effect re-run against
+  // markers that weren't there on its first pass.
+  const [markersVersion, setMarkersVersion] = useState(0);
 
   const attended = shows.filter(isAttended);
   const cityCounts = {};
   attended.forEach((s) => {
     if (s.city) cityCounts[s.city] = (cityCounts[s.city] || 0) + 1;
   });
+
+  // The travel story. `cities` is known synchronously; `states` and `miles`
+  // need resolved coords, so they fill in when the geo lookup lands (and are
+  // simply omitted while 0 rather than rendering a hollow "0 states").
+  const spread = geoSpread(attended, resolvedGeo);
+  const miles = totalMilesTraveled(attended, resolvedGeo);
+  const cityCount = Object.keys(cityCounts).length;
+
+  // Cities for the rail, most-seen first, then alphabetical.
+  const cityRail = Object.entries(cityCounts)
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
 
   // Resolve city -> {lat, lng, state, country} for every distinct city
   // logged, mirroring Wrapped.jsx's map slide. CITY_DATA covers common
@@ -32,7 +48,8 @@ export default function ConcertMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shows]);
 
-  const markersRef = useRef([]);
+  const markersRef = useRef({}); // city -> Leaflet marker, for cross-highlighting
+  const chipRefs = useRef({});   // city -> rail chip element
 
   useEffect(() => {
     if (mapInstance.current || !mapRef.current) return;
@@ -67,8 +84,8 @@ export default function ConcertMap() {
       const map = mapInstance.current;
       if (!map) return;
 
-      markersRef.current.forEach((m) => map.removeLayer(m));
-      markersRef.current = [];
+      Object.values(markersRef.current).forEach((m) => map.removeLayer(m));
+      markersRef.current = {};
 
       Object.entries(cityCounts).forEach(([city, count]) => {
         const g = resolvedGeo[city];
@@ -76,7 +93,7 @@ export default function ConcertMap() {
 
         const size = Math.min(24 + count * 4, 40);
         const icon = L.divIcon({
-          className: '',
+          className: 'map-pin',
           html: `<div style="width:${size}px;height:${size}px;background:linear-gradient(135deg,#F4A261,#E8573A);border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px rgba(232,87,58,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${count > 1 ? 12 : 0}px;font-family:Outfit,sans-serif;">${count > 1 ? count : ''}</div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
@@ -99,10 +116,40 @@ export default function ConcertMap() {
           .on('mouseover', function () { this.openPopup(); })
           .on('mouseout', function () { this.closePopup(); })
           .on('click', () => setSelectedCity(city));
-        markersRef.current.push(marker);
+        markersRef.current[city] = marker;
       });
+
+      setMarkersVersion((v) => v + 1);
     });
   }, [resolvedGeo, mapReady]);
+
+  // Cross-highlight, both directions: the selected city's pin gets a ring, and
+  // its rail chip lights up and scrolls into view. Mutating the existing marker
+  // elements (rather than adding `selectedCity` to the marker effect's deps)
+  // keeps us from tearing down and rebuilding every pin on each selection.
+  useEffect(() => {
+    Object.entries(markersRef.current).forEach(([city, marker]) => {
+      const el = marker.getElement?.();
+      if (el) el.classList.toggle('active', city === selectedCity);
+    });
+    if (selectedCity) {
+      chipRefs.current[selectedCity]?.scrollIntoView({
+        behavior: 'smooth', block: 'nearest', inline: 'center',
+      });
+    }
+  }, [selectedCity, markersVersion]);
+
+  // Rail chip -> fly the map to that city and open its card. (A pin tap only
+  // selects: you can already see where it is, so yanking the viewport would be
+  // gratuitous.)
+  const selectCity = (city) => {
+    setSelectedCity(city);
+    const g = resolvedGeo[city];
+    const map = mapInstance.current;
+    if (g && map) {
+      map.flyTo([g.lat, g.lng], Math.max(map.getZoom(), 7), { duration: 0.9 });
+    }
+  };
 
   const cityShows = selectedCity
     ? attended.filter((s) => s.city === selectedCity)
@@ -126,9 +173,37 @@ export default function ConcertMap() {
         </button>
         <h1>Concert Map</h1>
         <p style={{ color: '#9B8A7E', fontSize: 14, marginTop: 4 }}>
-          {Object.keys(cityCounts).length} cities explored
+          {cityCount} {cityCount === 1 ? 'city' : 'cities'} explored
         </p>
       </div>
+
+      {attended.length > 0 && (
+        <div className="map-travel">
+          <div className="map-travel-stats">
+            <span className="map-travel-stat">
+              <b>{cityCount}</b> {cityCount === 1 ? 'city' : 'cities'}
+            </span>
+            {spread.states > 0 && (
+              <>
+                <span className="map-travel-dot" />
+                <span className="map-travel-stat">
+                  <b>{spread.states}</b> {spread.states === 1 ? 'state' : 'states'}
+                </span>
+              </>
+            )}
+            {miles > 0 && (
+              <>
+                <span className="map-travel-dot" />
+                <span className="map-travel-stat">
+                  <b>{miles.toLocaleString()}</b> miles
+                </span>
+              </>
+            )}
+          </div>
+          <div className="map-travel-label">for live music</div>
+        </div>
+      )}
+
       <div className="map-wrap" style={{ position: 'relative' }}>
         <div ref={mapRef} style={{ height: '100%', width: '100%', borderRadius: 20 }} />
         {selectedCity && (
@@ -168,6 +243,22 @@ export default function ConcertMap() {
           </div>
         )}
       </div>
+
+      {cityRail.length > 0 && (
+        <div className="map-rail">
+          {cityRail.map(({ city, count }) => (
+            <button
+              key={city}
+              ref={(el) => { chipRefs.current[city] = el; }}
+              className={`map-rail-chip${city === selectedCity ? ' active' : ''}`}
+              onClick={() => selectCity(city)}
+            >
+              <span className="map-rail-city">{city}</span>
+              <span className="map-rail-count">{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

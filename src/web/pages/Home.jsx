@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Capacitor } from '@capacitor/core';
 import { useApp } from '../App';
 import {
   getArtistGradient, getGreeting, formatDate, daysUntil,
-  calculateStreak, getWrappedYears, wrappedLabel, DISCOVERY_ARTISTS,
-  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, groupIntoOutings, festivalKey,
+  calculateStreak,
+  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, festivalKey,
 } from '../store';
-import { fetchAllUpcomingEvents, fetchDiscoveryEvents } from '../api';
+import { fetchAllUpcomingEvents } from '../api';
 import { attendeesForShows, friendsMatchingShows } from '../lib/db/shows';
 import { getProfilesByIds } from '../lib/db/profiles';
 import { MeloIcon } from '../components/MeloLogo';
@@ -23,27 +22,9 @@ const today = () => {
 };
 
 export default function Home() {
-  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setWrappedYear, setLogEditTarget, showToast, profile } = useApp();
+  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setLogEditTarget, showToast, profile } = useApp();
 
   const attended = shows.filter(isAttended);
-  const cities = new Set(attended.map((s) => s.city));
-  const artists = new Set(attended.map((s) => s.artist));
-  // Collapse festivals into one "outing" so a 60-act festival counts as a single
-  // show, and average only the outings you've actually rated — a freshly-logged,
-  // unrated festival no longer drags the average toward zero.
-  const outings = groupIntoOutings(attended);
-  const ratedOutings = outings.filter((o) => o.score > 0);
-  const avgScore =
-    ratedOutings.length > 0
-      ? (ratedOutings.reduce((sum, o) => sum + o.score, 0) / ratedOutings.length).toFixed(1)
-      : 0;
-  // Total songs heard live — sums every logged setlist. A delightful, unique
-  // stat we already have the data for (only shown once there's a setlist).
-  const songsHeard = attended.reduce((sum, s) => sum + (s.setlist?.length || 0), 0);
-
-  const sorted = [...attended].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const recent = sorted.slice(0, 8);
-  const topRated = [...attended].sort((a, b) => b.score - a.score)[0];
 
   // Going shows split by date — future ones get a countdown card,
   // past ones get a "How was it?" CTA that converts them to Attended
@@ -131,10 +112,6 @@ export default function Home() {
   // Streak
   const streak = useMemo(() => calculateStreak(shows), [shows]);
 
-  // Wrapped years
-  const wrappedYears = useMemo(() => getWrappedYears(shows), [shows]);
-  const latestWrappedYear = wrappedYears[0];
-
   // Upcoming shows from Bandsintown
   const [upcoming, setUpcoming] = useState([]);
   const [upcomingLoading, setUpcomingLoading] = useState(false);
@@ -153,31 +130,6 @@ export default function Home() {
       })
       .catch(() => {})
       .finally(() => setUpcomingLoading(false));
-  }, [attended.length]);
-
-  // Discovery feed
-  const [discovery, setDiscovery] = useState([]);
-  const [discoveryLoading, setDiscoveryLoading] = useState(false);
-
-  useEffect(() => {
-    if (attended.length === 0) return;
-    const seenArtists = new Set(attended.map((s) => s.artist));
-    const genreCounts = {};
-    attended.forEach((s) => { if (s.genre) genreCounts[s.genre] = (genreCounts[s.genre] || 0) + 1; });
-    const topGenres = Object.keys(genreCounts).sort((a, b) => genreCounts[b] - genreCounts[a]).slice(0, 3);
-    const genreMap = {};
-    topGenres.forEach((g) => { if (DISCOVERY_ARTISTS[g]) genreMap[g] = DISCOVERY_ARTISTS[g]; });
-    const topCities = [...new Set(attended.map((s) => s.city).filter(Boolean))].slice(0, 5);
-
-    if (Object.keys(genreMap).length === 0) return;
-    setDiscoveryLoading(true);
-    fetchDiscoveryEvents(genreMap, seenArtists, topCities)
-      .then((events) => {
-        setDiscovery(events);
-        prefetchImages(events.map((e) => e.artist).filter(Boolean));
-      })
-      .catch(() => {})
-      .finally(() => setDiscoveryLoading(false));
   }, [attended.length]);
 
   const bgStyle = (artist) => {

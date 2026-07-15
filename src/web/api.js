@@ -20,20 +20,36 @@ const CORS_PROXY =
 // when we actually register an app at https://developers.deezer.com/.
 
 // ===== IMAGE CACHE =====
+// v2 stores a record { url, id, verified } instead of a bare URL string:
+// `id` is the chosen Deezer artist and `verified` means we confirmed it against
+// the user's own setlist (see fetchArtistImage's disambiguation). Bumping the
+// key also abandons v1's unverified guesses in one shot — a name like "Goose"
+// resolves by fan count to the wrong band, and that wrong URL was already
+// cached on-device; v2 forces a clean, setlist-checked re-resolve.
+const IMG_CACHE_KEY = 'melo_image_cache.v2';
+
 function getImageCache() {
-  try { return JSON.parse(localStorage.getItem('melo_image_cache') || '{}'); }
+  try { return JSON.parse(localStorage.getItem(IMG_CACHE_KEY) || '{}'); }
   catch { return {}; }
 }
 
-function setImageCacheEntry(artist, url) {
+function getImageRecord(artist) {
+  if (!artist) return null;
+  const rec = getImageCache()[artist.toLowerCase().trim()];
+  if (!rec) return null;
+  // Tolerate a stray v1-shaped string, just in case.
+  return typeof rec === 'string' ? { url: rec, verified: false } : rec;
+}
+
+function setImageCacheEntry(artist, rec) {
   const cache = getImageCache();
-  cache[artist.toLowerCase().trim()] = url;
-  localStorage.setItem('melo_image_cache', JSON.stringify(cache));
+  cache[artist.toLowerCase().trim()] = rec;
+  try { localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(cache)); }
+  catch { /* ignore quota */ }
 }
 
 export function getCachedImage(artist) {
-  if (!artist) return null;
-  return getImageCache()[artist.toLowerCase().trim()] || null;
+  return getImageRecord(artist)?.url || null;
 }
 
 // ===== DEEZER — Artist search (canonical name + image lookup) =====
@@ -60,49 +76,121 @@ export async function searchArtists(query, limit = 5) {
 }
 
 // ===== DEEZER — Artist Images =====
-export async function fetchArtistImage(artistName) {
+
+// Normalize a track / song title for cross-referencing Deezer catalog against a
+// user's logged setlist. Drops "(Live)"/"(feat. …)" parentheticals, "- Live at
+// …" suffixes, and all punctuation so "Hunger­site" == "hungersite".
+const normSong = (s) => (s || '')
+  .toLowerCase()
+  .replace(/\(.*?\)/g, ' ')
+  .replace(/\s-\s.*$/, ' ')
+  .replace(/[^a-z0-9]+/g, '');
+
+// How many of `wantSet` (normalized setlist songs) appear in a Deezer artist's
+// top tracks. The disambiguation signal: the RIGHT "Goose" is the one whose
+// catalog actually contains the songs you heard. Fails soft to 0.
+async function artistTrackOverlap(artistId, wantSet) {
+  try {
+    const target = `https://api.deezer.com/artist/${artistId}/top?limit=50`;
+    const res = await fetch(`${CORS_PROXY}${encodeURIComponent(target)}`);
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const titles = new Set((data?.data || []).map((t) => normSong(t.title)).filter(Boolean));
+    let n = 0;
+    wantSet.forEach((w) => { if (titles.has(w)) n++; });
+    return n;
+  } catch { return 0; }
+}
+
+// Resolve an artist's photo from Deezer.
+//
+// The naive `data[0]` is wrong for any name shared by multiple artists: Deezer
+// ranks by popularity, so "Goose" returns the Belgian dance-rock band (21k fans)
+// ahead of the Connecticut jam band the user actually saw (1k fans). When the
+// caller passes `songs` — the user's own logged setlist for this artist — we
+// disambiguate by picking the same-name candidate whose catalog best matches
+// those songs. Costs extra requests ONLY when the name is genuinely ambiguous
+// (more than one exact-name hit) and a setlist is available.
+export async function fetchArtistImage(artistName, { songs } = {}) {
   if (!artistName) return null;
-  const cached = getCachedImage(artistName);
-  if (cached) return cached;
+  const rec = getImageRecord(artistName);
+  // Reuse the cache unless it's an unverified guess AND we now have a setlist
+  // that could correct it. A verified entry, or any entry when we have no songs
+  // to check, is taken as-is.
+  if (rec?.url && (rec.verified || !songs?.length)) return rec.url;
 
   try {
-    const target = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName)}`;
+    const target = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName)}&limit=10`;
     const res = await fetch(`${CORS_PROXY}${encodeURIComponent(target)}`);
     if (!res.ok) throw new Error(`Deezer ${res.status}`);
     const data = await res.json();
-    if (data?.data?.[0]?.picture_xl) {
-      const url = data.data[0].picture_xl;
-      setImageCacheEntry(artistName, url);
-      return url;
+    const candidates = (data?.data || []).filter((a) => a.picture_xl);
+    if (!candidates.length) return null;
+
+    // Prefer exact-name matches (Deezer's fuzzy search mixes in "Goose house",
+    // "Silly Goose", etc.); fall back to the whole list if none match exactly.
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const nName = norm(artistName);
+    const exact = candidates.filter((a) => norm(a.name) === nName);
+    const pool = exact.length ? exact : candidates;
+
+    let chosen = pool[0]; // default: Deezer's most popular exact match
+    let verified = false;
+    if (songs?.length && pool.length > 1) {
+      const want = new Set(songs.map(normSong).filter(Boolean));
+      if (want.size) {
+        let best = 0;
+        // Cap at 4 candidates — extra requests, and beyond the top few it's noise.
+        for (const cand of pool.slice(0, 4)) {
+          const overlap = await artistTrackOverlap(cand.id, want);
+          if (overlap > best) { best = overlap; chosen = cand; verified = true; }
+        }
+      }
     }
+
+    const url = chosen.picture_xl;
+    setImageCacheEntry(artistName, { url, id: chosen.id, verified });
+    return url;
   } catch (err) {
     console.warn('[Melo] Deezer fetch failed for', artistName, err.message);
   }
   return null;
 }
 
-// Batch-fetch images for multiple artists (non-blocking)
-export async function prefetchArtistImages(artistNames, onUpdate) {
+// Batch-fetch images for multiple artists (non-blocking). `songsByArtist` maps
+// an artist name to the songs the user has logged for them, so ambiguous names
+// resolve to the act they actually saw (see fetchArtistImage). Omit it (e.g. for
+// Ticketmaster upcoming artists, who have no setlist) to just take the top hit.
+export async function prefetchArtistImages(artistNames, onUpdate, songsByArtist = {}) {
   const unique = [...new Set(artistNames)];
   const results = {};
 
-  // Load from cache first
+  // Load already-resolved images from cache first.
   unique.forEach((name) => {
     const cached = getCachedImage(name);
     if (cached) results[name] = cached;
   });
 
-  // Fetch missing ones, staggered to avoid rate limits
-  const missing = unique.filter((n) => !results[n]);
-  for (let i = 0; i < missing.length; i++) {
-    const name = missing[i];
-    const url = await fetchArtistImage(name);
+  // A cached-but-unverified entry should still be re-checked once we have a
+  // setlist for it, so it can be corrected — so "needs work" is more than just
+  // "not in results".
+  const needsResolve = unique.filter((name) => {
+    const key = name?.toLowerCase().trim();
+    const rec = getImageRecord(name);
+    const hasSongs = (songsByArtist[name] || songsByArtist[key] || []).length > 0;
+    return !rec?.url || (!rec.verified && hasSongs);
+  });
+
+  for (let i = 0; i < needsResolve.length; i++) {
+    const name = needsResolve[i];
+    const songs = songsByArtist[name] || songsByArtist[name?.toLowerCase().trim()] || [];
+    const url = await fetchArtistImage(name, { songs });
     if (url) {
       results[name] = url;
       onUpdate?.({ ...results });
     }
-    // Small delay between requests to be polite to APIs
-    if (i < missing.length - 1) await new Promise((r) => setTimeout(r, 300));
+    // Small delay between requests to be polite to APIs.
+    if (i < needsResolve.length - 1) await new Promise((r) => setTimeout(r, 300));
   }
 
   return results;
@@ -244,7 +332,13 @@ export async function fetchVenueImage(name, city = '', coords = null) {
       `&prop=pageimages%7Ccoordinates%7Cpageprops&piprop=thumbnail%7Cname&pithumbsize=600` +
       `&colimit=6&ppprop=wikibase_item`;
     const res = await fetch(searchUrl, { signal: controller.signal });
-    if (!res.ok) { setVenueImageEntry(key, { url: '', ts: Date.now() }); return null; }
+    // Do NOT negative-cache an HTTP error. A search that genuinely finds nothing
+    // returns 200 with no pages (handled below) — a non-OK here means 429/5xx,
+    // i.e. exactly as transient as the network errors the outer catch declines
+    // to cache. Rate-limiting is the likely failure mode too, since a full Your
+    // Rooms load fires several Wikimedia requests per venue. Caching it would
+    // pin the venue to a gradient for the 90-day TTL with nothing to retry it.
+    if (!res.ok) return null;
     const data = await res.json();
     const pages = Object.values(data?.query?.pages || {})
       .sort((a, b) => (a.index || 0) - (b.index || 0));
@@ -255,9 +349,14 @@ export async function fetchVenueImage(name, city = '', coords = null) {
     // page at all (its Wikidata item may still yield a Tier-2 photo).
     const passing = pages.filter((page) => {
       if (!venueNameOverlap(name, page.title)) return false; // wrong subject
-      if (!expected) return true;
       const c = page.coordinates?.[0];
-      if (!c) return false; // known city but no coords -> likely a person/album
+      // A venue is a PLACE, so it must carry coordinates — a person, album,
+      // tour, or concept that merely shares a word with the venue name carries
+      // none. This runs even when the city is unknown: `city` is optional on a
+      // show, and it used to be the ONLY structural check, so without it a
+      // one-token name overlap was the entire guard.
+      if (!c) return false;
+      if (!expected) return true; // a real place, but no city to corroborate it
       return haversineMiles(
         { lat: expected.lat, lng: expected.lng },
         { lat: c.lat, lng: c.lon }
@@ -282,9 +381,15 @@ export async function fetchVenueImage(name, city = '', coords = null) {
 
     // Non-exact match (a fuzzy / renamed / generic-corporate-name case) — verify
     // via Wikidata that we didn't land on a company HQ, office tower, or
-    // disambiguation page. Exact-name matches skip this (no extra request).
+    // disambiguation page.
+    //
+    // An exact-name match skips this to save a request, but ONLY when the
+    // coordinate check actually ran (`expected`). With no city on the show
+    // there's nothing corroborating the title, and short generic venue names
+    // ("Forum", "Metro", "The Vic") collide with famous unrelated places that
+    // do have coordinates — so those pay for the extra request.
     let p18Prefetched = '';
-    if (chosen.qid && norm(chosen.title) !== nName) {
+    if (chosen.qid && (norm(chosen.title) !== nName || !expected)) {
       try {
         const gRes = await fetch(
           `https://www.wikidata.org/wiki/Special:EntityData/${chosen.qid}.json`,

@@ -67,13 +67,18 @@ merged friends feed + trimmed discovery.
   "You + {name} are going to {artist}" with a "🎟️ Going together" badge, instead
   of a card that just repeats your own Up Next.
 
+## Dead-code sweep (2026-07-14)
+Done — the tail the restructure left behind is gone. Removed from `Home.jsx`:
+`cities`, `artists`, `songsHeard`, `sorted`, `recent`, `topRated`, `avgScore` (and
+the `outings`/`ratedOutings` that only fed it), `wrappedYears`/`latestWrappedYear`,
+and the whole `discovery`/`discoveryLoading` block — **which was still firing a real
+`fetchDiscoveryEvents` API call on every Home mount whose result nothing rendered**,
+and prefetching artist images for artists no longer shown. Dead imports went with it
+(`Capacitor`, `getWrappedYears`, `wrappedLabel`, `DISCOVERY_ARTISTS`,
+`groupIntoOutings`, `fetchDiscoveryEvents`, `setWrappedYear`). `streak` stays — it's
+live in the header chip and the at-risk nudge. Build clean.
+
 ## Open questions / follow-ups
-- Dead code in Home.jsx after the trim: `recent`, `topRated`, and the
-  `discovery`/`discoveryLoading` state + its fetch effect are now unused. The
-  discovery fetch still fires an API call for nothing — worth removing in a
-  cleanup sweep (left in for now to avoid churn mid-testing).
-- `cities`/`songsHeard`/Wrapped vars in Home.jsx are now computed-but-unused —
-  harmless (build is clean); tidy up in a later pass.
 - Consider a subtle "Cities" count somewhere in Profile (the count is no longer
   shown anywhere; the Map button gives the destination but not the number).
 - GetStarted + TasteNudge gating overlap — still worth re-checking on a real

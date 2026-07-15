@@ -7,10 +7,15 @@
 
 import { supabase } from '../supabase';
 
-/** Read one festival's saved media. Returns { photos, videos } (empty on miss
- *  or error, so callers never have to null-check). */
+/** Read one festival's saved media. Returns { photos, videos, ok }.
+ *
+ *  `ok` is the whole point: a read FAILURE and an empty festival both used to
+ *  come back as `{photos: [], videos: []}`, and the caller can't tell them
+ *  apart. Since a save upserts the full array, treating a failed read as "no
+ *  media yet" means the next photo added WIPES every photo and video already
+ *  saved. Callers must keep their editors locked unless `ok` is true. */
 export async function getFestivalMedia(festivalKey) {
-  if (!festivalKey) return { photos: [], videos: [] };
+  if (!festivalKey) return { photos: [], videos: [], ok: false };
   const { data, error } = await supabase
     .from('festival_media')
     .select('photos, videos')
@@ -19,15 +24,19 @@ export async function getFestivalMedia(festivalKey) {
   if (error) {
     // eslint-disable-next-line no-console
     console.warn('[Melo] getFestivalMedia', error.message);
-    return { photos: [], videos: [] };
+    return { photos: [], videos: [], ok: false };
   }
-  return { photos: data?.photos || [], videos: data?.videos || [] };
+  // No row is a legitimate empty — ok.
+  return { photos: data?.photos || [], videos: data?.videos || [], ok: true };
 }
 
-/** Upsert one festival's media (the full arrays — the pickers are controlled,
- *  so they always hand us the complete next list). */
-export async function setFestivalMedia(festivalKey, festivalName, userId, { photos = [], videos = [] } = {}) {
-  if (!festivalKey || !userId) return;
+// Serialize writes per festival key. The photo picker and the video picker each
+// upsert the FULL row, so two saves in flight at once that land out of order
+// leave the DB holding the older payload — losing whichever landed first. A
+// per-key promise chain makes the last call to setFestivalMedia the last write.
+const writeQueues = new Map();
+
+async function upsertMedia(festivalKey, festivalName, userId, photos, videos) {
   const { error } = await supabase
     .from('festival_media')
     .upsert(
@@ -44,5 +53,29 @@ export async function setFestivalMedia(festivalKey, festivalName, userId, { phot
   if (error) {
     // eslint-disable-next-line no-console
     console.warn('[Melo] setFestivalMedia', error.message);
+    return false;
   }
+  return true;
+}
+
+/** Upsert one festival's media (the full arrays — the pickers are controlled,
+ *  so they always hand us the complete next list). Resolves to true on success. */
+export async function setFestivalMedia(festivalKey, festivalName, userId, { photos = [], videos = [] } = {}) {
+  if (!festivalKey || !userId) return false;
+  const qKey = `${userId}|${festivalKey}`;
+
+  // Chain onto the previous write for this festival. `.catch` first, so one
+  // failed save doesn't wedge every save after it.
+  const prev = writeQueues.get(qKey) || Promise.resolve();
+  const tail = prev
+    .catch(() => {})
+    .then(() => upsertMedia(festivalKey, festivalName, userId, photos, videos))
+    .catch(() => false); // stored promise must never reject (unhandled rejection)
+
+  writeQueues.set(qKey, tail);
+  const ok = await tail;
+  // Drop the entry only if nothing queued behind us, so the map can't grow
+  // without bound across a long session.
+  if (writeQueues.get(qKey) === tail) writeQueues.delete(qKey);
+  return ok;
 }

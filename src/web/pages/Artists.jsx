@@ -75,7 +75,13 @@ export default function Artists() {
     [artists, bigFestKeys]
   );
 
-  const home = artists[0];
+  // The hero must come from the FOLDED list. Reading `artists[0]` crowns the
+  // most-seen artist overall — including one who was only ever seen at a big
+  // festival and therefore has no card on this page at all (they're folded into
+  // the festival tile). Log nothing but Coachella and the grid would show a
+  // single festival tile under a hero for an act with no card. `soloArtists`
+  // preserves `artists`' ordering, so [0] is still the most-seen.
+  const home = soloArtists[0];
   const superfans = useMemo(() => artists.filter((a) => a.count >= 3).length, [artists]);
   const topGenre = useMemo(() => {
     const g = {};

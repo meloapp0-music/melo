@@ -122,6 +122,29 @@ User requests (2026-06-14):
   each other's festival shows. Caveat: festival-name match is exact (case-sensitive
   `.in`); resolver-produced names are consistent, manual entries could miss.
 
+## Review pass on the savepoint commit `6eccdb9` (2026-07-14)
+
+- **PRIVACY LEAK in ShowDetail's "going with" (fixed).** The co-attendee block was
+  never gated on `isOwner` — which was computed and then unused — but ShowDetail
+  opens for a FRIEND'S show straight from the feed. On someone else's show,
+  `listAttendees(show.id)` is gated by `can_view_show_id`, so it returned everyone
+  **that friend** had tagged, and the 0011 insert policy only requires those people
+  to be **her** accepted friends. A complete stranger's real name and avatar could
+  render — under a first-person label ("You were there with Dave") — on a show you
+  never attended, tappable through to their profile. Now owner-only: on your own
+  show the same call can only return people *you* tagged, who must be *your*
+  accepted friends. `FestivalDetail` and `Home` were checked and never had this —
+  both read only from `friendsMatchingShows`, which is scoped to your friend ids.
+- **Fake "Friend" identities (fixed).** Ids that RLS wouldn't resolve still rendered
+  as an avatar lettered "F" that opened an empty profile. They're now folded into an
+  anonymous "+N" count — the same treatment `FriendsFeed` already gave them.
+- **Case-sensitive festival matching (fixed).** The caveat noted above turned out to
+  bite: `festKeyOf` lowercases, but the query FETCHING the rows was
+  `.in('festival', names)` — exact and case-sensitive — so a friend whose row read
+  "lollapalooza" was never returned and the case-insensitive key downstream never
+  got to see it. Now pulls friends' festival rows and lets `festKeyOf` decide
+  equality, which is what actually defines a match here.
+
 ## Open questions / follow-ups
 - **Streak milestones** ("on a 6-month streak") — not yet; show-count
   milestones + year recaps shipped. Streak needs calculateStreak over

@@ -35,11 +35,19 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
   }, [members.length, onClose]);
 
   // Load this festival's saved general media.
+  //
+  // `mediaLoaded` gates the pickers, and it must stay FALSE when the read
+  // fails. A save upserts the full array, so editing on top of a failed read
+  // (which looks identical to "no media yet") would wipe everything already
+  // saved. Better to show the gallery as unavailable than to destroy it.
+  const [mediaError, setMediaError] = useState(false);
   useEffect(() => {
     let cancelled = false;
     setMediaLoaded(false);
+    setMediaError(false);
     getFestivalMedia(outing.key).then((m) => {
       if (cancelled) return;
+      if (!m.ok) { setMediaError(true); return; }
       setFmPhotos(m.photos);
       setFmVideos(m.videos);
       mediaRef.current = { photos: m.photos, videos: m.videos };
@@ -270,6 +278,18 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
                 <VideoPicker videos={fmVideos} onChange={saveVideos} userId={userId} showId={festFolder} />
               </div>
             </>
+          )}
+
+          {/* Read failed — say so rather than showing an empty gallery the user
+              could "fix" by re-adding photos, which would overwrite the ones
+              already saved. */}
+          {userId && mediaError && (
+            <div className="detail-section">
+              <div className="detail-section-title">Festival photos</div>
+              <p className="detail-media-error">
+                Couldn’t load this festival’s photos and videos. Reopen the festival to try again.
+              </p>
+            </div>
           )}
 
           {actPhotos.length > 0 && (

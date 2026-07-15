@@ -230,7 +230,6 @@ export async function friendsMatchingShows(pairs, status = 'going') {
   const festPairs = clean.filter((p) => (p.festival || '').trim());
   const soloPairs = clean.filter((p) => !(p.festival || '').trim());
   const dates = [...new Set(soloPairs.map((p) => p.date))];
-  const festNames = [...new Set(festPairs.map((p) => p.festival.trim()))];
   const wantedSolo = new Set(soloPairs.map((p) => `${p.artist.toLowerCase().trim()}|${p.date}`));
   const wantedFest = new Set(festPairs.map((p) => festKeyOf(p.festival, p.date)));
 
@@ -243,8 +242,15 @@ export async function friendsMatchingShows(pairs, status = 'going') {
     const { data } = await base().in('date', dates);
     if (data) rows.push(...data);
   }
-  if (festNames.length) {
-    const { data } = await base().in('festival', festNames);
+  if (festPairs.length) {
+    // `festival` is free text and festKeyOf() lowercases, so an exact
+    // `.in('festival', names)` filter silently misses a friend whose row says
+    // "lollapalooza" (or carries different whitespace from another resolver
+    // path) — the case-insensitive key downstream never gets to see the row.
+    // Pull the friends' festival rows and let festKeyOf do the matching, which
+    // is what actually defines equality here. Bounded: friends only, and only
+    // rows that carry a festival at all.
+    const { data } = await base().not('festival', 'is', null).neq('festival', '');
     if (data) rows.push(...data);
   }
 

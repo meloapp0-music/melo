@@ -337,9 +337,18 @@ export default function App() {
     if (Object.keys(cached).length > 0) {
       setArtistImages((prev) => ({ ...prev, ...cached }));
     }
+    // Pass the songs the user logged per artist so ambiguous names (multiple
+    // bands called "Goose") resolve to the act they actually saw, matched by
+    // setlist against Deezer's catalog.
+    const songsByArtist = {};
+    shows.forEach((s) => {
+      const list = (s.setlist || []).filter(Boolean);
+      if (!s.artist || !list.length) return;
+      (songsByArtist[s.artist] ||= []).push(...list);
+    });
     prefetchArtistImages(artists, (updated) => {
       setArtistImages((prev) => ({ ...prev, ...updated }));
-    });
+    }, songsByArtist);
   }, [shows.length]);
 
   const getArtistImage = useCallback(
