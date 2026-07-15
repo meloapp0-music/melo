@@ -438,6 +438,10 @@ h4 { font-size: 17px; }
   -webkit-tap-highlight-color: transparent;
 }
 .stats-tile:active { transform: scale(0.97); }
+/* Inert tiles in a year-scoped Stats view: the number is year-specific, so it
+   must not link to an all-time list. Kill the base tile's tap affordances. */
+.stats-tile-static { cursor: default; }
+.stats-tile-static:active { transform: none; }
 .stats-tile-num {
   font-family: var(--font-heading);
   font-weight: 800;
@@ -520,6 +524,9 @@ h4 { font-size: 17px; }
   -webkit-tap-highlight-color: transparent;
 }
 .stats-city-chip:active { transform: scale(0.96); }
+/* Year scope: city chips target the all-time map, so they're inert. */
+.stats-city-chip-static { cursor: default; }
+.stats-city-chip-static:active { transform: none; }
 
 .feed-see-more {
   display: block;
