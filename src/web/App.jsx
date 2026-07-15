@@ -15,6 +15,7 @@ import VenueDetail from './components/VenueDetail';
 import ArtistDetail from './components/ArtistDetail';
 import ShareCardView from './components/ShareCardView';
 import HypeCard from './components/HypeCard';
+import KnowBeforeYouGo from './components/KnowBeforeYouGo';
 import RatePromptCard from './components/RatePromptCard';
 import ShowComparison from './components/ShowComparison';
 import UserProfileView from './pages/UserProfileView';
@@ -255,14 +256,37 @@ export default function App() {
   // Per-show repeat-protection lives in localStorage; the day-level
   // snooze re-arms when dayStamp rolls over.
 
-  // Pre-show hype: a Going show 0–2 days out, once per show per
-  // countdown-day (`melo_hype_<id>_<d>`).
+  // Know Before You Go: a Going show that's TODAY (daysUntil === 0), once per
+  // show (`melo_kbyg_<id>_<dayStamp>`). Split out of the hype window so show
+  // day gets the logistics card, not another "share the excitement" prompt.
+  const kbyg = useMemo(() => {
+    if (momentSnoozedDay === dayStamp || session.status !== 'signedIn') return null;
+    for (const show of shows.filter(isGoing)) {
+      if (daysUntil(show.date) !== 0) continue;
+      try {
+        if (!localStorage.getItem(`melo_kbyg_${show.id}_${dayStamp}`)) return { show };
+      } catch {
+        return { show };
+      }
+    }
+    return null;
+  }, [shows, momentSnoozedDay, dayStamp, session.status]);
+
+  const dismissKbyg = useCallback(() => {
+    if (kbyg) {
+      try { localStorage.setItem(`melo_kbyg_${kbyg.show.id}_${dayStamp}`, '1'); } catch {}
+    }
+    setMomentSnoozedDay(dayStamp);
+  }, [kbyg, dayStamp]);
+
+  // Pre-show hype: a Going show 1–2 days out (show day itself is the KBYG card
+  // above), once per show per countdown-day (`melo_hype_<id>_<d>`).
   const hype = useMemo(() => {
     if (momentSnoozedDay === dayStamp || session.status !== 'signedIn') return null;
     const candidates = shows
       .filter(isGoing)
       .map((s) => ({ show: s, d: daysUntil(s.date) }))
-      .filter(({ d }) => d >= 0 && d <= 2)
+      .filter(({ d }) => d >= 1 && d <= 2)
       .sort((a, b) => a.d - b.d);
     for (const c of candidates) {
       try {
@@ -719,7 +743,11 @@ export default function App() {
             onClose={dismissRatePrompt}
           />
         )}
-        {!ratePrompt && hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
+        {!ratePrompt && kbyg && !pushNav && !selectedShow && !showLog && !logEditTarget &&
+          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
+          <KnowBeforeYouGo show={kbyg.show} onClose={dismissKbyg} />
+        )}
+        {!ratePrompt && !kbyg && hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
           !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
           <HypeCard show={hype.show} daysLeft={hype.d} onClose={dismissHype} />
         )}

@@ -1586,6 +1586,61 @@ export function venueSearchUrl(venueName, city = '') {
   return `https://www.google.com/search?q=${q}`;
 }
 
+// Best-effort venue Instagram / X handle from Wikidata (P2003 = Instagram
+// username, P2002 = Twitter/X username). Coverage is ~40% — marquee venues
+// mostly; empty for clubs and even some big ones (verified: Wrigley Field has
+// neither). We NEVER guess a handle from the name (MSG's is the non-obvious
+// "thegarden"; slug-guessing surfaces impersonators) — callers degrade to a
+// search when this is empty. Same Wikipedia→QID path as lookupVenueUrl.
+const venueSocialsCache = new Map();
+export async function fetchVenueSocials(venueName, city = '') {
+  const empty = { instagram: '', twitter: '' };
+  if (!venueName) return empty;
+  const cacheKey = `${venueName}|${city}`.toLowerCase();
+  if (venueSocialsCache.has(cacheKey)) return venueSocialsCache.get(cacheKey);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const query = city ? `${venueName} ${city}` : venueName;
+    const searchUrl =
+      `https://en.wikipedia.org/w/api.php?action=query&list=search` +
+      `&srsearch=${encodeURIComponent(query)}&srlimit=1&format=json&origin=*`;
+    const searchRes = await fetch(searchUrl, { signal: controller.signal });
+    if (!searchRes.ok) return empty; // transient — don't cache
+    const title = (await searchRes.json())?.query?.search?.[0]?.title;
+    if (!title) { venueSocialsCache.set(cacheKey, empty); return empty; }
+
+    const propsUrl =
+      `https://en.wikipedia.org/w/api.php?action=query&prop=pageprops` +
+      `&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+    const propsRes = await fetch(propsUrl, { signal: controller.signal });
+    if (!propsRes.ok) return empty;
+    const pages = (await propsRes.json())?.query?.pages || {};
+    const qid = Object.values(pages)[0]?.pageprops?.wikibase_item;
+    if (!qid) { venueSocialsCache.set(cacheKey, empty); return empty; }
+
+    const entityRes = await fetch(
+      `https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`,
+      { signal: controller.signal }
+    );
+    if (!entityRes.ok) return empty;
+    const claims = (await entityRes.json())?.entities?.[qid]?.claims || {};
+    const ig = claims.P2003?.[0]?.mainsnak?.datavalue?.value;
+    const tw = claims.P2002?.[0]?.mainsnak?.datavalue?.value;
+    const result = {
+      instagram: ig ? igProfileUrl(ig) : '',
+      twitter: tw ? `https://x.com/${tw}` : '',
+    };
+    venueSocialsCache.set(cacheKey, result);
+    return result;
+  } catch {
+    return empty;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Fetch upcoming for all logged artists
 export async function fetchAllUpcomingEvents(artistNames) {
   const unique = [...new Set(artistNames)];
@@ -1903,9 +1958,12 @@ export async function fetchArtistBio(artistName) {
         .sort((a, b) => (b.count || 0) - (a.count || 0))
         .slice(0, 6)
         .map((g) => g.name),
+      // Homepage + all social rels (MusicBrainz orders these alphabetically, so
+      // Instagram sits behind Facebook/Twitter — a tight cap would drop it, and
+      // artistSocials() needs it). Only a handful exist per artist.
       urls: (detail.relations || [])
         .filter((r) => r.type === 'official homepage' || r.type === 'social network')
-        .slice(0, 3)
+        .slice(0, 10)
         .map((r) => ({ type: r.type, url: r.url?.resource || '' })),
     };
 
@@ -2096,9 +2154,34 @@ export async function fetchShowWeather(city, dateStr) {
 // venue-name match when several events land on the same day. Returns a
 // formatted string ("7:30 PM") or null — plenty of shows (especially
 // non-TM venues) won't resolve, and the card just omits the chip.
-export async function fetchEventStartTime(artist, venue, dateStr) {
+// "19:30:00" -> "7:30 PM". Returns null for missing/garbage.
+function formatLocalTime(t) {
+  if (!t) return null;
+  const [hh, mm] = t.split(':').map(Number);
+  if (Number.isNaN(hh)) return null;
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+}
+
+// Session cache for the show-day blob, keyed by artist|venue|date. The pop-up
+// and the ShowDetail section both mount ShowDayInfo, so this makes the second
+// mount free. `null` (no TM match) is cached too, so a miss isn't re-fetched.
+const showDayCache = new Map();
+
+// Show-day "Know Before You Go" intel from Ticketmaster — a strict superset of
+// the old start-time lookup (same query + same date/venue match). Returns every
+// field TM exposes for the matched event; each is best-effort (live population
+// on a real listing: pleaseNote ~85%, ticketLimit/seatmap/accessibility ~80%,
+// box office / venue rules / parking ~45%, info ~40%). Callers render only what
+// resolved. One call, cached — costs nothing beyond the start-time fetch we
+// already did. There is NO doors-time field in TM; `startTime` is the show
+// start, labelled as such. See docs/initiatives/2026-07-15-know-before-you-go.md.
+export async function fetchShowDayInfo(artist, venue, dateStr) {
   const key = import.meta.env.VITE_TICKETMASTER_KEY;
   if (!key || !artist || !dateStr) return null;
+  const cacheKey = `${artist}|${venue}|${dateStr}`;
+  if (showDayCache.has(cacheKey)) return showDayCache.get(cacheKey);
   try {
     const params = new URLSearchParams({
       apikey: key,
@@ -2108,29 +2191,72 @@ export async function fetchEventStartTime(artist, venue, dateStr) {
       sort: 'date,asc',
     });
     const res = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`);
-    if (!res.ok) return null;
+    if (!res.ok) return null; // transient — don't poison the cache
     const data = await res.json();
+    // Match on date; keep events with no localTime as candidates (we still want
+    // their rules/parking/etc., not only the ones that published a showtime).
     const events = (data?._embedded?.events || []).filter(
-      (ev) => ev?.dates?.start?.localDate === dateStr && ev?.dates?.start?.localTime
+      (ev) => ev?.dates?.start?.localDate === dateStr
     );
-    if (events.length === 0) return null;
+    if (events.length === 0) { showDayCache.set(cacheKey, null); return null; }
 
+    // Choose the best event for the venue. Since we now keep timeless events as
+    // candidates (for their rules/parking), a bare `find` could pick a timeless
+    // or cancelled duplicate listing over the real on-sale one on a busy date —
+    // so within the venue matches, prefer an event that has a showtime AND isn't
+    // cancelled, then any with a showtime, then any that's live, then anything.
     const vlc = (venue || '').toLowerCase();
+    const venueMatch = (ev) => {
+      const evVenue = (ev?._embedded?.venues?.[0]?.name || '').toLowerCase();
+      return vlc && evVenue && (evVenue.includes(vlc) || vlc.includes(evVenue));
+    };
+    const hasTime = (ev) => !!ev?.dates?.start?.localTime;
+    const isLive = (ev) => !['cancelled', 'postponed', 'rescheduled'].includes(ev?.dates?.status?.code);
+    const venueMatches = events.filter(venueMatch);
+    const pool = venueMatches.length ? venueMatches : events;
     const match =
-      events.find((ev) => {
-        const evVenue = (ev?._embedded?.venues?.[0]?.name || '').toLowerCase();
-        return vlc && evVenue && (evVenue.includes(vlc) || vlc.includes(evVenue));
-      }) || events[0];
+      pool.find((ev) => hasTime(ev) && isLive(ev)) ||
+      pool.find(hasTime) ||
+      pool.find(isLive) ||
+      pool[0];
 
-    const t = match.dates.start.localTime; // "19:30:00"
-    const [hh, mm] = t.split(':').map(Number);
-    if (Number.isNaN(hh)) return null;
-    const ampm = hh >= 12 ? 'PM' : 'AM';
-    const h12 = hh % 12 === 0 ? 12 : hh % 12;
-    return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+    const v = match?._embedded?.venues?.[0] || {};
+    const gi = v.generalInfo || {};
+    const box = v.boxOfficeInfo || {};
+    const boxOffice = [
+      box.openHoursDetail && { label: 'Hours', text: box.openHoursDetail.trim() },
+      box.willCallDetail && { label: 'Will call', text: box.willCallDetail.trim() },
+      box.phoneNumberDetail && { label: 'Phone', text: box.phoneNumberDetail.trim() },
+      box.acceptedPaymentDetail && { label: 'Payment', text: box.acceptedPaymentDetail.trim() },
+    ].filter(Boolean);
+
+    const statusCode = match?.dates?.status?.code || '';
+    const info = {
+      startTime: formatLocalTime(match?.dates?.start?.localTime),
+      // Only surface a status badge when the show ISN'T simply happening — a
+      // stale note next to a cancelled sibling event would mislead.
+      status: ['cancelled', 'postponed', 'rescheduled'].includes(statusCode) ? statusCode : '',
+      notes: [match?.pleaseNote, match?.info].map((s) => (s || '').trim()).filter(Boolean),
+      venueRules: (gi.generalRule || '').trim(),
+      agePolicy: (gi.childRule || '').trim(),
+      parking: (v.parkingDetail || '').trim(),
+      boxOffice,
+      accessibility: (match?.accessibility?.info || '').trim(),
+      ticketLimit: (match?.ticketLimit?.info || '').trim(),
+      seatmapUrl: match?.seatmap?.staticUrl || '',
+      tmEventUrl: match?.url || '',
+    };
+    showDayCache.set(cacheKey, info);
+    return info;
   } catch {
-    return null;
+    return null; // transient — leave the cache empty so it retries
   }
+}
+
+// Back-compat: callers that only want the formatted start time.
+export async function fetchEventStartTime(artist, venue, dateStr) {
+  const info = await fetchShowDayInfo(artist, venue, dateStr);
+  return info?.startTime || null;
 }
 
 // --- Link builders ---
@@ -2145,4 +2271,42 @@ export function appleMapsUrl(venue, city) {
 export function venuePolicySearchUrl(venue, city) {
   const q = `${[venue, city].filter(Boolean).join(' ')} bag policy entry rules`;
   return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+}
+
+// ===== Instagram helpers (deep-link to a PROFILE — never fetch posts) =====
+// There is no API to fetch a public account's posts or resolve a handle from a
+// name (Meta killed Basic Display in Dec 2024). The ceiling is a profile link.
+// On iOS, https://instagram.com/<h> opens the IG app if installed, else Safari
+// — no custom scheme, no Info.plist change (v1). See the KBYG initiative note.
+
+// Pull a profile handle out of any instagram.com URL (MusicBrainz gives full
+// URLs). Rejects non-profile paths (posts, reels, explore). '' if not IG.
+export function igHandleFromUrl(url) {
+  const m = (url || '').match(/instagram\.com\/(?:_u\/)?@?([^/?#]+)/i);
+  const h = (m?.[1] || '').replace(/^@/, '');
+  return ['p', 'reel', 'reels', 'explore', 'tv', 'stories'].includes(h.toLowerCase()) ? '' : h;
+}
+
+export function igProfileUrl(handle) {
+  const h = (handle || '').replace(/^@/, '').trim();
+  return h ? `https://instagram.com/${h}` : '';
+}
+
+// No IG text-search deep link exists, so a site-scoped Google search is the
+// honest degrade — one tap lands on the account (same pattern as the bag-policy
+// search). This is how we reach a venue's IG when its handle is unknown.
+export function igSearchUrl(name) {
+  return `https://www.google.com/search?q=${encodeURIComponent(`site:instagram.com "${name}"`)}`;
+}
+
+// Artist Instagram + official website from a MusicBrainz bio ({ urls: [{type,
+// url}] }) — already fetched by fetchArtistBio, just unused for socials today.
+export function artistSocials(bio) {
+  const urls = bio?.urls || [];
+  const igRel = urls.find((u) => /instagram\.com/i.test(u.url || ''));
+  const home = urls.find((u) => u.type === 'official homepage');
+  return {
+    instagram: igRel ? igProfileUrl(igHandleFromUrl(igRel.url)) : '',
+    website: home?.url || '',
+  };
 }

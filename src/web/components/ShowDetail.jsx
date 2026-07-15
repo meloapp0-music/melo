@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil, festivalKey } from '../store';
-import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl, fetchShowWeather, fetchEventStartTime, appleMapsUrl, venuePolicySearchUrl } from '../api';
+import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
+import ShowDayInfo from './ShowDayInfo';
 import { track } from '../lib/analytics';
 import { listAttendees, friendsMatchingShows } from '../lib/db/shows';
 import { getProfilesByIds } from '../lib/db/profiles';
@@ -208,25 +209,10 @@ export default function ShowDetail({ show, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show.id]);
   // --- Show Day intel (upcoming shows only) ---
-  // Weather for the show date (Open-Meteo, ~15-day horizon) and the
-  // event's local start time (Ticketmaster). Both are best-effort —
-  // whatever doesn't resolve simply doesn't render. Fetched once per
-  // show open; module-level caches in api.js keep repeats free.
+  // The full "Know Before You Go" panel is its own self-contained component
+  // (ShowDayInfo) — showtime, weather, venue/artist Instagram, and the official
+  // Ticketmaster info. It does its own module-cached fetching.
   const upcoming = !isAttended(show) && !Number.isNaN(daysUntil(show.date)) && daysUntil(show.date) >= 0;
-  const [weather, setWeather] = useState(null);
-  const [startTime, setStartTime] = useState(null);
-  const [showdayLoading, setShowdayLoading] = useState(true);
-  useEffect(() => {
-    if (!upcoming) return;
-    let cancelled = false;
-    setShowdayLoading(true);
-    Promise.allSettled([
-      fetchShowWeather(show.city, show.date).then((w) => { if (!cancelled && w) setWeather(w); }),
-      fetchEventStartTime(show.artist, show.venue, show.date).then((t) => { if (!cancelled && t) setStartTime(t); }),
-    ]).then(() => { if (!cancelled) setShowdayLoading(false); });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show.id, upcoming]);
 
   const artistImage = getArtistImage(show.artist);
   const gradient = getArtistGradient(show.artist);
@@ -385,57 +371,8 @@ export default function ShowDetail({ show, onClose }) {
               deep-links here. Upcoming shows only. */}
           {upcoming && (
             <div className="showday-card">
-              <div className="showday-label">Show day</div>
-              {showdayLoading ? (
-                <div className="showday-chips">
-                  <div className="showday-chip showday-chip-skeleton" />
-                  <div className="showday-chip showday-chip-skeleton" />
-                </div>
-              ) : (weather || startTime) && (
-                <div className="showday-chips">
-                  {startTime && (
-                    <div className="showday-chip">
-                      <span className="showday-chip-icon" aria-hidden="true">🕖</span>
-                      <span className="showday-chip-text">
-                        <b>{startTime}</b>
-                        <small>showtime</small>
-                      </span>
-                    </div>
-                  )}
-                  {weather && (
-                    <div className="showday-chip">
-                      <span className="showday-chip-icon" aria-hidden="true">{weather.emoji}</span>
-                      <span className="showday-chip-text">
-                        <b>{weather.hi}° / {weather.lo}°</b>
-                        <small>
-                          {weather.label}
-                          {weather.rainPct != null && weather.rainPct >= 20 ? ` · ${weather.rainPct}% rain` : ''}
-                        </small>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="showday-links">
-                <a
-                  className="showday-link"
-                  href={appleMapsUrl(show.venue, show.city)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => track('showday_link_tapped', { link: 'directions' })}
-                >
-                  <span aria-hidden="true">🧭</span> Directions
-                </a>
-                <a
-                  className="showday-link"
-                  href={venuePolicySearchUrl(show.venue, show.city)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => track('showday_link_tapped', { link: 'venue_rules' })}
-                >
-                  <span aria-hidden="true">🎒</span> Bag policy & rules
-                </a>
-              </div>
+              <div className="showday-label">Know Before You Go</div>
+              <ShowDayInfo show={show} />
             </div>
           )}
 

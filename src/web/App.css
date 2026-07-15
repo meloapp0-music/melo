@@ -8494,10 +8494,12 @@ h4 { font-size: 17px; }
 }
 .showday-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .showday-link {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px); /* 2-up, wrapping — up to 5 actions now */
+  min-width: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8511,6 +8513,92 @@ h4 { font-size: 17px; }
   font-weight: 700;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cancelled / postponed / rescheduled — pinned above everything. */
+.showday-status {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #C0392B;
+}
+.showday-status-postponed, .showday-status-rescheduled { background: #B9770E; }
+
+/* Ticketmaster free-text blocks — venue rules, parking, box office, notes.
+   Rendered as plain text (never HTML). */
+.showday-info {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.showday-info-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brown);
+  margin-bottom: 4px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.showday-info-body {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--brown-muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.showday-info-line { margin-bottom: 2px; }
+.showday-info-line b { color: var(--brown); font-weight: 700; }
+
+.showday-seatmap {
+  display: block;
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(61, 44, 30, 0.1);
+}
+.showday-seatmap img { display: block; width: 100%; height: auto; }
+
+.showday-tm {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+  text-decoration: none;
+}
+
+/* Know Before You Go pop-up — the HypeCard shell with a scrollable info body.
+   The hero stays fixed, the info scrolls, the CTA + dismiss stay pinned. For
+   that the body must be a bounded flex column (min-height:0 lets it shrink
+   below content height so the inner overflow actually engages). Scoped to
+   .kbyg-card so the regular HypeCard body is untouched. */
+.kbyg-card { max-height: 88vh; display: flex; flex-direction: column; }
+.kbyg-card .hype-hero { flex: 0 0 auto; }
+.kbyg-card .hype-body { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.kbyg-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 4px;
+}
+.kbyg-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 12px -4px 4px;
+  padding: 0 4px;
 }
 
 /* ===== Friends activity feed (Home) =====
