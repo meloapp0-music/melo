@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../App';
+import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import {
   getArtistGradient, formatDate, daysUntil,
   SHOW_STATUS, getShowStatus, isAttended, isGoing, isWishlist,
@@ -21,7 +22,10 @@ function upcomingLabel(dateStr) {
 }
 
 export default function MyShows() {
-  const { shows, setSelectedShow, getArtistImage, setSelectedFestival } = useApp();
+  const { shows: allShows, setSelectedShow, getArtistImage, setSelectedFestival } = useApp();
+  // Scoped when arriving from a Stats year tile. Named `shows` so the rest of
+  // the page (tab counts, filters, grouping) needs no changes.
+  const { scoped: shows } = useYearScope(allShows);
   const [search, setSearch] = useState('');
   const [view, setView] = useState('grid');
   const [activeTab, setActiveTab] = useState(SHOW_STATUS.ATTENDED);
@@ -112,6 +116,7 @@ export default function MyShows() {
           Your whole concert history.
         </p>
       </div>
+      <YearScopeBanner />
 
       <div className="shows-search">
         <svg viewBox="0 0 24 24">

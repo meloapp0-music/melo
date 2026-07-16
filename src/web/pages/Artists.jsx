@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../App';
+import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import { getArtistGradient, isAttended, groupIntoOutings, festivalKey } from '../store';
 
 const article = (w) => (/^[aeiou]/i.test(w || '') ? 'an' : 'a');
@@ -17,7 +18,10 @@ export default function Artists() {
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
 
-  const attended = useMemo(() => shows.filter(isAttended).filter((s) => s.artist), [shows]);
+  // Scoped when opened from a Stats year tile, so the count that got tapped is
+  // the count you land on.
+  const { scoped: yearShows } = useYearScope(shows);
+  const attended = useMemo(() => yearShows.filter(isAttended).filter((s) => s.artist), [yearShows]);
 
   // Per-artist summary (keeps its shows so we can tell festival vs standalone).
   const artists = useMemo(() => {
@@ -156,6 +160,7 @@ export default function Artists() {
         Stats
       </button>
       <div className="shows-header" style={{ marginBottom: 6 }}><h1>Your Lineup</h1></div>
+      <YearScopeBanner />
 
       {artists.length === 0 ? (
         <p style={{ color: 'var(--brown-muted)', fontSize: 15, marginTop: 4 }}>

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useApp } from '../App';
+import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import { isAttended, getArtistGradient, festivalKey, latestShowPhoto } from '../store';
 
 // Heuristic venue "type" from its name — gives each venue an icon + lets us
@@ -25,6 +26,7 @@ const TYPE_ORDER = ['arena', 'amphitheater', 'theater', 'club', 'festival', 'out
 
 export default function Venues() {
   const { shows, navigate, setSelectedVenue, getVenueImage, prefetchVenueImages } = useApp();
+  const { scoped: yearShows } = useYearScope(shows);
   const [groupBy, setGroupBy] = useState('visits'); // 'visits' | 'type' | 'city'
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
@@ -36,8 +38,8 @@ export default function Venues() {
   // no photo for a tent). Festivals already live in their own cards / detail
   // pages, so they don't belong in the venue tab.
   const attended = useMemo(
-    () => shows.filter(isAttended).filter((s) => (s.venue || '').trim() && !festivalKey(s)),
-    [shows]
+    () => yearShows.filter(isAttended).filter((s) => (s.venue || '').trim() && !festivalKey(s)),
+    [yearShows]
   );
 
   const venues = useMemo(() => {
@@ -120,6 +122,7 @@ export default function Venues() {
         Stats
       </button>
       <div className="shows-header" style={{ marginBottom: 6 }}><h1>Your Rooms</h1></div>
+      <YearScopeBanner />
 
       {attended.length === 0 ? (
         <p style={{ color: 'var(--brown-muted)', fontSize: 15, marginTop: 4 }}>

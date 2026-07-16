@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App';
+import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 import { resolveCities, geoSpread, totalMilesTraveled } from '../lib/geo';
 
@@ -15,7 +16,8 @@ export default function ConcertMap() {
   // markers that weren't there on its first pass.
   const [markersVersion, setMarkersVersion] = useState(0);
 
-  const attended = shows.filter(isAttended);
+  const { scoped: yearShows } = useYearScope(shows);
+  const attended = yearShows.filter(isAttended);
   const cityCounts = {};
   attended.forEach((s) => {
     if (s.city) cityCounts[s.city] = (cityCounts[s.city] || 0) + 1;
@@ -176,6 +178,7 @@ export default function ConcertMap() {
           {cityCount} {cityCount === 1 ? 'city' : 'cities'} explored
         </p>
       </div>
+      <div style={{ padding: '0 20px' }}><YearScopeBanner /></div>
 
       {attended.length > 0 && (
         <div className="map-travel">

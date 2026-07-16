@@ -70,3 +70,33 @@ engagement. The panel resolved the two non-obvious calls:
   two year buckets (each row filters by its own date). Vanishingly rare.
 - Not exercised through a real logged-in account (sign-in wall) — verified via
   the component harness + build only.
+
+## Year-scoped destinations (2026-07-16) — supersedes the "inert tiles" call
+
+Aidan: *"when i go into specific years, i should be able to click into artists,
+cities, venues, shows and songs and see each year of those."*
+
+He's right, and this **replaces the panel's `navigation_verdict`**. The panel made
+the tiles inert in year scope because a year-scoped "3 Shows" must not open an
+87-row all-time list — correct diagnosis, but it treated the destinations as
+fixed. The real fix was to make them year-aware, which removes the reason to go
+inert at all. **All tiles are live again**, including Venues (which never had a
+destination) and the Cities/Map chips + "See all" links.
+
+- **`navigate(page, { year })`** (App.jsx) carries the scope, and — the important
+  half — **every navigate WITHOUT a year clears it**. So the scope is
+  self-managing and cannot leak into a page opened from the nav bar later. That
+  stale-filter trap is the main risk of this feature and it's closed by
+  construction, not by discipline.
+- **`components/YearScope.jsx`** — `useYearScope(shows)` (one line per page) +
+  `<YearScopeBanner />`. The banner is not decoration: a silently filtered page is
+  worse than no filter, because someone seeing 3 artists when they own 80 assumes
+  data loss. It always states the scope and always offers "Show all time".
+- Scoped: **Artists (Your Lineup), ConcertMap, Songs, Venues (Your Rooms),
+  MyShows**. Each filters its own attended set, so festival grouping, tab counts
+  and taste sorts all keep working untouched.
+- **Verified** by driving the real Stats + Artists with 3 years of data: All Time
+  = 6 artists → 2024 = 2; tapping "2 Artists" lands on Your Lineup scoped to 2024
+  showing exactly Wilco + Spoon; banner reads "Showing 2024 · Show all time";
+  clearing widens in place to all 6; 2025 → Goose + The National; and navigating
+  without a year clears the scope every time.

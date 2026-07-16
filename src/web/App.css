@@ -438,10 +438,29 @@ h4 { font-size: 17px; }
   -webkit-tap-highlight-color: transparent;
 }
 .stats-tile:active { transform: scale(0.97); }
-/* Inert tiles in a year-scoped Stats view: the number is year-specific, so it
-   must not link to an all-time list. Kill the base tile's tap affordances. */
+/* A tile with no destination (rare) — kill the base tile's tap affordances. */
 .stats-tile-static { cursor: default; }
 .stats-tile-static:active { transform: none; }
+
+/* Year scope carried in from Stats. Loud enough that a filtered page can never
+   be mistaken for missing data, and always one tap from the way out. */
+.yearscope {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: linear-gradient(135deg, rgba(244,162,97,0.16), rgba(232,87,58,0.11));
+  border: 1px solid rgba(232,87,58,0.22);
+  border-radius: 12px;
+  padding: 9px 12px;
+  margin-bottom: 14px;
+}
+.yearscope-txt { font-size: 13px; color: #6E6055; font-weight: 600; }
+.yearscope-txt b { color: #2B1D12; font-weight: 800; }
+.yearscope-clear {
+  flex: none; border: none; background: transparent;
+  font-size: 12.5px; font-weight: 800; color: var(--orange);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  padding: 2px 0;
+}
+.yearscope-clear:active { opacity: 0.6; }
 .stats-tile-num {
   font-family: var(--font-heading);
   font-weight: 800;

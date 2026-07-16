@@ -1,11 +1,13 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useApp } from '../App';
+import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 import { fetchSongPreview } from '../api';
 
 export default function Songs() {
   const { shows, getArtistImage } = useApp();
-  const attended = shows.filter(isAttended);
+  const { scoped: yearShows } = useYearScope(shows);
+  const attended = yearShows.filter(isAttended);
   const [expanded, setExpanded] = useState(() => new Set());
   const [playing, setPlaying] = useState(null); // `${artist}|${song}` or null
   const [loading, setLoading] = useState(null);
@@ -195,6 +197,7 @@ export default function Songs() {
       </div>
 
       <div style={{ padding: '0 20px' }}>
+      <YearScopeBanner />
 
       <div className="songs-stats">
         <div className="songs-stat-card">

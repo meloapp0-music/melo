@@ -99,9 +99,11 @@ export default function Stats() {
       ? `Your ${activeYear} so far.`
       : `Your ${activeYear} in live music.`;
 
-  // When a year is selected, tiles/links that jump to all-time collection pages
-  // go inert (their number is year-scoped; the destination isn't).
-  const tilesLive = activeYear === 'all';
+  // Tiles used to go inert in year scope, because a year-scoped "3 Shows" must
+  // not open an 87-row all-time list. The real fix was to make the destinations
+  // year-aware, which they now are: navigate() carries the year and each page
+  // scopes itself (see components/YearScope). So everything stays tappable.
+  const navYear = activeYear === 'all' ? undefined : activeYear;
 
   if (attended.length === 0) {
     return (
@@ -117,15 +119,17 @@ export default function Stats() {
   // A stat tile: a navigating <button> in all-time scope, an inert <div> in a
   // year scope. `to` omitted → always static (the Venues tile).
   const Tile = ({ num, label, to }) => {
-    if (tilesLive && to) {
+    if (to) {
       return (
-        <button type="button" className="stats-tile" onClick={() => navigate(to)}>
+        <button type="button" className="stats-tile" onClick={() => navigate(to, { year: navYear })}>
           <div className="stats-tile-num">{num}</div><div className="stats-tile-label">{label}</div>
         </button>
       );
     }
+    // No destination (Venues had none) → static, but still tappable-looking is
+    // wrong, so keep the -static class.
     return (
-      <div className={`stats-tile${tilesLive ? '' : ' stats-tile-static'}`}>
+      <div className="stats-tile stats-tile-static">
         <div className="stats-tile-num">{num}</div><div className="stats-tile-label">{label}</div>
       </div>
     );
@@ -165,7 +169,7 @@ export default function Stats() {
         <Tile num={s.artists} label="Artists" to="artists" />
         <Tile num={s.cities} label="Cities" to="map" />
         <Tile num={s.songs} label="Songs" to="songs" />
-        <Tile num={s.venues} label="Venues" />
+        <Tile num={s.venues} label="Venues" to="venues" />
         <Tile num={avgLabel} label="Avg Score" to="rankings" />
       </div>
 
@@ -221,7 +225,7 @@ export default function Stats() {
         <div className="profile-section">
           <div className="home-section-title">
             <h3>Top Venues</h3>
-            {tilesLive && <button className="home-see-all" onClick={() => navigate('venues')}>See all</button>}
+            <button className="home-see-all" onClick={() => navigate('venues', { year: navYear })}>See all</button>
           </div>
           <div className="stats-artists">
             {s.topVenues.map(([name, count], i) => (
@@ -239,13 +243,11 @@ export default function Stats() {
         <div className="profile-section">
           <div className="home-section-title">
             <h3>Cities</h3>
-            {tilesLive && <button className="home-see-all" onClick={() => navigate('map')}>Map</button>}
+            <button className="home-see-all" onClick={() => navigate('map', { year: navYear })}>Map</button>
           </div>
           <div className="stats-city-chips">
             {s.topCities.map((c) => (
-              tilesLive
-                ? <button key={c} type="button" className="stats-city-chip" onClick={() => navigate('map')}>{c}</button>
-                : <span key={c} className="stats-city-chip stats-city-chip-static">{c}</span>
+              <button key={c} type="button" className="stats-city-chip" onClick={() => navigate('map', { year: navYear })}>{c}</button>
             ))}
           </div>
         </div>

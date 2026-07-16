@@ -541,7 +541,15 @@ export default function App() {
     }
   };
 
-  const navigate = (page) => {
+  // Year scope carried from Stats into its destination pages. Stats' tiles are
+  // year-scoped numbers ("3 Shows" in 2024), so the page they open must show
+  // that year — not the all-time list. `navigate(page, { year })` sets it and
+  // EVERY other navigate clears it, so the scope can't silently persist into a
+  // page reached from the nav bar later.
+  const [statsYear, setStatsYear] = useState(null);
+
+  const navigate = (page, opts = {}) => {
+    setStatsYear(opts.year ?? null);
     if (page === 'log') {
       setShowLog(true);
     } else if (['home', 'shows', 'map', 'songs', 'profile', 'buddies', 'stats'].includes(page)) {
@@ -585,6 +593,8 @@ export default function App() {
     setSelectedUserId,
     subPage,
     navigate,
+    statsYear,
+    setStatsYear,
     updateSettings,
     updateProfile,
     showToast,
