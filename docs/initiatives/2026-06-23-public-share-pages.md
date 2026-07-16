@@ -31,6 +31,50 @@ real reach + SEO. Also the natural home for the share-card QR deep-link, which t
 - Point the share-card QR here instead of the bare App Store URL.
 
 ## Changes made
+- 2026-07-16: **⚠️ ARCHITECTURE CORRECTION — melo.show is NOT a Pages project.**
+  Everything above assumed Cloudflare Pages + the `functions/` convention. It's
+  wrong. Verified on Aidan's account: `wrangler pages project list` returns
+  **nothing**, the dashboard serves the site from
+  `/workers/services/view/odd-water-9335/`, and it reports *"Variables cannot be
+  added to a Worker that only has static assets."* melo.show is a **Worker with
+  static assets** — Cloudflare's newer model, where `functions/` means nothing.
+  The page logic was fine; the wrapper was wrong.
+  - `marketing/functions/**` → **`marketing/routes/{show,tonight}.js`**, converted
+    from Pages' `onRequestGet(context)` to plain `handleShow(request, env, token)`
+    / `handleTonight(request, env)`.
+  - **`marketing/worker.js`** (new) — the entry. Routes `/tonight` and
+    `/s/<token>`; everything else falls through to `env.ASSETS`. Static assets win
+    by default, so `/`, `/privacy.html` etc. never reach the Worker.
+  - **`marketing/wrangler.jsonc`** (new) — `name: odd-water-9335` (must match the
+    EXISTING Worker or a deploy creates a second one melo.show doesn't point at),
+    `compatibility_date` pinned to the 2026-06-25 the Worker already runs.
+  - **Static site moved to `marketing/site/`** — and this is load-bearing twice
+    over:
+    1. **Privacy.** `assets.directory: "."` would have published everything else
+       in marketing/ — the marketing OS, the content calendars,
+       `social-calendar-2026-05.xlsx`, App Store screenshots. Verified they are
+       currently 404 on melo.show; this keeps them that way by construction
+       rather than by an ignore-file.
+    2. **It broke `wrangler dev`.** With `.`, wrangler watched its own config,
+       worker.js, `.dev.vars` and the `.wrangler/` cache it writes → an endless
+       "Reloading local server…" loop that dropped in-flight requests. `/tonight`
+       hung forever and never even logged. Moving the assets to `./site` → zero
+       reloads.
+  - **Honest failure state (real bug found while verifying).** Ticketmaster 429'd
+    (daily quota, burned by testing) and `/tonight` rendered *"Nothing listed
+    tonight — quiet one"* — on a night with 9 real Chicago shows. A lookup failure
+    must never be indistinguishable from a quiet night on a card built for
+    POSTING. Now renders "Couldn't load tonight's shows" and returns `no-store`
+    so a 429 can't be cached past the thing that caused it.
+  - **Verified locally** (`cd marketing && npx wrangler dev`): `/` 200 (asset),
+    `/privacy.html` 307 (Cloudflare trailing-slash), `/tonight` 200,
+    `/s/abc` **404 via a REAL Supabase round-trip** (unknown token — the RPC and
+    the security model work end-to-end), internal docs 404. Zero reload loops.
+  - **DEPLOY (corrected, again):** `cd marketing && npx wrangler deploy`.
+    NOT `wrangler pages deploy` — there is no Pages project. Env vars go on the
+    Worker (Settings → Variables), and they can only be added once the Worker has
+    code, i.e. AFTER the first deploy.
+
 - 2026-07-16: **Phase 2 built (dev) — the video cap, done properly.**
   - **CORRECTION to the research:** the claim that "45MB is the Free tier's 50MB
     ceiling showing through" was an INFERENCE and it was **wrong** — Aidan is on

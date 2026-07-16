@@ -8,11 +8,12 @@
 //                          posting stays one-city even though the code isn't)
 //   /tonight?city=Austin -> any city, because it costs nothing to parameterize
 //
-// Requires one Pages env var: TICKETMASTER_KEY. (The same key already ships in
-// the app bundle as VITE_TICKETMASTER_KEY, so this exposes nothing new.)
+// Requires one env var on the Worker: TICKETMASTER_KEY. (The same key already
+// ships in the app bundle as VITE_TICKETMASTER_KEY, so this exposes nothing new.)
 //
-// NOTE: only compiles via `npx wrangler pages deploy marketing/` — a dashboard
-// drag-and-drop silently ignores /functions.
+// Routed from worker.js — melo.show is a Worker with static assets, not a Pages
+// project, so there is no `functions/` convention. Deploy:
+//   cd marketing && npx wrangler deploy
 
 const DEFAULT_CITY = 'Chicago';
 const ORANGE = '#E8573A';
@@ -30,7 +31,7 @@ const cleanName = (s) => String(s ?? '')
   .replace(/\s{2,}/g, ' ')
   .trim();
 
-function page({ city, shows, total, dateLabel }) {
+function page({ city, shows, total, dateLabel, failed }) {
   const rows = shows.map((s, i) => `
     <li class="row">
       <span class="rank">${i + 1}</span>
@@ -128,7 +129,13 @@ function page({ city, shows, total, dateLabel }) {
          <ul>${rows}</ul>
          ${total > shows.length
            ? `<div class="more">+ ${total - shows.length} more across the city</div>` : ''}`
-      : `<div class="empty">Nothing listed tonight — quiet one.</div>`}
+      // A LOOKUP FAILURE MUST NOT LOOK LIKE A QUIET NIGHT. Ticketmaster
+      // rate-limits (429s on quota) and has outages; rendering "quiet one" then
+      // would put a lie on a card meant for posting — on a night with 9 real
+      // shows. Say which one it is.
+      : failed
+        ? `<div class="empty">Couldn’t load tonight’s shows — try again in a bit.</div>`
+        : `<div class="empty">Nothing listed tonight — quiet one.</div>`}
     <div class="foot">
       <span class="mark">melo</span>
       <span class="tag">melo.show · where concerts live forever</span>
@@ -138,8 +145,7 @@ function page({ city, shows, total, dateLabel }) {
 </html>`;
 }
 
-export async function onRequestGet(context) {
-  const { env, request } = context;
+export async function handleTonight(request, env) {
   const url = new URL(request.url);
   const city = (url.searchParams.get('city') || DEFAULT_CITY).slice(0, 40);
   // How many fit the frame without shrinking the type — a screenshot is only
@@ -192,9 +198,15 @@ export async function onRequestGet(context) {
 
   let shows = [];
   let total = 0;
+  // Distinguishes "the lookup broke" from "genuinely nothing on" — see page().
+  let failed = false;
   try {
     const res = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`);
-    if (res.ok) {
+    if (!res.ok) {
+      // 429 (daily quota) is the realistic one, and it must not read as a quiet
+      // night on a card built for posting.
+      failed = true;
+    } else {
       const data = await res.json();
       const live = (data?._embedded?.events || [])
         // Never post a dead show. TM keeps cancelled/postponed listings in the
@@ -221,17 +233,20 @@ export async function onRequestGet(context) {
       total = live.length;
       shows = live.slice(0, limit);
     }
-  } catch { /* render the empty state rather than a 500 */ }
+  } catch {
+    failed = true; // network/parse — same rule: say so, don't fake a quiet night
+  }
 
   const dateLabel = localNow.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
 
-  return new Response(page({ city, shows, total, dateLabel }), {
+  return new Response(page({ city, shows, total, dateLabel, failed }), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      // Short — it's a daily artifact, and a stale one is useless.
-      'cache-control': 'public, max-age=900',
+      // Short — it's a daily artifact, and a stale one is useless. Never cache a
+      // failure: a 429 pinned for 15 min would outlast the thing that caused it.
+      'cache-control': failed ? 'no-store' : 'public, max-age=900',
       'x-content-type-options': 'nosniff',
     },
   });

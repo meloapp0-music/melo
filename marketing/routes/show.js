@@ -1,8 +1,12 @@
 // Public show page — melo.show/s/<token>
 // =======================================
-// A Cloudflare Pages Function (server-rendered, so link previews work — a
-// client-rendered SPA cannot produce per-show Open Graph tags; scrapers don't
-// run JS).
+// Server-rendered, so link previews work — a client-rendered SPA cannot produce
+// per-show Open Graph tags; scrapers don't run JS.
+//
+// Routed from worker.js. melo.show is a WORKER WITH STATIC ASSETS, not a Pages
+// project (verified: `wrangler pages project list` is empty and the dashboard
+// serves it from /workers/services/), so the Pages `functions/` convention does
+// not apply here — this is a plain handler the Worker calls.
 //
 // Reads through `get_public_show(token)` (migration 0016), a SECURITY DEFINER
 // RPC that hard-filters on an unguessable token. No token => no row. The `shows`
@@ -259,9 +263,7 @@ a{color:#E8573A;font-weight:700}</style></head>
   );
 }
 
-export async function onRequestGet(context) {
-  const { params, env, request } = context;
-  const token = params.token;
+export async function handleShow(request, env, token) {
   if (!token || typeof token !== 'string' || token.length > 64) return notFound();
 
   const SUPABASE_URL = env.SUPABASE_URL;

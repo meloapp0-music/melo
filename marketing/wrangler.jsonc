@@ -1,0 +1,35 @@
+{
+  // melo.show — a Worker with static assets (NOT a Pages project; see worker.js).
+  // Deploy:  cd marketing && npx wrangler deploy
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Must match the EXISTING Worker, or deploying creates a second one that
+  // melo.show is not pointed at. Confirmed from the dashboard URL:
+  // /workers/services/view/odd-water-9335/production/settings
+  "name": "odd-water-9335",
+
+  "main": "worker.js",
+
+  // The date the existing Worker already runs on (dashboard → Settings →
+  // Runtime). Kept identical so this deploy changes routing only, not runtime
+  // semantics.
+  "compatibility_date": "2026-06-25",
+
+  "assets": {
+    // ONLY the site. Two reasons this is a subdirectory rather than ".":
+    //  1. Privacy — marketing/ also holds internal docs (the marketing OS, the
+    //     content calendars, social-calendar-2026-05.xlsx, App Store
+    //     screenshots). Pointing assets at "." would publish all of them to
+    //     melo.show. They are not currently reachable; keep it that way.
+    //  2. `wrangler dev` watches the assets directory. With ".", it watched its
+    //     own config, worker.js, .dev.vars and the .wrangler/ cache it writes —
+    //     an endless "Reloading local server..." loop that dropped in-flight
+    //     requests.
+    "directory": "./site",
+    "binding": "ASSETS"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
