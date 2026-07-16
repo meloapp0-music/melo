@@ -107,7 +107,46 @@ email half is blocked on a decision (below).
 - **Needs one Pages env var: `TICKETMASTER_KEY`** (same key already ships in the
   app bundle as `VITE_TICKETMASTER_KEY` — exposes nothing new).
 
-### The email half is NOT built — and shouldn't be, yet
+## The reminder — push, not email (2026-07-16)
+Aidan chose push. Built as an explicit **founder/ops tool**, not a product feature.
+
+- **`supabase/functions/daily-post/index.ts`** (new) — a daily cron that pushes ONE
+  account (`DAILY_POST_USER_ID`) *"8 shows in Chicago tonight · Honey Revenge and
+  more — tap to grab today's card"*, deep-linking to `melo.show/tonight`.
+  **Inert unless the env var is set**, so deploying it changes nothing for anyone.
+- **Why one user and not everyone:** a daily "here's what's on" push to the whole
+  base is a digest nobody asked for. Every other Melo push is EARNED (a tour you
+  want announced, your show is tomorrow, someone reacted). Notification fatigue is
+  how an app gets deleted. The *product* version of this idea is taste-triggered —
+  "an artist you love is playing your city tonight" — which is a different,
+  opt-in feature and deliberately not built here.
+- **`App.jsx`** — handles `kind: 'daily_post'`, opening the card URL (falls back to
+  Discover, whose "Tonight in {city}" rail is the same data).
+- Reuses `_shared/apns.ts`, `device_tokens`, and the `notifications_sent`
+  (kind, ref) dedup — ref is `{city}|{local date}`, so "once per LOCAL day" is
+  honest even if the cron double-fires. Prunes dead tokens like tour-alerts.
+- **No push on an empty night.** A nudge that fires when there's nothing on trains
+  you to ignore it — the only way this tool can actually fail.
+- Same tz-aware window as the page (Supabase's Deno also runs UTC, so the same
+  evening-shows bug would have applied). **Verified against live TM**: the Chicago
+  window resolves to `05:00Z → 04:59:59Z` (correct for CDT — a naive UTC day would
+  have started at `00:00Z`), 9 raw → 8 after filtering.
+- **Caught a mismatch while verifying:** the push said 8 but the page said 7,
+  because the page counted the rows it *displays* after the limit. A card claiming
+  "7 shows" on an 8-show night is simply wrong. The badge now states the true
+  total (counted after filtering, before the display slice) and adds "+ N more
+  across the city" when trimmed.
+
+### Setup (Aidan)
+```
+supabase secrets set DAILY_POST_USER_ID=<his auth user id>   # unset = no-op
+supabase functions deploy daily-post --no-verify-jwt
+supabase functions schedule create daily-post --cron "0 17 * * *"   # ~noon Chicago
+```
+Optional: `DAILY_POST_CITY` (default Chicago), `DAILY_POST_TZ` (default
+America/Chicago). `TICKETMASTER_KEY` + `APNS_*` already exist for tour-alerts.
+
+### The email half is NOT built — and shouldn't be
 There is **no email sender in this project**. Supabase's built-in email only
 sends auth/OTP; arbitrary sends need a third party (Resend/Postmark) = new
 account + API key + domain verification on melo.show. That's real setup for the

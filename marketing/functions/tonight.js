@@ -30,7 +30,7 @@ const cleanName = (s) => String(s ?? '')
   .replace(/\s{2,}/g, ' ')
   .trim();
 
-function page({ city, shows, dateLabel }) {
+function page({ city, shows, total, dateLabel }) {
   const rows = shows.map((s, i) => `
     <li class="row">
       <span class="rank">${i + 1}</span>
@@ -112,6 +112,7 @@ function page({ city, shows, dateLabel }) {
   .mark { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 19px; letter-spacing: -0.02em; }
   .tag { font-size: 11.5px; color: rgba(251,246,238,0.42); font-weight: 600; }
   .empty { flex: 1; display: flex; align-items: center; color: rgba(251,246,238,0.5); font-size: 15px; }
+  .more { margin-top: 12px; font-size: 12.5px; color: rgba(251,246,238,0.42); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -120,8 +121,13 @@ function page({ city, shows, dateLabel }) {
     <h1>${esc(city)}</h1>
     <div class="date">${esc(dateLabel)}</div>
     ${shows.length
-      ? `<div class="count">${shows.length} ${shows.length === 1 ? 'show' : 'shows'} on tonight</div>
-         <ul>${rows}</ul>`
+      // The badge states the TRUE total, not the number of rows that fit — a
+      // post claiming "7 shows" on a 12-show night is just wrong. When the list
+      // is trimmed for legibility, say so rather than silently under-count.
+      ? `<div class="count">${total} ${total === 1 ? 'show' : 'shows'} on tonight</div>
+         <ul>${rows}</ul>
+         ${total > shows.length
+           ? `<div class="more">+ ${total - shows.length} more across the city</div>` : ''}`
       : `<div class="empty">Nothing listed tonight — quiet one.</div>`}
     <div class="foot">
       <span class="mark">melo</span>
@@ -185,11 +191,12 @@ export async function onRequestGet(context) {
   });
 
   let shows = [];
+  let total = 0;
   try {
     const res = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`);
     if (res.ok) {
       const data = await res.json();
-      shows = (data?._embedded?.events || [])
+      const live = (data?._embedded?.events || [])
         // Never post a dead show. TM keeps cancelled/postponed listings in the
         // feed and some also carry it in the NAME ("*CANCELLED* Los de la
         // Homan" — a real result on the first live run). Both get dropped:
@@ -208,8 +215,11 @@ export async function onRequestGet(context) {
             || (ev.images || [])[0]?.url || ''
           ),
         }))
-        .filter((s) => s.artist)
-        .slice(0, limit);
+        .filter((s) => s.artist);
+      // Count AFTER filtering (so cancelled listings never inflate it) but
+      // BEFORE the display slice (so the number is the truth, not the layout).
+      total = live.length;
+      shows = live.slice(0, limit);
     }
   } catch { /* render the empty state rather than a 500 */ }
 
@@ -217,7 +227,7 @@ export async function onRequestGet(context) {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
 
-  return new Response(page({ city, shows, dateLabel }), {
+  return new Response(page({ city, shows, total, dateLabel }), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       // Short — it's a daily artifact, and a stale one is useless.

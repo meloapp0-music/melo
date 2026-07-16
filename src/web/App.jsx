@@ -243,6 +243,17 @@ export default function App() {
       }
       return done();
     }
+    // daily_post — the founder/ops nudge from the `daily-post` cron. Opens the
+    // screenshot-ready card at melo.show/tonight; falls back to Discover (whose
+    // "Tonight in {city}" rail is the same data) if the payload has no url.
+    if (kind === 'daily_post') {
+      if (pushNav.url) {
+        try { window.open(pushNav.url, '_blank'); } catch { setSubPage('festivals'); }
+      } else {
+        setSubPage('festivals');
+      }
+      return done();
+    }
     if (kind === 'friend_request') {
       setSubPage(null);
       setTab('buddies');
