@@ -12,7 +12,7 @@
 // show-videos storage RLS (migration 0014).
 
 import { useRef, useState } from 'react';
-import { uploadShowVideo, deleteShowVideo, VIDEO_MAX_MB } from '../lib/storage';
+import { uploadShowVideo, deleteShowVideo, VIDEO_MAX_SECONDS } from '../lib/storage';
 
 const MAX_VIDEOS_PER_SHOW = 3;
 
@@ -20,6 +20,9 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState(null);
+  // 0..1 per in-flight file, keyed by a per-pick id. A 200MB clip on venue LTE
+  // takes minutes — without this the UI is an unexplained freeze.
+  const [progress, setProgress] = useState({});
 
   const handlePick = () => inputRef.current?.click();
 
@@ -43,9 +46,13 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
 
     let current = videos.slice();
     await Promise.all(
-      picked.map(async (f) => {
+      picked.map(async (f, i) => {
+        const key = `${Date.now()}-${i}`;
+        setProgress((p) => ({ ...p, [key]: 0 }));
         try {
-          const url = await uploadShowVideo(f, userId, showId);
+          const url = await uploadShowVideo(f, userId, showId, (pct) => {
+            setProgress((p) => ({ ...p, [key]: pct }));
+          });
           current = [...current, url];
           onChange(current);
         } catch (err) {
@@ -54,6 +61,11 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
           setError(err?.message || 'Upload failed');
         } finally {
           setUploading((n) => n - 1);
+          setProgress((p) => {
+            const next = { ...p };
+            delete next[key];
+            return next;
+          });
         }
       }),
     );
@@ -105,12 +117,19 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
           </div>
         ))}
 
-        {uploading > 0 &&
-          Array.from({ length: uploading }).map((_, i) => (
-            <div key={`up-${i}`} className="photo-picker-tile photo-picker-tile-loading">
-              <div className="photo-picker-spinner" aria-hidden />
+        {/* One tile per in-flight upload, each showing its OWN percentage. A
+            bare spinner for a multi-minute 200MB upload reads as a freeze. */}
+        {Object.entries(progress).map(([key, pct]) => (
+          <div key={key} className="photo-picker-tile photo-picker-tile-loading">
+            <div className="vid-up">
+              <div className="vid-up-ring" aria-hidden />
+              <div className="vid-up-pct">{Math.round((pct || 0) * 100)}%</div>
+              <div className="vid-up-bar" aria-hidden>
+                <div className="vid-up-fill" style={{ width: `${Math.round((pct || 0) * 100)}%` }} />
+              </div>
             </div>
-          ))}
+          </div>
+        ))}
 
         {videos.length < MAX_VIDEOS_PER_SHOW && (
           <button
@@ -127,12 +146,10 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
         )}
       </div>
 
-      {/* The real limit is SIZE, not duration — 45MB is ~15s of 4K but ~40s of
-          1080p, so a flat "60s max" was a promise the byte cap always broke
-          first. Say what actually binds. */}
+      {/* At 200MB the duration limit is finally the one that binds (60s of 4K30
+          ≈ 170MB), so we can state it plainly again. */}
       <div className="log-section-hint" style={{ marginTop: 6 }}>
-        Up to {MAX_VIDEOS_PER_SHOW} clips · {VIDEO_MAX_MB}MB each
-        {' '}(~15s at 4K, ~40s at 1080p)
+        Up to {MAX_VIDEOS_PER_SHOW} clips · {VIDEO_MAX_SECONDS}s each
       </div>
 
       {error && <div className="photo-picker-error">{error}</div>}

@@ -31,6 +31,42 @@ real reach + SEO. Also the natural home for the share-card QR deep-link, which t
 - Point the share-card QR here instead of the bare App Store URL.
 
 ## Changes made
+- 2026-07-16: **Phase 2 built (dev) — the video cap, done properly.**
+  - **CORRECTION to the research:** the claim that "45MB is the Free tier's 50MB
+    ceiling showing through" was an INFERENCE and it was **wrong** — Aidan is on
+    **Supabase Pro**, where the global ceiling is 500GB. 45MB was just a conservative
+    number in 0014, and the "$25/mo decision" was moot the whole time. (Verified against
+    Supabase's file-limits docs: Free 50MB / Pro 500GB.) Pro also means egress was
+    already 250GB, not the fatal 5GB — so the public page was on safer ground than
+    framed. Lesson: the lane reasoned backwards from a suspicious number + an old note
+    mentioning the free tier, and never checked the actual plan.
+  - **Migration 0017** — `show-videos` bucket `file_size_limit` 45MB → **200MB**. Chosen
+    because it covers a full 60s at iPhone's default 4K30 (~170MB) and 1080p60 (~90MB),
+    which makes `VIDEO_MAX_SECONDS = 60` honest for the first time. Only a full minute of
+    4K60 (~400MB/min) is excluded, and it's rejected by name. ⚠️ Needs the project's
+    **Global file size limit** (Storage → Settings) raised too — per-bucket can never
+    exceed global, and shipping only the migration silently does nothing.
+  - **Resumable (TUS) uploads** — `tus-js-client@^4.3.1`; supabase-js has no TUS. Endpoint
+    is the DIRECT storage host (`<ref>.storage.supabase.co/storage/v1/upload/resumable`,
+    derived from `VITE_SUPABASE_URL`), chunk size **exactly 6MB** (Supabase: "do not
+    change it"), retryDelays `[0,3s,5s,10s,20s]`, `removeFingerprintOnSuccess` (else
+    re-picking a deleted clip is treated as already-uploaded), and
+    `findPreviousUploads`/`resumeFromPreviousUpload` so a venue-LTE blip resumes instead
+    of restarting. Mandatory, not polish: a plain `.upload()` of 200MB is a multi-minute
+    silent hang — raising the cap alone would have traded an honest "too big" error for a
+    mystery freeze at a show.
+  - **`cacheControl: '31536000'` preserved** into the TUS metadata and now COMMENTED as
+    load-bearing: it bills egress at Supabase's cached ~$0.03/GB instead of the default
+    3600s → uncached ~$0.09/GB. 3x on every byte a public share page serves.
+  - **Per-file progress** in VideoPicker (percentage + ember fill bar, one tile per
+    in-flight upload) — a bare spinner on a multi-minute upload reads as a frozen app.
+    Hint copy returns to `60s each` now that duration is genuinely the binding limit.
+  - Server-side rejection (bucket limit / 413) is surfaced with its real reason instead
+    of a bare "failed".
+  - **Verified**: endpoint derivation resolves to `aptwdtteplznxmtxnopx.storage.supabase.co`
+    (incl. trailing-slash + localhost fallback); progress tiles render against the real
+    App.css. Build clean. **NOT yet exercised against a real 200MB upload** — that needs
+    the global limit raised + a device.
 - 2026-07-15: **Phase 0 + 1 built (dev).**
   - **Migration 0016** — `shows.share_token` (nullable, opt-in, unique partial index) +
     `get_public_show(token)`, a SECURITY DEFINER RPC with a pinned `search_path` and a
