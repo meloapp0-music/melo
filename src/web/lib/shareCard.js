@@ -373,28 +373,48 @@ export async function shareShowCard(show, handle) {
 // --- Share plumbing (shared) ---
 // Native share sheet (Web Share API with a file) on iOS; download
 // fallback elsewhere. Exported so the redesigned share card can reuse it.
-export async function shareBlob(blob, filename, title) {
+export async function shareBlob(blob, filename, title, url) {
   if (!blob) return false;
   const file = new File([blob], filename, { type: 'image/png' });
 
-  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title });
-      return true;
-    } catch (err) {
-      if (err && err.name === 'AbortError') return false; // user dismissed
-      // fall through to download
+  if (typeof navigator !== 'undefined' && navigator.canShare) {
+    // Try to send the show link ALONGSIDE the card, so an iMessage/WhatsApp
+    // share is tappable and renders the rich preview (with the video autoplaying
+    // in the bubble via og:video). Support is patchy — several platforms drop
+    // `url` when `files` is present — so ask canShare first and degrade to the
+    // file alone. The QR baked into the card is the guaranteed path regardless.
+    if (url) {
+      const withUrl = { files: [file], title, url };
+      if (navigator.canShare(withUrl)) {
+        try {
+          await navigator.share(withUrl);
+          return true;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return false; // user dismissed
+          // fall through to the file-only attempt
+        }
+      }
+    }
+
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title });
+        return true;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return false; // user dismissed
+        // fall through to download
+      }
     }
   }
 
-  const url = URL.createObjectURL(blob);
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = objectUrl;
   a.download = file.name;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   return true;
 }
 

@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { shareBlob, renderShowCard } from '../lib/shareCard';
 import { renderStyledCard } from '../lib/shareCardCanvas';
+import { ensureShareToken } from '../lib/db/shows';
+import { publicShowUrl } from '../lib/shareLinks';
 import ShareCardVibe from './ShareCardVibe';
 import ShareCardPoster from './ShareCardPoster';
 import ShareCardMarquee from './ShareCardMarquee';
@@ -97,14 +99,30 @@ export default function ShareCardView({ show, handle, onShared, onClose, firstRu
     if (sharing) return;
     setSharing(true);
     try {
+      // Sharing the card publishes the show's page. Mint the token FIRST so the
+      // QR can point at the show rather than the bare App Store listing — that
+      // link is baked into the pixels and can't be added afterwards. Idempotent,
+      // so re-sharing keeps the same URL and links already in the wild survive.
+      // Best-effort: if it fails (offline, not the owner), the card still renders
+      // with the install QR — a share is never blocked by this.
+      let shareUrl = '';
+      try {
+        if (show.id && show.userId) {
+          const token = await ensureShareToken(show.id, show.userId);
+          shareUrl = publicShowUrl(token);
+        }
+      } catch { /* fall back to the install QR */ }
+
       // Draw the chosen style with the native-canvas renderer — identical output on
       // web and the iOS webview, with none of html2canvas's text/font/gradient
       // gremlins. A style not yet ported to canvas returns null → the reliable
       // simple canvas card, so a share is never broken.
-      const blob = await renderStyledCard(show, { style, theme, format, flags, photos, handle })
+      const blob = await renderStyledCard(show, { style, theme, format, flags, photos, handle, shareUrl })
         || await renderShowCard(show, handle);
       const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
-      const ok = await shareBlob(blob, `melo-${slug}.png`, `${show.artist} — I was there`);
+      const ok = await shareBlob(
+        blob, `melo-${slug}.png`, `${show.artist} — I was there`, shareUrl || undefined,
+      );
       if (ok) { onShared?.(); setToast('Shared to your story ✨'); }
     } catch {
       setToast('Could not make the image — try again');

@@ -46,6 +46,8 @@ function fromRow(row) {
     venueUrl: row.venue_url || '',
     battleWins: row.battle_wins ?? 0,
     isFavorite: row.is_favorite ?? false,
+    // '' when the show has never been shared publicly (migration 0016).
+    shareToken: row.share_token || '',
     status,
     wishlist: status === 'wishlist',
     visibility: row.visibility || null,
@@ -357,6 +359,68 @@ export async function deleteShow(id, userId) {
     .from('shows')
     .delete()
     .eq('id', id)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+// ===== Public share links (migration 0016) =====
+// A show is private until the owner shares it. The token IS the credential for
+// the public page (melo.show/s/<token>), so it must be unguessable — generated
+// from crypto.getRandomValues, never Math.random.
+
+const TOKEN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const TOKEN_LENGTH = 22; // 36^22 ≈ 2^113 — not enumerable
+
+function generateShareToken() {
+  const bytes = new Uint8Array(TOKEN_LENGTH);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < TOKEN_LENGTH; i++) {
+    // Modulo bias across 36 of 256 values is negligible at this entropy.
+    out += TOKEN_ALPHABET[bytes[i] % TOKEN_ALPHABET.length];
+  }
+  return out;
+}
+
+/** The show's existing share token, minting one on first share. Idempotent —
+ *  re-sharing the same show keeps the same URL, so a link already out in the
+ *  world never breaks. Returns the token. */
+export async function ensureShareToken(showId, userId) {
+  if (!showId || !userId) throw new Error('ensureShareToken: missing arg');
+
+  const { data: existing, error: readErr } = await supabase
+    .from('shows')
+    .select('share_token')
+    .eq('id', showId)
+    .eq('user_id', userId)
+    .single();
+  if (readErr) throw readErr;
+  if (existing?.share_token) return existing.share_token;
+
+  const token = generateShareToken();
+  const { data, error } = await supabase
+    .from('shows')
+    .update({ share_token: token })
+    .eq('id', showId)
+    .eq('user_id', userId)
+    .select('share_token')
+    .single();
+  if (error) throw error;
+  return data.share_token;
+}
+
+/** Stop sharing — nulls the token so the public page 404s.
+ *
+ *  HONEST LIMIT (surfaced in the UI copy, do not overstate): this removes the
+ *  PAGE. photos[]/videos[] live in public-read Storage buckets, so anyone who
+ *  already saved a media URL keeps it. Real revocation needs a signed-URL
+ *  redesign — see docs/initiatives/2026-06-23-public-share-pages.md. */
+export async function revokeShareToken(showId, userId) {
+  if (!showId || !userId) throw new Error('revokeShareToken: missing arg');
+  const { error } = await supabase
+    .from('shows')
+    .update({ share_token: null })
+    .eq('id', showId)
     .eq('user_id', userId);
   if (error) throw error;
 }

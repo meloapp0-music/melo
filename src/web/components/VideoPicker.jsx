@@ -12,7 +12,7 @@
 // show-videos storage RLS (migration 0014).
 
 import { useRef, useState } from 'react';
-import { uploadShowVideo, deleteShowVideo, VIDEO_MAX_SECONDS } from '../lib/storage';
+import { uploadShowVideo, deleteShowVideo, VIDEO_MAX_MB } from '../lib/storage';
 
 const MAX_VIDEOS_PER_SHOW = 3;
 
@@ -127,8 +127,12 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
         )}
       </div>
 
+      {/* The real limit is SIZE, not duration — 45MB is ~15s of 4K but ~40s of
+          1080p, so a flat "60s max" was a promise the byte cap always broke
+          first. Say what actually binds. */}
       <div className="log-section-hint" style={{ marginTop: 6 }}>
-        Up to {MAX_VIDEOS_PER_SHOW} clips · {VIDEO_MAX_SECONDS}s max each
+        Up to {MAX_VIDEOS_PER_SHOW} clips · {VIDEO_MAX_MB}MB each
+        {' '}(~15s at 4K, ~40s at 1080p)
       </div>
 
       {error && <div className="photo-picker-error">{error}</div>}

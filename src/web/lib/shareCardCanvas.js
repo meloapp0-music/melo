@@ -116,7 +116,7 @@ const DM = '"DM Sans", system-ui, sans-serif';
 // ---- Ticket -----------------------------------------------------------------
 // Collectible stub: warm bleed framing a cream ticket with a photo window,
 // setlist, perforation, barcode + serial, and the scan lockup.
-function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle }) {
+function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle, hasShareUrl }) {
   const W = 1080, H = 1920;
 
   // warm ember bleed
@@ -243,7 +243,9 @@ function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle }) {
     ctx.fillStyle = '#3D2C1E';
     ctx.font = `700 27px ${OUTFIT}`;
     ctx.textAlign = 'center';
-    ctx.fillText('Scan to get Melo', qrX + qrSize / 2, qrY + qrSize + 38);
+    // The QR now lands on the show page when the show is shared, so say what
+    // the scan actually does. Un-shared shows still point at the App Store.
+    ctx.fillText(hasShareUrl ? 'Scan to see this show' : 'Scan to get Melo', qrX + qrSize / 2, qrY + qrSize + 38);
     ctx.fillStyle = 'rgba(61,44,30,0.6)';
     ctx.font = `600 22px ${DM}`;
     ctx.fillText(handle ? `melo.show · @${handle}` : 'melo.show', qrX + qrSize / 2, qrY + qrSize + 72);
@@ -604,8 +606,14 @@ const DRAWERS = { ticket: drawTicket, poster: drawPoster, vibe: drawVibe, marque
 
 // Render the chosen style to a PNG Blob. Returns null when there's no canvas
 // renderer for that style yet (caller should fall back to renderShowCard).
+// `shareUrl` — the public show page (melo.show/s/<token>). When present the QR
+// points AT THE SHOW instead of the bare App Store listing, which is the whole
+// point: a scan lands on the setlist/photos/videos, and the install CTA lives
+// there. Baked into the pixels, so it survives to Instagram, a screenshot, or a
+// photo of someone's screen — unlike a link in the share payload.
+// Falls back to INSTALL_URL when the show isn't shared (QR is never broken).
 export async function renderStyledCard(show, opts = {}) {
-  const { style = 'vibe', format = '9x16', flags = {}, photos = true, handle } = opts;
+  const { style = 'vibe', format = '9x16', flags = {}, photos = true, handle, shareUrl } = opts;
   const draw = DRAWERS[style];
   if (!draw) return null;
 
@@ -617,10 +625,11 @@ export async function renderStyledCard(show, opts = {}) {
 
   const urls = photos ? (show.photos || []).slice(0, 3) : [];
   const [p0, p1, p2, qrImg] = await Promise.all([
-    loadImg(urls[0]), loadImg(urls[1] || urls[0]), loadImg(urls[2] || urls[1] || urls[0]), makeQr(INSTALL_URL),
+    loadImg(urls[0]), loadImg(urls[1] || urls[0]), loadImg(urls[2] || urls[1] || urls[0]),
+    makeQr(shareUrl || INSTALL_URL),
   ]);
 
-  draw(ctx, show, { flags, photoImgs: [p0, p1, p2], qrImg, handle, format });
+  draw(ctx, show, { flags, photoImgs: [p0, p1, p2], qrImg, handle, format, hasShareUrl: !!shareUrl });
 
   return await new Promise((res) => canvas.toBlob((b) => res(b), 'image/png', 0.95));
 }

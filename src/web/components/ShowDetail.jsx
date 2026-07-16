@@ -4,7 +4,7 @@ import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearc
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
 import ShowDayInfo from './ShowDayInfo';
 import { track } from '../lib/analytics';
-import { listAttendees, friendsMatchingShows } from '../lib/db/shows';
+import { listAttendees, friendsMatchingShows, revokeShareToken } from '../lib/db/shows';
 import { getProfilesByIds } from '../lib/db/profiles';
 import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
@@ -43,6 +43,26 @@ export default function ShowDetail({ show, onClose }) {
 
   // Delete confirmation — in-app sheet instead of a raw browser confirm().
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Public share page (migration 0016). `shareToken` is minted lazily the first
+  // time the card is shared, so a local mirror keeps this row in sync without
+  // re-fetching the show.
+  const [sharedOverride, setSharedOverride] = useState(null);
+  const [stopping, setStopping] = useState(false);
+  const isShared = sharedOverride ?? !!show.shareToken;
+  const stopSharing = async () => {
+    if (stopping) return;
+    setStopping(true);
+    try {
+      await revokeShareToken(show.id, show.userId || profile?.id);
+      setSharedOverride(false);
+      showToast?.('Public page removed');
+    } catch {
+      showToast?.('Could not stop sharing — try again');
+    } finally {
+      setStopping(false);
+    }
+  };
 
   // Status upgrade — local mirror so the button reflects the change
   // instantly (the parent holds `selectedShow` as a separate object).
@@ -393,6 +413,33 @@ export default function ShowDetail({ show, onClose }) {
               <span aria-hidden="true">📣</span>
               <span>Share this show</span>
             </button>
+          )}
+
+          {/* Public page control — only once the show has actually been shared.
+              Copy is deliberately "removes the page", NOT "deletes": the token
+              kills the page, but photos/videos live in public-read Storage, so
+              anyone holding a saved media URL keeps it. Real revocation needs a
+              signed-URL redesign (see the public-share-pages initiative). Do not
+              let this copy over-promise — it's a privacy commitment. */}
+          {isOwner && isShared && (
+            <div className="detail-sharelink">
+              <div className="detail-sharelink-row">
+                <span className="detail-sharelink-txt">
+                  🔗 This show has a public page
+                </span>
+                <button
+                  className="detail-sharelink-stop"
+                  onClick={stopSharing}
+                  disabled={stopping}
+                >
+                  {stopping ? '…' : 'Stop sharing'}
+                </button>
+              </div>
+              <div className="detail-sharelink-hint">
+                Anyone with the link can see it. Stopping removes the page — photos
+                and videos already downloaded can’t be recalled.
+              </div>
+            </div>
           )}
           {isOwner && shareCardOpen && (
             <ShareCardView

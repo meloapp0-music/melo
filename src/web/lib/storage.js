@@ -88,8 +88,17 @@ export async function deleteShowPhoto(publicUrl) {
 // docs/initiatives/2026-06-27-video-uploads.md.
 
 const VIDEO_BUCKET = 'show-videos';
-export const VIDEO_MAX_SECONDS = 60;
+// SIZE is what actually binds, not duration. 45MB is the Supabase FREE plan's
+// hard 50MB per-file ceiling showing through (migration 0014) — not a design
+// choice. At iPhone's default 4K30 (~170MB/min) it buys ~16s; 4K60 (~400MB/min)
+// buys ~7s; only 1080p30 (~65MB/min) reaches ~40s. So VIDEO_MAX_SECONDS = 60 was
+// unreachable at every setting except 720p30 and the duration check could never
+// fire — the UI promised a minute the byte cap always refused. Raising the cap
+// requires Supabase Pro AND resumable (TUS) uploads; see
+// docs/initiatives/2026-06-23-public-share-pages.md (Phase 2).
 export const VIDEO_MAX_BYTES = 45 * 1024 * 1024; // keep in sync with 0014
+export const VIDEO_MAX_MB = 45;
+export const VIDEO_MAX_SECONDS = 60; // a ceiling, not the binding limit
 
 /** Upload one video. Validates duration + size, returns the public URL.
  *  Throws Error with a user-friendly message on validation failure. */
@@ -98,7 +107,11 @@ export async function uploadShowVideo(file, userId, showId) {
 
   if (file.size > VIDEO_MAX_BYTES) {
     const mb = Math.round(file.size / (1024 * 1024));
-    throw new Error(`That video is ${mb}MB — the limit is 45MB. Trim it shorter and try again.`);
+    // "Trim it shorter" is useless advice at 4K, where the cap is ~16s — name
+    // the setting that actually fixes it.
+    throw new Error(
+      `That clip is ${mb}MB — the limit is ${VIDEO_MAX_MB}MB. Trim it, or record in 1080p instead of 4K (Settings → Camera → Record Video) to fit ~40s.`
+    );
   }
   const seconds = await videoDuration(file);
   if (seconds && seconds > VIDEO_MAX_SECONDS + 1) {
