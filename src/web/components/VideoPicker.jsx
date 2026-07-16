@@ -13,6 +13,7 @@
 
 import { useRef, useState } from 'react';
 import { uploadShowVideo, deleteShowVideo, VIDEO_MAX_SECONDS } from '../lib/storage';
+import SortableMediaGrid from './SortableMediaGrid';
 
 const MAX_VIDEOS_PER_SHOW = 3;
 
@@ -88,8 +89,8 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
       />
 
       <div className="photo-picker-grid">
-        {videos.map((url) => (
-          <div key={url} className="photo-picker-tile" style={{ background: '#17120C' }}>
+        <SortableMediaGrid ids={videos} onReorder={onChange} renderTile={(url, i) => (
+          <div className="photo-picker-tile" style={{ background: '#17120C' }}>
             {/* #t=0.01 nudges iOS to paint the first frame as the poster */}
             <video
               src={`${url}#t=0.01`}
@@ -106,16 +107,20 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
             >
               ▶
             </div>
+            {/* Clip 1 is the one og:video hands iMessage to autoplay in the link
+                bubble, so which clip leads actually matters. */}
+            {i === 0 && <span className="media-cover-flag">1st</span>}
             <button
               type="button"
               className="photo-picker-remove"
               onClick={() => handleRemove(url)}
+              onPointerDown={(e) => e.stopPropagation()}
               aria-label="Remove video"
             >
               <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
-        ))}
+        )}>
 
         {/* One tile per in-flight upload, each showing its OWN percentage. A
             bare spinner for a multi-minute 200MB upload reads as a freeze. */}
@@ -131,25 +136,27 @@ export default function VideoPicker({ videos = [], onChange, userId, showId }) {
           </div>
         ))}
 
-        {videos.length < MAX_VIDEOS_PER_SHOW && (
-          <button
-            type="button"
-            className="photo-picker-add"
-            onClick={handlePick}
-            aria-label="Add video"
-          >
-            <span className="photo-picker-add-plus">＋</span>
-            <span className="photo-picker-add-label">
-              {videos.length === 0 ? 'Add clips' : 'Add more'}
-            </span>
-          </button>
-        )}
+          {videos.length < MAX_VIDEOS_PER_SHOW && (
+            <button
+              type="button"
+              className="photo-picker-add"
+              onClick={handlePick}
+              aria-label="Add video"
+            >
+              <span className="photo-picker-add-plus">＋</span>
+              <span className="photo-picker-add-label">
+                {videos.length === 0 ? 'Add clips' : 'Add more'}
+              </span>
+            </button>
+          )}
+        </SortableMediaGrid>
       </div>
 
       {/* At 200MB the duration limit is finally the one that binds (60s of 4K30
           ≈ 170MB), so we can state it plainly again. */}
       <div className="log-section-hint" style={{ marginTop: 6 }}>
         Up to {MAX_VIDEOS_PER_SHOW} clips · {VIDEO_MAX_SECONDS}s each
+        {videos.length > 1 && ' · hold and drag to reorder'}
       </div>
 
       {error && <div className="photo-picker-error">{error}</div>}

@@ -21,6 +21,7 @@
 
 import { useRef, useState } from 'react';
 import { uploadShowPhoto, deleteShowPhoto } from '../lib/storage';
+import SortableMediaGrid from './SortableMediaGrid';
 
 export default function PhotoPicker({ photos = [], onChange, userId, showId }) {
   const inputRef = useRef(null);
@@ -83,38 +84,51 @@ export default function PhotoPicker({ photos = [], onChange, userId, showId }) {
       />
 
       <div className="photo-picker-grid">
-        {photos.map((url) => (
-          <div key={url} className="photo-picker-tile" style={{ backgroundImage: `url(${url})` }}>
+        <SortableMediaGrid ids={photos} onReorder={onChange} renderTile={(url, i) => (
+          <div className="photo-picker-tile" style={{ backgroundImage: `url(${url})` }}>
+            {/* Position 1 isn't cosmetic — it's the share card's hero, the
+                og:image in link previews, and the video poster. Name it so the
+                order feels worth arranging. */}
+            {i === 0 && <span className="media-cover-flag">Cover</span>}
             <button
               type="button"
               className="photo-picker-remove"
               onClick={() => handleRemove(url)}
+              // The tile carries the drag listeners; without this a tap on the
+              // X would also start a drag.
+              onPointerDown={(e) => e.stopPropagation()}
               aria-label="Remove photo"
             >
               <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
-        ))}
+        )}>
+          {uploading > 0 &&
+            Array.from({ length: uploading }).map((_, i) => (
+              <div key={`up-${i}`} className="photo-picker-tile photo-picker-tile-loading">
+                <div className="photo-picker-spinner" aria-hidden />
+              </div>
+            ))}
 
-        {uploading > 0 &&
-          Array.from({ length: uploading }).map((_, i) => (
-            <div key={`up-${i}`} className="photo-picker-tile photo-picker-tile-loading">
-              <div className="photo-picker-spinner" aria-hidden />
-            </div>
-          ))}
-
-        <button
-          type="button"
-          className="photo-picker-add"
-          onClick={handlePick}
-          aria-label="Add photo"
-        >
-          <span className="photo-picker-add-plus">+</span>
-          <span className="photo-picker-add-label">
-            {photos.length === 0 ? 'Add photos' : 'Add more'}
-          </span>
-        </button>
+          <button
+            type="button"
+            className="photo-picker-add"
+            onClick={handlePick}
+            aria-label="Add photo"
+          >
+            <span className="photo-picker-add-plus">+</span>
+            <span className="photo-picker-add-label">
+              {photos.length === 0 ? 'Add photos' : 'Add more'}
+            </span>
+          </button>
+        </SortableMediaGrid>
       </div>
+
+      {photos.length > 1 && (
+        <div className="log-section-hint" style={{ marginTop: 6 }}>
+          Hold and drag to reorder — the first photo is your cover.
+        </div>
+      )}
 
       {error && <div className="photo-picker-error">{error}</div>}
     </div>
