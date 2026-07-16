@@ -15,8 +15,14 @@
 // Inert unless DAILY_POST_USER_ID is set, so deploying it changes nothing for
 // anyone else.
 //
-// Schedule (17:00 UTC ≈ noon Chicago CDT — enough runway to post before doors):
-//   supabase functions schedule create daily-post --cron "0 17 * * *"
+// Schedule: 17:00 UTC ≈ noon Chicago CDT — enough runway to post before doors.
+//
+// ⚠️ There is NO `supabase functions schedule` command. Older docs in this repo
+// (2026-04-20-pre-launch-sprint.md) and the tour-alerts header both claim there
+// is; verified 2026-07-16 against CLI v2.109.1 — `functions` only has
+// list/delete/download/deploy/new/serve. Schedule from the Supabase DASHBOARD
+// (Integrations → Cron), which is how tour-alerts is already scheduled — there
+// is no pg_cron job in any migration either. Copy the existing tour-alerts job.
 //
 // Required env (Supabase secrets):
 //   DAILY_POST_USER_ID   — the auth user id to notify. UNSET = no-op.

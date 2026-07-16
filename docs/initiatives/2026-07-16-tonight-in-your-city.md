@@ -138,11 +138,23 @@ Aidan chose push. Built as an explicit **founder/ops tool**, not a product featu
   across the city" when trimmed.
 
 ### Setup (Aidan)
+The CLI is NOT linked on this machine, so every command needs `--project-ref`
+(or run `supabase link` once):
 ```
-supabase secrets set DAILY_POST_USER_ID=<his auth user id>   # unset = no-op
-supabase functions deploy daily-post --no-verify-jwt
-supabase functions schedule create daily-post --cron "0 17 * * *"   # ~noon Chicago
+supabase login
+supabase functions deploy daily-post --project-ref aptwdtteplznxmtxnopx --no-verify-jwt
+supabase secrets set DAILY_POST_USER_ID=<his auth user id> --project-ref aptwdtteplznxmtxnopx
+supabase functions invoke daily-post --project-ref aptwdtteplznxmtxnopx   # test now
 ```
+**⚠️ `supabase functions schedule` DOES NOT EXIST.** Verified 2026-07-16 against
+CLI v2.109.1: `functions` has only list/delete/download/deploy/new/serve. That
+command appears in `2026-04-20-pre-launch-sprint.md` step 9 and in the
+tour-alerts header — **both are wrong** and I repeated them before checking.
+There is also no `pg_cron`/`net.http_post` job in any migration, so tour-alerts
+(which IS running in production) must be scheduled from the **Supabase dashboard
+→ Integrations → Cron**. Schedule daily-post the same way — open the existing
+tour-alerts job and copy its shape (`0 17 * * *`).
+
 Optional: `DAILY_POST_CITY` (default Chicago), `DAILY_POST_TZ` (default
 America/Chicago). `TICKETMASTER_KEY` + `APNS_*` already exist for tour-alerts.
 
