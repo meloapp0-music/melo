@@ -3,7 +3,7 @@ import { useApp } from '../App';
 import {
   formatDate, daysUntil, topArtists, inferHomeCity, SHOW_STATUS, generateId,
 } from '../store';
-import { fetchFestivals, searchEvents } from '../api';
+import { fetchFestivals, searchEvents, fetchTonightInCity } from '../api';
 
 // Discover "Shows" search modes. Genre values are Ticketmaster
 // classification names (verified against the Discovery API).
@@ -66,7 +66,9 @@ function formatPrice(min, max, currency) {
 }
 
 export default function Festivals() {
-  const { shows, addShow, navigate } = useApp();
+  // dayStamp ticks over at local midnight — it's what re-runs the "tonight"
+  // fetch so a session left open overnight doesn't keep showing yesterday.
+  const { shows, addShow, navigate, dayStamp } = useApp();
 
   const homeCity = useMemo(() => inferHomeCity(shows), [shows]);
   const myArtists = useMemo(
@@ -174,6 +176,30 @@ export default function Festivals() {
     });
   }, [festivals, myArtists]);
 
+  // "Tonight in {city}" — what's playing in your home city TODAY. Auto-loads
+  // (no search required): the whole point is that it's the answer before you
+  // ask the question. Home city is inferred from logged shows, so it needs no
+  // GPS and no setting. Silent on failure — a dead rail is better than an
+  // error where the user didn't ask for anything.
+  const [tonight, setTonight] = useState([]);
+  const [tonightLoading, setTonightLoading] = useState(false);
+  useEffect(() => {
+    if (view !== 'shows' || !homeCity) { setTonight([]); return undefined; }
+    let cancelled = false;
+    setTonightLoading(true);
+    fetchTonightInCity(homeCity)
+      .then((evs) => { if (!cancelled) setTonight(evs || []); })
+      .catch(() => { if (!cancelled) setTonight([]); })
+      .finally(() => { if (!cancelled) setTonightLoading(false); });
+    return () => { cancelled = true; };
+  }, [view, homeCity, dayStamp]);
+
+  // Same taste-first rule as the search results: an artist you love leads.
+  const tonightSorted = useMemo(() => {
+    const liked = (e) => myArtists.has((e.artist || '').toLowerCase());
+    return [...tonight].sort((a, b) => (liked(a) ? 0 : 1) - (liked(b) ? 0 : 1));
+  }, [tonight, myArtists]);
+
   // Taste-first: shows featuring an artist you love sort to the top.
   const sortedCityEvents = useMemo(() => {
     const liked = (e) => myArtists.has((e.artist || '').toLowerCase());
@@ -273,6 +299,57 @@ export default function Festivals() {
       {/* ===== SHOWS (city / artist / genre search) ===== */}
       {view === 'shows' && (
         <>
+          {/* "Tonight in {city}" — the answer before the question. Only renders
+              once we can infer a home city and there's actually something on;
+              an empty "0 shows tonight" band would be a daily disappointment. */}
+          {homeCity && (tonightLoading || tonightSorted.length > 0) && (
+            <div className="tonight">
+              <div className="tonight-head">
+                <div>
+                  <div className="tonight-title">Tonight in {homeCity}</div>
+                  <div className="tonight-sub">
+                    {tonightLoading
+                      ? 'Checking what’s on…'
+                      : `${tonightSorted.length} ${tonightSorted.length === 1 ? 'show' : 'shows'} · ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`}
+                  </div>
+                </div>
+                <span className="tonight-dot" aria-hidden="true" />
+              </div>
+
+              {tonightLoading ? (
+                <div className="tonight-rail">
+                  {[0, 1].map((i) => <div key={i} className="tonight-card tonight-card-skel" />)}
+                </div>
+              ) : (
+                <div className="tonight-rail">
+                  {tonightSorted.map((ev) => {
+                    const liked = myArtists.has((ev.artist || '').toLowerCase());
+                    // It's on TONIGHT — the only useful action is tickets, so go
+                    // straight there. (An <a> without href is inert, which is the
+                    // right degrade when TM gave us no link.)
+                    return (
+                      <a
+                        key={ev.id}
+                        className="tonight-card"
+                        href={ev.ticketUrl || undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={ev.image ? { backgroundImage: `url(${ev.image})` } : undefined}
+                      >
+                        <span className="tonight-card-scrim" aria-hidden="true" />
+                        {liked && <span className="tonight-card-flag">★ Yours</span>}
+                        <span className="tonight-card-meta">
+                          <span className="tonight-card-artist">{ev.artist}</span>
+                          <span className="tonight-card-venue">{ev.venue || homeCity}</span>
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Search-mode toggle */}
           <div className="discover-type-tabs">
             <button

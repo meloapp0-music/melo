@@ -1913,6 +1913,26 @@ export async function fetchEventsByCity(city, opts = {}) {
   return searchEvents({ city: city.trim(), ...opts });
 }
 
+// Everything playing in `city` on the user's LOCAL today — the "Tonight in your
+// city" rail. Ticketmaster wants ISO8601 in UTC, so we take local midnight →
+// local 23:59 and convert; a naive UTC day would cut off evening shows for US
+// users (the interesting ones) and bleed in tomorrow's.
+//
+// The window starts at local MIDNIGHT, not `now`, deliberately: at 11pm "tonight"
+// should still show what happened tonight rather than an empty rail.
+export async function fetchTonightInCity(city) {
+  if (!city || !city.trim()) return [];
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const end = new Date(); end.setHours(23, 59, 59, 0);
+  const iso = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return searchEvents({
+    city: city.trim(),
+    startDateTime: iso(start),
+    endDateTime: iso(end),
+    size: 50,
+  });
+}
+
 // ===== MUSICBRAINZ — Artist Bio & Genres =====
 const MB_HEADERS = { 'User-Agent': 'Melo/1.0.0 (concert-tracker-app)' };
 
