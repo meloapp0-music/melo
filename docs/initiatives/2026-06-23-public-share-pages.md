@@ -147,7 +147,7 @@ which is closer to "videos playing on the share card" than a PNG could ever be, 
   cached $0.03/GB rate instead of Supabase's 3600s default → uncached $0.09/GB. 3x on every
   egress dollar. Do not "tidy" it away.
 - Manual dashboard drag-drop deploy **cannot compile a `/functions` folder** — silently. The
-  page cannot exist without changing the deploy verb to `npx wrangler pages deploy marketing/`.
+  page cannot exist without changing the deploy verb to `cd marketing && npx wrangler pages deploy .`.
 
 ### Decisions (Aidan, 2026-07-15)
 1. **Supabase Pro ($25/mo) — yes.** Unavoidable for any cap increase; also lifts egress

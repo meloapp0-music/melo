@@ -73,6 +73,56 @@ move #3 in his own OS: *"the product IS the content."*
   of Blues, Rico McFarland @ Kingston Mines); rail renders, scrolls, real artist
   images. Build clean.
 
+## The post artifact — `melo.show/tonight` (2026-07-16)
+Aidan then asked for the cron→email generator. Built the **artifact** half; the
+email half is blocked on a decision (below).
+
+- **`marketing/functions/tonight.js`** (new) — a full-bleed 9:16 page listing
+  tonight's shows. Open on a phone, screenshot, post: **the screenshot IS the
+  artifact**, so no server-side image generation (no Canvas-in-Deno, no Satori)
+  and no design work at post time. `/tonight` → Chicago; `?city=` + `?tz=` are
+  parameterized because it costs nothing (posting stays one-city per the
+  editorial call above).
+- **Three real bugs caught by actually running it** (wrangler pages dev + live TM):
+  1. **⚠️ THE DEPLOY COMMAND WAS WRONG** — `wrangler pages dev/deploy <dir>`
+     discovers `functions/` relative to the **CWD**, not the assets dir. Run from
+     the repo root it logged *"No Functions. Shimming…"* and silently served
+     `index.html`. So `npx wrangler pages deploy marketing/` (what the KBYG/share
+     notes said) would have deployed **zero functions** — the share page would
+     have 404'd with no error. **Correct: `cd marketing && npx wrangler pages
+     deploy .`** Same silent-failure class as the drag-and-drop trap.
+  2. **UTC-day bug** — Cloudflare runs UTC, so a naive UTC "today" ends at 23:59Z
+     = 6:59pm Chicago and dropped every evening show. Measured: **2 shows vs 9**
+     for the same night. Now resolves the city's local day via `Intl` (real
+     offset, DST handled) and converts that window to UTC.
+  3. **Cancelled + junk listings** — the first live run rendered
+     `*CANCELLED* Los de la Homan`. TM keeps dead listings in the feed and also
+     prefixes state into the NAME (`*SOLD OUT*`, `*JUST ANNOUNCED*`). Now filters
+     on `dates.status.code` AND the name, and strips `*MARKER*` junk (a sold-out
+     show is still on — keep it, drop the marker). Posting a cancelled show to
+     your own city is exactly the credibility damage the one-city argument was
+     about.
+- Verified live: 7 real Chicago shows (Black Keys @ Salt Shed, RUSH @ United
+  Center, Hunx @ Empty Bottle), empty state on a quiet city, `?city=Austin` works.
+- **Needs one Pages env var: `TICKETMASTER_KEY`** (same key already ships in the
+  app bundle as `VITE_TICKETMASTER_KEY` — exposes nothing new).
+
+### The email half is NOT built — and shouldn't be, yet
+There is **no email sender in this project**. Supabase's built-in email only
+sends auth/OTP; arbitrary sends need a third party (Resend/Postmark) = new
+account + API key + domain verification on melo.show. That's real setup for the
+*reminder*, which is the cheap half of the problem.
+
+The artifact is now one URL. The reminder options, honestly ranked:
+1. **A recurring phone alarm** — $0, zero code, works today. Genuinely the 90/10.
+2. **Push** — `tour-alerts` already runs a daily cron and sends APNs. Lands on the
+   phone he posts from, no new service. Better than email on the merits.
+3. **Email** — needs Resend + domain verification, and delivers to an inbox,
+   which is *not* where he posts from.
+
+Recommendation: add the page to his home screen + set an alarm; revisit push if
+the habit sticks. Don't buy a service to solve a reminder.
+
 ## Open questions / follow-ups
 - **It still needs a human to screenshot + post.** If the daily post doesn't
   happen, the diagnosis is confirmed and the answer is the Supabase cron → email

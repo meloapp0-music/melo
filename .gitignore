@@ -35,6 +35,14 @@ yarn-error.*
 .env.local
 .env*.local
 
+# Cloudflare Pages Functions local secrets (TICKETMASTER_KEY etc.)
+.dev.vars
+**/.dev.vars
+
+# wrangler local build/cache
+.wrangler/
+**/.wrangler/
+
 # supabase CLI
 supabase/.branches
 supabase/.temp
