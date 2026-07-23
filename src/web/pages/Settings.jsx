@@ -386,6 +386,15 @@ export default function Settings() {
           {/* Calendar import hidden in v1.0 — see Onboarding.jsx and
               Home.jsx for the rationale. The page itself is still in
               the repo (pages/ImportFromCalendar.jsx). */}
+          {/* THROWAWAY founder-only diagnostics for the recap MP4 export spike
+              (docs/initiatives/2026-07-16-show-recap-reel.md). Gated to the
+              founder account so it never shows for real users even if it ships;
+              remove row + page once the spike has run. */}
+          {profile?.id === '05e24188-7605-4d67-83a1-d8687110c2fd' && (
+            <button className="settings-link-row" onClick={() => navigate('recap-spike')}>
+              🧪 Recap export spike (dev)
+            </button>
+          )}
           <button className="settings-link-row" onClick={() => navigate('legal')}>
             <span>Legal & Attributions</span>
             <span className="settings-link-row-chevron">›</span>

@@ -39,6 +39,7 @@ import Artists from './pages/Artists';
 import MusicTaste from './pages/MusicTaste';
 import Legal from './pages/Legal';
 import ImportFromCalendar from './pages/ImportFromCalendar';
+import RecapSpike from './pages/RecapSpike';
 import Onboarding from './pages/auth/Onboarding';
 import ResetPassword from './pages/auth/ResetPassword';
 import { MeloIcon } from './components/MeloLogo';
@@ -671,6 +672,7 @@ export default function App() {
     if (subPage === 'artists') return <Artists />;
     if (subPage === 'settings') return <Settings />;
     if (subPage === 'music-taste') return <MusicTaste />;
+    if (subPage === 'recap-spike') return <RecapSpike />;
     if (subPage === 'venues') return <Venues />;
     if (subPage === 'legal') return <Legal />;
     if (subPage === 'import-calendar') return <ImportFromCalendar onDone={() => setSubPage('settings')} />;

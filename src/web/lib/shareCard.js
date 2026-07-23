@@ -373,9 +373,11 @@ export async function shareShowCard(show, handle) {
 // --- Share plumbing (shared) ---
 // Native share sheet (Web Share API with a file) on iOS; download
 // fallback elsewhere. Exported so the redesigned share card can reuse it.
-export async function shareBlob(blob, filename, title, url) {
+export async function shareBlob(blob, filename, title, url, mimeType = 'image/png') {
   if (!blob) return false;
-  const file = new File([blob], filename, { type: 'image/png' });
+  // mimeType generalized for the recap MP4 export (Phase 2) — every existing
+  // caller shares PNGs and passes nothing, so the default keeps them unchanged.
+  const file = new File([blob], filename, { type: mimeType });
 
   if (typeof navigator !== 'undefined' && navigator.canShare) {
     // Try to send the show link ALONGSIDE the card, so an iMessage/WhatsApp
