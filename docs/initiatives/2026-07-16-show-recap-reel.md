@@ -7,7 +7,7 @@ type: project
 # Show Recap Reel — "melo made you a recap"
 
 - Started: 2026-07-16
-- Status: in-progress (building Phase 1 — the in-app reel)
+- Status: in-progress — Phase 1 shipped (dev); Phase 2 scoped, spike screen BUILT (Settings → founder-gated "Recap export spike" row) and proven in desktop Chrome; awaiting the on-device run
 - Last updated: 2026-07-16
 
 ## Context
