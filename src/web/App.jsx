@@ -13,6 +13,7 @@ import ShowDetail from './components/ShowDetail';
 import FestivalDetail from './components/FestivalDetail';
 import VenueDetail from './components/VenueDetail';
 import ArtistDetail from './components/ArtistDetail';
+import RecapReel from './components/RecapReel';
 import ShareCardView from './components/ShareCardView';
 import HypeCard from './components/HypeCard';
 import KnowBeforeYouGo from './components/KnowBeforeYouGo';
@@ -86,6 +87,7 @@ export default function App() {
   // A venue opened as its own page ({ name, city }) — from Stats / Venues.
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [selectedArtist, setSelectedArtist] = useState(null);
+  const [recapShow, setRecapShow] = useState(null);
   // The very-first-logged-show celebration: auto-opens the share card once.
   const [firstCardShow, setFirstCardShow] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -589,6 +591,8 @@ export default function App() {
     setSelectedFestival,
     setSelectedVenue,
     setSelectedArtist,
+    recapShow,
+    setRecapShow,
     selectedUserId,
     setSelectedUserId,
     subPage,
@@ -716,6 +720,9 @@ export default function App() {
         )}
         {selectedShow && (
           <ShowDetail show={selectedShow} onClose={() => setSelectedShow(null)} />
+        )}
+        {recapShow && (
+          <RecapReel show={recapShow} onClose={() => setRecapShow(null)} />
         )}
         {firstCardShow && (
           <ShareCardView

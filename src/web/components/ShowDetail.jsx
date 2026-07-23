@@ -10,6 +10,7 @@ import PlayableSetlist from './PlayableSetlist';
 import PhotoGallery from './PhotoGallery';
 import ShowSocial from './ShowSocial';
 import ShareCardView from './ShareCardView';
+import { canRecap } from '../lib/recap';
 
 // Rough "how long ago" label for the pre-show card. Years once it's
 // been 12+ months, otherwise months. Good enough for "you last saw
@@ -26,7 +27,7 @@ function timeAgoLabel(dateStr) {
 }
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile, setSelectedUserId } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile, setSelectedUserId , setRecapShow } = useApp();
 
   // Whose show is this? fromRow always populates userId now, so this is
   // a straight match. Non-owners get a view-only detail (no edit /
@@ -402,6 +403,16 @@ export default function ShowDetail({ show, onClose }) {
             <button className="detail-upgrade-btn" onClick={markGoing}>
               <span aria-hidden="true">🎟️</span>
               <span>I got tickets — I'm Going</span>
+            </button>
+          )}
+
+          {/* melo made you a recap — a per-show story reel. Own shows only, and
+              only when there's enough (setlist / media / a rating) to make it
+              sing (canRecap). */}
+          {isOwner && canRecap(show) && (
+            <button className="detail-recap-btn" onClick={() => setRecapShow(show)}>
+              <span aria-hidden="true">✨</span>
+              <span>melo made you a recap</span>
             </button>
           )}
 

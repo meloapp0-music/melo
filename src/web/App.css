@@ -9962,3 +9962,138 @@ h4 { font-size: 17px; }
 @media (prefers-reduced-motion: reduce) {
   .nav-plus-pulse::after { animation: none; }
 }
+
+/* ============================================================
+   Show Recap Reel — "melo made you a recap" (per-show story reel)
+   Faithful to the Melo Recap design: warm ember/brown palette, Oswald
+   cinematic caps, letterboxed 9:16/1:1 stage, flash-on-beat, Ken-Burns media.
+   docs/initiatives/2026-07-16-show-recap-reel.md
+   ============================================================ */
+.recap-overlay {
+  position: fixed; inset: 0; z-index: 3000;
+  background: #0A0807;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+  gap: 14px;
+}
+.recap-close {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 16px; z-index: 30;
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.14); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.recap-close svg { width: 17px; height: 17px; stroke: #fff; stroke-width: 2.4; fill: none; }
+
+/* The reel stage — 9:16 by default, square on toggle. */
+.recap-stage {
+  position: relative; width: 300px; height: 533px;
+  border-radius: 26px; overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+  background: #160d07;
+}
+.recap-stage.square { width: 380px; height: 380px; }
+@media (max-height: 640px) { .recap-stage { width: 258px; height: 458px; } }
+
+.recap-bg { position: absolute; inset: 0; z-index: 1; }
+.recap-bg-media {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; background-size: cover; background-position: center;
+}
+/* Slow Ken-Burns drift — the "home movie" feel from the design. */
+.recap-kenburns { animation: recapKenBurns 6s ease-out both; }
+@keyframes recapKenBurns {
+  from { transform: scale(1.12); }
+  to   { transform: scale(1.0); }
+}
+.recap-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(10,8,7,0.15) 0%, rgba(10,8,7,0.35) 45%, rgba(10,8,7,0.86) 100%);
+}
+/* Faint film grain. */
+.recap-grain {
+  position: absolute; inset: -50%; opacity: 0.05; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.9) 0.5px, transparent 0.6px);
+  background-size: 3px 3px; animation: recapGrain 0.6s steps(3) infinite;
+}
+@keyframes recapGrain { 0%{transform:translate(0,0)} 33%{transform:translate(-2px,1px)} 66%{transform:translate(1px,-2px)} }
+
+.recap-letterbox { position: absolute; left: 0; right: 0; height: 40px; background: #000; z-index: 6; }
+.recap-letterbox.top { top: 0; } .recap-letterbox.bottom { bottom: 0; }
+.recap-stage.square .recap-letterbox { height: 26px; }
+
+.recap-flash {
+  position: absolute; inset: 0; z-index: 8; background: #fff; pointer-events: none;
+  animation: recapFlash 0.28s ease-out forwards;
+}
+@keyframes recapFlash { from { opacity: var(--amt, 0.5); } to { opacity: 0; } }
+
+.recap-content {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 54px 26px; gap: 10px;
+  animation: recapLabelIn 0.36s cubic-bezier(.2,.9,.3,1.25) both;
+}
+@keyframes recapLabelIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Big cinematic condensed caps — the montage beat labels. */
+.recap-beat {
+  font-family: 'Oswald', 'Outfit', sans-serif; font-weight: 600;
+  font-size: 34px; line-height: 1.02; letter-spacing: 0.01em;
+  text-transform: uppercase; color: #FBF6EE;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.55);
+}
+.recap-headline {
+  font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 30px;
+  line-height: 1.05; letter-spacing: -0.02em; color: #FBF6EE;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.5);
+}
+.recap-eyebrow {
+  font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #F4A261;
+}
+.recap-score-num {
+  font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 96px; line-height: 0.9;
+  color: #fff; text-shadow: 0 4px 40px rgba(232,87,58,0.5);
+}
+.recap-verdict {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 26px;
+  text-transform: uppercase; letter-spacing: 0.02em; color: #F4A261;
+}
+.recap-sub { font-size: 14.5px; font-weight: 600; color: rgba(251,246,238,0.82); letter-spacing: 0.01em; }
+.recap-wordmark {
+  font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 17px;
+  letter-spacing: -0.01em; color: rgba(251,246,238,0.6); margin-top: 6px;
+}
+
+/* Story progress bars along the top (under the letterbox). */
+.recap-progress {
+  position: absolute; top: 12px; left: 12px; right: 12px; z-index: 12;
+  display: flex; gap: 4px;
+}
+.recap-progseg { flex: 1; height: 2.5px; border-radius: 2px; background: rgba(255,255,255,0.28); overflow: hidden; }
+.recap-progfill { height: 100%; background: #D8A56B; transform-origin: left; transform: scaleX(0); }
+
+.recap-tap { position: absolute; inset: 0; z-index: 14; }
+
+.recap-aspect { display: flex; gap: 6px; z-index: 20; }
+.recap-aspect button {
+  border: none; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 12px;
+  padding: 7px 14px; border-radius: 999px; background: rgba(255,255,255,0.1); color: #6B5A4E;
+  -webkit-tap-highlight-color: transparent;
+}
+.recap-aspect button.on { background: #3D2C1E; color: #fff; }
+
+/* "melo made you a recap" entry on ShowDetail — a shimmer above the share row. */
+.detail-recap-btn {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  width: 100%; padding: 14px 18px; border: none; border-radius: 16px;
+  background: linear-gradient(135deg, #2A1D13, #43271A 60%, #7A3320);
+  color: #FBF6EE; font-family: var(--font-heading); font-size: 15px; font-weight: 750;
+  letter-spacing: -0.01em; cursor: pointer; margin-bottom: 10px;
+  box-shadow: 0 6px 18px rgba(60,34,18,0.28); -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.detail-recap-btn:active { transform: scale(0.98); }
