@@ -130,13 +130,29 @@ path is dead in WKWebView; feature stays in-app-only or pivots native.
 work is visual fidelity, not logic) → P2 encode + share wiring (~1 day) → P3
 polish/cross-fades/Worker offload (~1–2 days). Each independently landable.
 
-**Decisions for Aidan before build:**
-1. Share depth — plain share sheet v1 (recommended) vs invest in the native
-   one-tap-to-Stories bridge now?
-2. Accept photos-only in the exported MP4 (clips still play in-app)?
-3. OK that iOS 15–16.3 users get no export button?
-4. Fidelity bar — pixel-identical to the DOM reel, or "clearly the same recap"?
-   (This directly sets how many of P1's days get spent.)
+**Decisions (Aidan, 2026-07-16):**
+1. Share depth → **plain share sheet v1.** One-tap-to-Stories is a fast-follow.
+2. Videos in the export → **OVERRODE the photos-only cut: if the user uploaded
+   clips, they must appear in the exported recap** (photos-only is fine only when
+   there are no clips). Plan: mediabunny's READ path — `Input` + `BlobSource`
+   (fetch the Supabase clip URL as a Blob) + `VideoSampleSink.getSample(t)` for
+   frame-accurate decode into the canvas loop, one clip decoded at a time,
+   samples disposed promptly. A video beat needs only ~30–45 frames from the
+   clip's start, so the decode volume is small. **Spike extended:** also test
+   `canDecodeVideo('hevc')` + `('avc')` and draw one decoded frame — iPhone
+   clips are typically HEVC, and if HEVC decode fails in WKWebView, those clips
+   degrade to their poster frame (photo fallback) rather than blocking export.
+   Cost of the override: ~+1–2 days.
+3. OS floor → **accepted.** iOS 15–16.3 keeps the in-app reel, no export button.
+4. Fidelity → **"as good as in-app, or better."** The export is REDRAWN, not
+   screen-recorded, so the risk is subtle motion/type differences — budget the
+   fidelity-tuning days (P1 becomes ~3–4 days). The upside of redrawing: the
+   in-app stage is ~300px wide but the export renders at 1080×1920 — ~3.6× the
+   resolution — so type, photos and the grain can genuinely look SHARPER than
+   in-app. Target: a crisp "produced" version of the same recap.
+
+**Updated effort with the overrides: ~7–10 focused days** (spike ½d → renderer
+3–4d → video-beat decode 1–2d → encode+share 1d → polish 1–2d).
 
 ## Open questions / follow-ups
 - Which shows qualify for a recap? (has a setlist? rated? has media?) — likely
