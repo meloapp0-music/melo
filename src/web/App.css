@@ -10104,3 +10104,34 @@ h4 { font-size: 17px; }
   color: #fff;
 }
 .recap-aspect .recap-export:disabled { opacity: 0.85; cursor: default; }
+
+/* Recap energy pass (the "boring" fix): punch-in on every cut, alternating
+   Ken-Burns direction, lower-third layout variant, tape-label chip, soundtrack
+   mute. */
+.recap-punch { animation: recapPunch 0.22s ease-out both; }
+@keyframes recapPunch { from { transform: scale(1.05); } to { transform: scale(1); } }
+.recap-bg.kb-rev .recap-kenburns { animation-name: recapKenBurnsRev; }
+@keyframes recapKenBurnsRev {
+  from { transform: scale(1.0); }
+  to   { transform: scale(1.12); }
+}
+.recap-content.lower {
+  align-items: flex-start;
+  justify-content: flex-end;
+  text-align: left;
+  padding-bottom: 84px;
+}
+.recap-content.lower .recap-beat { text-align: left; }
+.recap-tag {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800; font-size: 10.5px; letter-spacing: 0.22em;
+  color: #FFC75F; opacity: 0.85;
+  border: 1px solid rgba(255,199,95,0.4); border-radius: 6px; padding: 3px 7px;
+}
+.recap-mute {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 16px; z-index: 30;
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.14); backdrop-filter: blur(6px);
+  font-size: 15px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}

@@ -20,6 +20,7 @@
 //    scaled here to 1080×1920).
 
 import { Input, BlobSource, VideoSampleSink, ALL_FORMATS } from 'mediabunny';
+import { beatScale } from './recap';
 
 export const EXPORT_W = 1080;
 export const EXPORT_H = 1920;
@@ -136,13 +137,19 @@ function fillGradientBg(ctx, grad) {
   ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
 }
 
-/** Cover-fit + Ken-Burns for any drawable with a known size. */
-function drawCoverKenBurns(ctx, source, sw, sh, localT) {
-  if (!sw || !sh) return;
-  // CSS: recapKenBurns 6s ease-out, scale 1.12 → 1.0, restarting per scene.
+/** The scene's media scale: Ken-Burns (direction from scene.kb) × the 0.22s
+ *  punch-in that lands on every cut. Mirrors .recap-kenburns/.kb-rev/.recap-punch. */
+function mediaScale(localT, kb) {
   const p = easeOutQuad(Math.min(localT / 6, 1));
-  const scale = 1.12 - 0.12 * p;
-  const cover = Math.max(EXPORT_W / sw, EXPORT_H / sh) * scale;
+  const ken = kb === -1 ? 1.0 + 0.12 * p : 1.12 - 0.12 * p;
+  const punch = 1 + 0.05 * (1 - Math.min(localT / 0.22, 1));
+  return ken * punch;
+}
+
+/** Cover-fit + Ken-Burns/punch for any drawable with a known size. */
+function drawCoverKenBurns(ctx, source, sw, sh, localT, kb) {
+  if (!sw || !sh) return;
+  const cover = Math.max(EXPORT_W / sw, EXPORT_H / sh) * mediaScale(localT, kb);
   const dw = sw * cover, dh = sh * cover;
   ctx.drawImage(source, (EXPORT_W - dw) / 2, (EXPORT_H - dh) / 2, dw, dh);
 }
@@ -194,6 +201,17 @@ function wrapLines(ctx, text, maxWidth) {
 
 const LETTERBOX = Math.round(40 * (EXPORT_H / 533)); // in-app 40px bars, scaled
 
+// A montage beat row: HUGE fit-to-width Oswald caps. Base size comes from the
+// shared beatScale heuristic; a measured clamp then guarantees one line fits.
+function beatRow(ctx, text, maxTextW) {
+  let size = 34 * S * beatScale(text);
+  const upper = text.toUpperCase();
+  ctx.font = `600 ${Math.round(size)}px Oswald, Outfit, sans-serif`;
+  const w = ctx.measureText(upper).width;
+  if (w > maxTextW) size *= maxTextW / w;
+  return { font: `600 ${Math.round(size)}px Oswald, Outfit, sans-serif`, fill: '#FBF6EE', text: upper, size, gapAfter: 12 * S };
+}
+
 /** Draw the recap at absolute time `t` onto a 1080×1920 ctx. Async only because
  *  a video-backed beat samples its clip. */
 export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
@@ -215,7 +233,7 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
       if (sample) {
         const sw = sample.displayWidth || sample.codedWidth;
         const sh = sample.displayHeight || sample.codedHeight;
-        const cover = Math.max(EXPORT_W / sw, EXPORT_H / sh);
+        const cover = Math.max(EXPORT_W / sw, EXPORT_H / sh) * mediaScale(localT, scene.kb);
         sample.draw(ctx, (EXPORT_W - sw * cover) / 2, (EXPORT_H - sh * cover) / 2, sw * cover, sh * cover);
         sample.close();
         drew = true;
@@ -227,7 +245,7 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
       || (fallback.cover && assets.images.has(fallback.cover) && fallback.cover);
     if (photoUrl) {
       const bmp = assets.images.get(photoUrl);
-      drawCoverKenBurns(ctx, bmp, bmp.width, bmp.height, localT);
+      drawCoverKenBurns(ctx, bmp, bmp.width, bmp.height, localT, scene.kb);
       drew = true;
     }
   }
@@ -255,8 +273,11 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
   const rise = (1 - eased) * 16 * S; // 16px → export space
   const scl = 0.97 + 0.03 * eased;
 
+  const lower = scene.layout === 'lower';
   ctx.save();
-  ctx.translate(EXPORT_W / 2, EXPORT_H / 2 + rise);
+  // 'lower' anchors the block left + low (the in-app lower-third variant);
+  // translation happens after the block is measured, so just set up scale here.
+  ctx.translate(lower ? 26 * S : EXPORT_W / 2, EXPORT_H / 2 + rise);
   ctx.scale(scl, scl);
   ctx.globalAlpha = Math.max(0, Math.min(alpha, 1));
   ctx.textAlign = 'center';
@@ -267,6 +288,9 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
   const maxTextW = EXPORT_W - 2 * 26 * S;
   const rows = []; // { font, fill, text, size, gapAfter, spacing? }
   const kind = scene.kind;
+  if (scene.tag) {
+    rows.push({ font: `800 ${Math.round(10.5 * S)}px Outfit, sans-serif`, fill: '#FFC75F', text: `TAKE ${scene.tag}`, size: 10.5 * S, gapAfter: 14 * S, spacing: 0.22, chip: true });
+  }
   if (scene.label && kind === 'score') {
     rows.push({ font: `800 ${Math.round(12 * S)}px Outfit, sans-serif`, fill: '#F4A261', text: String(scene.label).toUpperCase(), size: 12 * S, gapAfter: 26 * S, spacing: 0.18 });
   }
@@ -276,11 +300,11 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
     } else if (kind === 'title' || kind === 'outro') {
       rows.push({ font: `900 ${Math.round(30 * S)}px Outfit, sans-serif`, fill: '#FBF6EE', text: String(scene.big), size: 30 * S, gapAfter: 12 * S });
     } else {
-      rows.push({ font: `600 ${Math.round(34 * S)}px Oswald, Outfit, sans-serif`, fill: '#FBF6EE', text: String(scene.big).toUpperCase(), size: 34 * S, gapAfter: 12 * S });
+      rows.push(beatRow(ctx, String(scene.big), maxTextW));
     }
   }
   if (scene.label && kind !== 'score') {
-    rows.push({ font: `600 ${Math.round(34 * S)}px Oswald, Outfit, sans-serif`, fill: '#FBF6EE', text: String(scene.label).toUpperCase(), size: 34 * S, gapAfter: 12 * S });
+    rows.push(beatRow(ctx, String(scene.label), maxTextW));
   }
   if (scene.sub) {
     rows.push(kind === 'score'
@@ -302,25 +326,38 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
     if (r.gapAfter) lines.push({ spacer: r.gapAfter });
   }
   const blockH = lines.reduce((a, l) => a + (l.spacer || l.h), 0);
-  let y = -blockH / 2;
+  // center layout: block centered on the anchor; lower: block bottom sits just
+  // above the in-app 84px padding, left-aligned.
+  let y = lower ? (EXPORT_H - LETTERBOX - 84 * S) - (EXPORT_H / 2 + rise) - blockH : -blockH / 2;
+  if (lower) ctx.textAlign = 'left';
   for (const l of lines) {
     if (l.spacer) { y += l.spacer; continue; }
     ctx.font = l.font;
     ctx.fillStyle = l.fill;
     y += l.h;
     if (l.spacing) {
-      // manual letter-spacing for the eyebrow
+      // manual letter-spacing (eyebrow / tag chip)
       const chars = [...l.text];
       const widths = chars.map((c) => ctx.measureText(c).width);
       const gap = l.size * l.spacing;
       const totalW = widths.reduce((a, w) => a + w, 0) + gap * (chars.length - 1);
-      let x = -totalW / 2;
+      let x = lower ? 0 : -totalW / 2;
+      if (l.chip) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,199,95,0.4)';
+        ctx.lineWidth = Math.max(2, 1 * (S / 3.6));
+        ctx.beginPath();
+        ctx.roundRect(x - 7 * S * 0.6, y - l.h - 3 * S * 0.6, totalW + 14 * S * 0.6, l.h + 9 * S * 0.6, 6 * S * 0.6);
+        ctx.stroke();
+        ctx.restore();
+      }
+      const align = ctx.textAlign;
+      ctx.textAlign = 'left';
       for (let i = 0; i < chars.length; i++) {
-        ctx.textAlign = 'left';
         ctx.fillText(chars[i], x, y - l.h * 0.24);
         x += widths[i] + gap;
       }
-      ctx.textAlign = 'center';
+      ctx.textAlign = align;
     } else {
       ctx.fillText(l.text, 0, y - l.h * 0.24);
     }

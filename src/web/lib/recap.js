@@ -25,6 +25,17 @@ export function scoreVerdict(score) {
 
 const scoreLabel = (s) => (Number.isInteger(s) ? String(s) : s.toFixed(1));
 
+// Fit-to-width beat type. Short song titles get HUGE; long ones stay readable.
+// Shared by RecapReel (CSS px) and recapFrame (canvas px) so the in-app reel
+// and the export can't drift apart.
+export function beatScale(label) {
+  const len = String(label || '').length;
+  if (len <= 8) return 1.5;
+  if (len <= 14) return 1.15;
+  if (len <= 22) return 0.95;
+  return 0.8;
+}
+
 // Whether a show has enough to make a reel sing. Surfaced as the gate on the
 // "Recap" entry point — a bare show with nothing to montage isn't worth it.
 export function canRecap(show) {
@@ -55,24 +66,35 @@ export function buildScenes(show) {
   const push = (s) => scenes.push({ id: `s${n++}`, grad, ...s });
 
   // --- Intro -------------------------------------------------------------
-  push({ kind: 'title', dur: 1.6, big: 'melo made you a recap', flash: 0.4, ...bg(0) });
-  push({ kind: 'intro', dur: 2.4, label: artist, sub: [where, dateLabel].filter(Boolean).join('  ·  '), ...bg(1) });
+  push({ kind: 'title', dur: 1.4, big: 'melo made you a recap', flash: 0.4, ...bg(0) });
+  push({ kind: 'intro', dur: 2.0, label: artist, sub: [where, dateLabel].filter(Boolean).join('  ·  '), ...bg(1) });
 
-  // --- The montage: one cinematic beat per song -------------------------
-  // Short holds, big Oswald caps, a light flash on entry — the "reel" feel.
+  // --- The montage: one beat per song ------------------------------------
+  // Tempo is the whole feel ("boring" feedback, 2026-07-24): the design doc
+  // cuts every 0.4–0.6s; a uniform 1.15s read as a slideshow. So: a varied,
+  // tightening rhythm; alternating Ken-Burns direction (kb); alternating
+  // layouts; a tape-style index chip; and both renderers add a punch-in on
+  // every beat cut.
+  const BEAT_DURS = [0.9, 0.7, 0.6, 0.55, 0.6, 0.55, 0.7, 0.6];
   songs.forEach((song, i) => {
+    const last = i === songs.length - 1;
     push({
       kind: 'beat',
-      dur: i === songs.length - 1 ? 1.5 : 1.15,
+      dur: last ? 1.2 : (BEAT_DURS[i % BEAT_DURS.length]),
       label: song,
-      flash: 0.5,
+      tag: String(i + 1).padStart(2, '0'),        // "01" tape-label chip
+      layout: i % 3 === 1 ? 'lower' : 'center',    // break the sameness
+      kb: i % 2 === 0 ? 1 : -1,                    // alternate zoom direction
+      flash: last ? 0.65 : 0.5,
       ...bg(i + 2),
     });
   });
 
   // If there were no songs, weave the media on its own so the reel isn't empty.
   if (!songs.length && media.length) {
-    media.slice(0, 5).forEach((m, i) => push({ kind: 'beat', dur: 1.3, ...m, flash: 0.4 }));
+    media.slice(0, 5).forEach((m, i) => push({
+      kind: 'beat', dur: 0.8, kb: i % 2 === 0 ? 1 : -1, ...m, flash: 0.4,
+    }));
   }
 
   // A vibe accent (the user's own words for the night), if any.

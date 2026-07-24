@@ -154,6 +154,27 @@ polish/cross-fades/Worker offload (~1–2 days). Each independently landable.
 **Updated effort with the overrides: ~7–10 focused days** (spike ½d → renderer
 3–4d → video-beat decode 1–2d → encode+share 1d → polish 1–2d).
 
+## Energy pass (2026-07-24) — the "boring" fix
+Aidan's on-device verdict on Phase 1: **"the recap is boring."** Root causes vs
+the design doc, and the fixes (applied to buildScenes + BOTH renderers so the
+reel and export stay twins):
+- **Tempo** — the doc cuts every 0.4–0.6s; ours held a uniform 1.15s (a
+  slideshow). Now a tightening rhythm `[0.9,0.7,0.6,0.55…]` with a 1.2s landing
+  on the last song; intro trimmed.
+- **Sameness** — every beat was the same centered layout. Now: alternating
+  center/lower-third layouts, alternating Ken-Burns direction (`kb`), a
+  "TAKE 01" tape-label chip per song, and a 0.22s punch-in on every cut.
+- **Type** — beats were a fixed 34px; now fit-to-width via the shared
+  `beatScale()` (short titles go ~1.5×; canvas adds a measured clamp).
+- **Silence** — the big one: the in-app reel now plays a looped **soundtrack**
+  (the 30s iTunes preview of the setlist's opener via the existing
+  `fetchSongPreview` infra) with a mute toggle. The export stays silent by the
+  earlier decision; audio-in-export remains a later phase.
+Verified in-browser: durs `[1.4,2,0.9,0.7,0.6,0.55]`, "Yellow" at 51px, TAKE
+chips + lower layout render in BOTH the live reel and the canvas frames.
+Also: the missing share button on-device was a stale build — the export button
+shipped after the morning's spike build; rebuild fixes it.
+
 ## Open questions / follow-ups
 - Which shows qualify for a recap? (has a setlist? rated? has media?) — likely
   surface the action only when there's enough to make it sing.

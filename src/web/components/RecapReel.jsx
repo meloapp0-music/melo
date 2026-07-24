@@ -11,7 +11,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
-import { buildScenes } from '../lib/recap';
+import { buildScenes, beatScale } from '../lib/recap';
+import { fetchSongPreview } from '../api';
 import { canExportRecap, exportRecap } from '../lib/recapExport';
 import { shareBlob } from '../lib/shareCard';
 
@@ -28,6 +29,8 @@ export default function RecapReel({ show, onClose }) {
   // exporting: null idle | 0..1 encoding progress.
   const [exportable, setExportable] = useState(false);
   const [exporting, setExporting] = useState(null);
+  const [muted, setMuted] = useState(false);
+  const audioRef = useRef(null);
   const raf = useRef(0);
   const started = useRef(0);
   const holdTimer = useRef(0);
@@ -57,6 +60,31 @@ export default function RecapReel({ show, onClose }) {
     raf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf.current);
   }, [i, paused, scene, scenes.length, onClose]);
+
+  // Soundtrack — the reel plays the 30s preview of the setlist's opener (the
+  // same iTunes-preview infra the Songs page uses), looped under the montage.
+  // The export stays silent by design; this is the in-app energy. Opening the
+  // reel is a user gesture, so autoplay is allowed; failures stay silent.
+  useEffect(() => {
+    let gone = false;
+    const song = (show?.setlist || []).find(Boolean);
+    if (!song) return undefined;
+    fetchSongPreview(show.artist, song).then((p) => {
+      if (gone || !p?.previewUrl) return;
+      const a = new Audio(p.previewUrl);
+      a.loop = true;
+      a.volume = 0.85;
+      audioRef.current = a;
+      a.play().catch(() => {});
+    });
+    return () => { gone = true; try { audioRef.current?.pause(); } catch { /* noop */ } audioRef.current = null; };
+  }, [show]);
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.muted = muted;
+    if (paused) a.pause(); else a.play().catch(() => {});
+  }, [muted, paused]);
 
   // Show the export button only where the pipeline exists (iOS 16.4+ / Chrome).
   useEffect(() => {
@@ -111,13 +139,16 @@ export default function RecapReel({ show, onClose }) {
 
   return (
     <div className="recap-overlay">
+      <button className="recap-mute" onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute' : 'Mute'}>
+        {muted ? '🔇' : '🔊'}
+      </button>
       <button className="recap-close" onClick={onClose} aria-label="Close recap">
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
       </button>
 
       <div className={`recap-stage ${square ? 'square' : ''}`}>
         {/* Backdrop */}
-        <div className="recap-bg" aria-hidden="true">
+        <div key={`bg${scene.id}`} className={`recap-bg recap-punch${scene.kb === -1 ? ' kb-rev' : ''}`} aria-hidden="true">
           {bgMedia ? (
             isVideo ? (
               <video key={scene.id} src={`${scene.video}#t=0.01`} muted playsInline autoPlay loop
@@ -141,10 +172,13 @@ export default function RecapReel({ show, onClose }) {
         {scene.flash ? <div key={`f${scene.id}`} className="recap-flash" style={{ '--amt': scene.flash }} /> : null}
 
         {/* Content */}
-        <div key={scene.id} className="recap-content">
+        <div key={scene.id} className={`recap-content${scene.layout === 'lower' ? ' lower' : ''}`}>
+          {scene.tag && <div className="recap-tag">TAKE {scene.tag}</div>}
           {scene.label && scene.kind === 'score' && <div className="recap-eyebrow">{scene.label}</div>}
           {scene.big && <div className={bigCls}>{scene.big}</div>}
-          {scene.label && scene.kind !== 'score' && <div className="recap-beat">{scene.label}</div>}
+          {scene.label && scene.kind !== 'score' && (
+            <div className="recap-beat" style={{ fontSize: `${Math.round(34 * beatScale(scene.label))}px` }}>{scene.label}</div>
+          )}
           {scene.sub && <div className={scene.kind === 'score' ? 'recap-verdict' : 'recap-sub'}>{scene.sub}</div>}
           {(scene.kind === 'title' || scene.kind === 'outro') && (
             <div className="recap-wordmark">melo</div>
