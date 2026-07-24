@@ -10097,3 +10097,10 @@ h4 { font-size: 17px; }
   transition: transform 0.12s ease;
 }
 .detail-recap-btn:active { transform: scale(0.98); }
+
+/* Recap MP4 export button — sits with the aspect toggle; ember when live. */
+.recap-aspect .recap-export {
+  background: linear-gradient(135deg, #F4A261, #E8573A);
+  color: #fff;
+}
+.recap-aspect .recap-export:disabled { opacity: 0.85; cursor: default; }

@@ -12,6 +12,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { buildScenes } from '../lib/recap';
+import { canExportRecap, exportRecap } from '../lib/recapExport';
+import { shareBlob } from '../lib/shareCard';
 
 const PACE = 1; // scene-duration multiplier; the design exposes 12–26s total
 
@@ -22,6 +24,10 @@ export default function RecapReel({ show, onClose }) {
   const [square, setSquare] = useState(false); // false = 9:16, true = 1:1
   const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0); // 0..1 within the current scene
+  // MP4 export: null = capability unknown/absent, true = button shows.
+  // exporting: null idle | 0..1 encoding progress.
+  const [exportable, setExportable] = useState(false);
+  const [exporting, setExporting] = useState(null);
   const raf = useRef(0);
   const started = useRef(0);
   const holdTimer = useRef(0);
@@ -51,6 +57,30 @@ export default function RecapReel({ show, onClose }) {
     raf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf.current);
   }, [i, paused, scene, scenes.length, onClose]);
+
+  // Show the export button only where the pipeline exists (iOS 16.4+ / Chrome).
+  useEffect(() => {
+    let gone = false;
+    canExportRecap().then((ok) => { if (!gone) setExportable(ok); });
+    return () => { gone = true; };
+  }, []);
+
+  const doExport = async () => {
+    if (exporting !== null) return;
+    setPaused(true);
+    setExporting(0);
+    try {
+      const blob = await exportRecap(show, { onProgress: setExporting });
+      const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
+      await shareBlob(blob, `melo-recap-${slug}.mp4`, `${show.artist} — melo recap`, undefined, 'video/mp4');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Melo] recap export failed', err);
+    } finally {
+      setExporting(null);
+      setPaused(false);
+    }
+  };
 
   const back = () => setI((v) => Math.max(0, v - 1));
   const skip = () => { if (i < scenes.length - 1) setI((v) => v + 1); else onClose?.(); };
@@ -136,10 +166,15 @@ export default function RecapReel({ show, onClose }) {
         <div className="recap-tap" onPointerDown={onPointerDown} onPointerUp={onPointerUp} />
       </div>
 
-      {/* Aspect toggle */}
+      {/* Aspect toggle + export */}
       <div className="recap-aspect">
         <button className={!square ? 'on' : ''} onClick={() => setSquare(false)}>9:16</button>
         <button className={square ? 'on' : ''} onClick={() => setSquare(true)}>1:1</button>
+        {exportable && (
+          <button className="recap-export" onClick={doExport} disabled={exporting !== null}>
+            {exporting === null ? '📤 Share video' : `Encoding… ${Math.round(exporting * 100)}%`}
+          </button>
+        )}
       </div>
     </div>
   );
