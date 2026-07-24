@@ -7,7 +7,7 @@ type: project
 # Show Recap Reel — "melo made you a recap"
 
 - Started: 2026-07-16
-- Status: in-progress — Phase 1 shipped (dev); Phase 2 scoped, spike screen BUILT (Settings → founder-gated "Recap export spike" row) and proven in desktop Chrome; awaiting the on-device run
+- Status: in-progress — Phase 1 shipped (dev). **SPIKE PASSED ON-DEVICE 2026-07-24 (Aidan's iPhone): ALL GREEN** — VideoEncoder present, isConfigSupported(avc L4.0 @1080×1920) true, canEncodeVideo true, canDecodeVideo AVC **and HEVC** true, 30-frame end-to-end encode → 86KB mp4 in **0.3s on-device**, and a frame decoded+drawn from Aidan's own uploaded clip → **video beats are GO, no poster-frame fallback needed**. Only open item: the share-sheet run was dismissed before confirming Instagram appears (fallback = Save to Photos → post from IG, so not a blocker). Phase 2 build is ON — frame renderer next
 - Last updated: 2026-07-16
 
 ## Context
