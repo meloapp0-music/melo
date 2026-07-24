@@ -37,6 +37,7 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-07-24-nfl-schedule-predictor.md` — shipped · standalone, self-contained `public/nfl-2026-predictor.html` — an NFL 2026-27 pick 'em sheet (real 272-game schedule, per-team pick sheets, real NFL tiebreakers, playoff bracket, URL-encoded share links). A personal one-off for the user to send to friends; touches no Melo code or data.
 - `2026-06-27-video-uploads.md` — planned (next version ⭐) · attach short videos to a show alongside photos; on-device compress → RLS'd Storage bucket → in-app + public-page playback. Make-or-break: keeping file size sane via on-device transcode. Pairs with public-share-pages.
 - `2026-06-27-friends-feed-and-richer-profiles.md` — planned (next version ⭐) · a dedicated full friends-feed page (the Home feed is only a 20-item preview) + friend profiles that show upcoming/Going shows, not just past (data's already loaded). Reuses existing friend-read RLS.
 - `2026-06-25-share-cards-native-canvas.md` — shipped (build 31) · rebuilt all 5 share-card EXPORTS with the native Canvas 2D API (replacing html2canvas, which mangled letter-spaced/dense text and raced fonts on iOS — none reproducible on desktop). Canvas is deterministic, so the output is verifiable on desktop. Ends the recurring share-card export bugs (haze, broken text, blank/black).
