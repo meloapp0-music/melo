@@ -11,16 +11,20 @@
 
 import { formatDate, getArtistGradient } from '../store';
 
-// A show's score → the one-word verdict the reveal lands on. Mirrors the design
-// (9.8 → "Unreal"). Only rated shows get a score scene.
+// A show's score → the VERDICT WORD the reveal lands on.
+//
+// PRODUCT RULE (design handoff §"Verdict words"): on a recap the score renders
+// as a word, NOT a number — "UNREAL", not "9.8". The numeric score stays only
+// on ticket-stub cuts, where it belongs structurally. Anchors come from the
+// handoff (9.5+ = UNREAL, 9.0 = ONE FOR THE BOOKS); the rest fill the scale.
 export function scoreVerdict(score) {
   if (score == null || score <= 0) return '';
   if (score >= 9.5) return 'Unreal';
-  if (score >= 9) return 'Incredible';
+  if (score >= 9) return 'One for the books';
   if (score >= 8) return 'Unforgettable';
   if (score >= 7) return 'A great night';
   if (score >= 5) return 'Worth it';
-  return 'One for the books';
+  return 'Been better';
 }
 
 const scoreLabel = (s) => (Number.isInteger(s) ? String(s) : s.toFixed(1));
@@ -106,7 +110,12 @@ export function buildScenes(show) {
   // --- Score reveal ------------------------------------------------------
   const verdict = scoreVerdict(show.score);
   if (verdict) {
-    push({ kind: 'score', dur: 2.2, label: 'Your score', big: scoreLabel(show.score), sub: verdict, flash: 0.6, ...bg(0) });
+    // The verdict WORD is the hero (product rule). `score` rides along so the
+    // ticket-stub cut can stamp the number when that cut is built.
+    push({
+      kind: 'score', dur: 2.2, label: 'Your verdict', big: verdict,
+      score: scoreLabel(show.score), flash: 0.6, ...bg(0),
+    });
   }
 
   // --- Outro -------------------------------------------------------------

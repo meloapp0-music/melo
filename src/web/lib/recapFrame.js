@@ -203,8 +203,8 @@ const LETTERBOX = Math.round(40 * (EXPORT_H / 533)); // in-app 40px bars, scaled
 
 // A montage beat row: HUGE fit-to-width Oswald caps. Base size comes from the
 // shared beatScale heuristic; a measured clamp then guarantees one line fits.
-function beatRow(ctx, text, maxTextW) {
-  let size = 34 * S * beatScale(text);
+function beatRow(ctx, text, maxTextW, basePx = 34) {
+  let size = basePx * S * beatScale(text);
   const upper = text.toUpperCase();
   ctx.font = `600 ${Math.round(size)}px Oswald, Outfit, sans-serif`;
   const w = ctx.measureText(upper).width;
@@ -296,7 +296,8 @@ export async function drawFrame(ctx, timeline, t, assets, fallback = {}) {
   }
   if (scene.big != null) {
     if (kind === 'score') {
-      rows.push({ font: `700 ${Math.round(96 * S)}px Oswald, Outfit, sans-serif`, fill: '#FFFFFF', text: String(scene.big), size: 96 * S, gapAfter: 18 * S });
+      // Verdict WORD, fit to width (product rule — never the number here).
+      rows.push(beatRow(ctx, String(scene.big), maxTextW, 56));
     } else if (kind === 'title' || kind === 'outro') {
       rows.push({ font: `900 ${Math.round(30 * S)}px Outfit, sans-serif`, fill: '#FBF6EE', text: String(scene.big), size: 30 * S, gapAfter: 12 * S });
     } else {

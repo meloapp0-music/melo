@@ -10135,3 +10135,48 @@ h4 { font-size: 17px; }
   font-size: 15px; display: flex; align-items: center; justify-content: center;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
+
+/* Recap end card — the reel HOLDS here instead of auto-closing, so there's time
+   to share or rewatch. Sits over the frozen final frame. */
+.recap-end {
+  position: absolute; inset: 0; z-index: 16;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 54px 24px;
+  background: rgba(10, 8, 7, 0.72);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  animation: recapEndIn 0.28s ease-out both;
+}
+@keyframes recapEndIn { from { opacity: 0; } to { opacity: 1; } }
+.recap-end-head { text-align: center; }
+.recap-end-title {
+  font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 26px;
+  letter-spacing: -0.02em; color: #FBF6EE;
+}
+.recap-end-sub { font-size: 13.5px; font-weight: 600; color: rgba(251,246,238,0.66); margin-top: 3px; }
+.recap-end-actions { display: flex; flex-direction: column; gap: 9px; width: 100%; max-width: 230px; }
+.recap-end-btn {
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.1);
+  color: #FBF6EE; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 14.5px;
+  border-radius: 13px; padding: 12px 14px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.12s ease;
+}
+.recap-end-btn:active { transform: scale(0.97); }
+.recap-end-btn.primary {
+  background: linear-gradient(135deg, #F4A261, #E8573A);
+  border-color: transparent; box-shadow: 0 6px 18px rgba(232,87,58,0.34);
+}
+.recap-end-btn:disabled { opacity: 0.85; cursor: default; }
+.recap-end-done {
+  border: none; background: transparent; color: rgba(251,246,238,0.55);
+  font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 600;
+  padding: 4px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+
+/* Score scene: the VERDICT WORD is the hero, not the number (design handoff
+   product rule). Big Oswald caps in ember-adjacent cream. */
+.recap-verdict-big {
+  font-family: 'Oswald', 'Outfit', sans-serif; font-weight: 700;
+  font-size: 56px; line-height: 0.98; letter-spacing: 0.005em;
+  text-transform: uppercase; color: #fff;
+  text-shadow: 0 4px 40px rgba(232, 87, 58, 0.5);
+}

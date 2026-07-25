@@ -30,6 +30,9 @@ export default function RecapReel({ show, onClose }) {
   const [exportable, setExportable] = useState(false);
   const [exporting, setExporting] = useState(null);
   const [muted, setMuted] = useState(false);
+  // The reel used to call onClose() the moment the last scene finished, so it
+  // vanished before you could share or rewatch. Now it HOLDS on an end card.
+  const [ended, setEnded] = useState(false);
   const audioRef = useRef(null);
   const raf = useRef(0);
   const started = useRef(0);
@@ -41,7 +44,7 @@ export default function RecapReel({ show, onClose }) {
   // Per-scene timer via rAF (not setInterval) so the progress bar is smooth and
   // pausing is exact. Advancing `i` restarts the clock.
   useEffect(() => {
-    if (!scene) return undefined;
+    if (!scene || ended) return undefined;
     const durMs = scene.dur * PACE * 1000;
     started.current = performance.now();
     let acc = 0;
@@ -52,14 +55,14 @@ export default function RecapReel({ show, onClose }) {
       setProgress(p);
       if (p >= 1) {
         if (i < scenes.length - 1) setI((v) => v + 1);
-        else onClose?.(); // reel over
+        else { setProgress(1); setEnded(true); } // hold on the end card
         return;
       }
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf.current);
-  }, [i, paused, scene, scenes.length, onClose]);
+  }, [i, paused, scene, scenes.length, ended]);
 
   // Soundtrack — the reel plays the 30s preview of the setlist's opener (the
   // same iTunes-preview infra the Songs page uses), looped under the montage.
@@ -111,7 +114,17 @@ export default function RecapReel({ show, onClose }) {
   };
 
   const back = () => setI((v) => Math.max(0, v - 1));
-  const skip = () => { if (i < scenes.length - 1) setI((v) => v + 1); else onClose?.(); };
+  const skip = () => {
+    if (i < scenes.length - 1) setI((v) => v + 1);
+    else { setProgress(1); setEnded(true); }
+  };
+
+  const replay = () => {
+    setEnded(false);
+    setProgress(0);
+    setI(0);
+    try { const a = audioRef.current; if (a) { a.currentTime = 0; a.play().catch(() => {}); } } catch { /* noop */ }
+  };
 
   // Tap zones: left third = back, right two-thirds = skip. Hold = pause.
   const onPointerDown = (e) => {
@@ -133,7 +146,7 @@ export default function RecapReel({ show, onClose }) {
   const bgMedia = scene.video || scene.media || (show?.photos || [])[0] || artistImg || '';
   const isVideo = !!scene.video;
 
-  const bigCls = scene.kind === 'score' ? 'recap-score-num'
+  const bigCls = scene.kind === 'score' ? 'recap-verdict-big'
     : scene.kind === 'title' || scene.kind === 'outro' ? 'recap-headline'
       : 'recap-beat';
 
@@ -196,8 +209,28 @@ export default function RecapReel({ show, onClose }) {
           ))}
         </div>
 
-        {/* Tap layer (below the close button in z, above content) */}
-        <div className="recap-tap" onPointerDown={onPointerDown} onPointerUp={onPointerUp} />
+        {/* Tap layer (below the close button in z, above content) — removed at
+            the end so taps reach the end-card actions instead of replaying. */}
+        {!ended && <div className="recap-tap" onPointerDown={onPointerDown} onPointerUp={onPointerUp} />}
+
+        {/* End card — the reel holds here instead of auto-closing. */}
+        {ended && (
+          <div className="recap-end">
+            <div className="recap-end-head">
+              <div className="recap-end-title">{show.artist}</div>
+              <div className="recap-end-sub">Kept forever.</div>
+            </div>
+            <div className="recap-end-actions">
+              {exportable && (
+                <button className="recap-end-btn primary" onClick={doExport} disabled={exporting !== null}>
+                  {exporting === null ? '📤  Share video' : `Encoding… ${Math.round(exporting * 100)}%`}
+                </button>
+              )}
+              <button className="recap-end-btn" onClick={replay}>↻  Watch again</button>
+              <button className="recap-end-done" onClick={onClose}>Done</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Aspect toggle + export */}
