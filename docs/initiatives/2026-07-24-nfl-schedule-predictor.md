@@ -205,6 +205,38 @@ storage until "Use as my starting point" is pressed.
   `lastTeam`. A reminder that this file is one long script with a single shared
   scope, so new locals in `boot()` need checking against what is already there.
 
+- 2026-07-24: Round five — the club becomes structural, and a layout bug found
+  while doing it.
+
+  User pushback, and it was fair: "should there be a separate tab for your club?
+  i feel like we are over complicating things." A separate tab was the wrong fix
+  — it would have duplicated the by-team view exactly — but the diagnosis was
+  right. Round four *sprinkled* the club across six weak signals (console chip,
+  a card above the rail, a star button, a standings row tint, a seed row tint, a
+  receipts card) instead of making it structural, and the Season tab made you
+  walk past a lane toggle, a hint sentence, a club card and a rail of 32 crests
+  before reaching a single game.
+
+  The lane toggle is now named after your club: **`Bears · All clubs · By week`**.
+  On your club's lane there is no rail, no club card and no hint line — you land
+  directly on their 17 games, full width, and the toggle itself is the "you are
+  a Bears fan" signal. Browsing other clubs moved behind "All clubs", where a
+  picker actually belongs, and "Next club with gaps" now only appears there. The
+  star on the team header becomes "Change club" on your own lane. Picking a club
+  (or tapping the console chip) drops you straight onto its lane. Clearing your
+  club collapses the toggle back to two segments. Still four tabs, and roughly a
+  third less chrome on the screen that gets the most use.
+
+  **Bug found:** the week lane rendered inside `.season`, whose desktop rule is
+  `grid-template-columns: 224px minmax(0,1fr)` for the rail plus panel. The lane
+  passed only one child and never had a CSS rule of its own, so on desktop the
+  entire week view was squeezed into the 224px rail column with 922px of empty
+  space beside it. It had only ever been screenshotted at mobile width, where
+  the grid collapses to a single column and it looked correct. Both rail-less
+  lanes now share a `.season.solo` rule — one column, capped at 960px and
+  centred so the pick controls stay near the club they belong to. `gridcheck.py`
+  asserts the column widths in both lanes so this cannot regress silently.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The

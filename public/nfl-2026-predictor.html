@@ -122,6 +122,10 @@ input{font:inherit;color:inherit}
 
 /* ─── season layout ─────────────────────────────────────────── */
 .season{display:grid;grid-template-columns:224px minmax(0,1fr);gap:26px;padding-top:24px;padding-bottom:80px}
+/* the week lane and your own club's lane have no rail — one column, capped so
+   the pick controls do not drift a screen away from the club they belong to */
+.season.solo{grid-template-columns:minmax(0,1fr)}
+.season.solo > *{width:100%;max-width:960px;margin:0 auto}
 @media (max-width:900px){.season{grid-template-columns:minmax(0,1fr);gap:0;padding-top:0}}
 
 /* team rail */
@@ -549,7 +553,6 @@ tr.clinch td{background:rgba(232,181,74,.05)}
 }
 .seg button:hover{color:var(--chalk2)}
 .seg button[aria-current="true"]{background:var(--deck3);color:var(--chalk)}
-.lanehint{margin:0;flex:1;min-width:170px;font-size:12.5px;color:var(--chalk4)}
 .kbd{display:flex;align-items:center;gap:7px;font:400 11.5px/1 var(--body);color:var(--chalk4)}
 .kbd b{
   display:inline-block;min-width:19px;padding:4px 5px;text-align:center;
@@ -1579,15 +1582,20 @@ function renderClub(S){
 }
 function jumpToFav(){
   if (!state.fav) return openPicker();
-  team = state.fav; lane = "team"; mode = "season"; cursor = -1;
-  remember("team", team); remember("lane", "team");
+  team = state.fav; lane = "mine"; mode = "season"; cursor = -1;
+  remember("team", team); remember("lane", "mine");
   render();
   window.scrollTo({top:0, behavior:"smooth"});
 }
 function setFav(abbr){
   state.fav = abbr || "";
   save();
-  if (abbr){ team = abbr; remember("team", abbr); }
+  if (abbr){
+    team = abbr; lane = "mine"; cursor = -1;
+    remember("team", abbr); remember("lane", "mine");
+  } else if (lane === "mine"){
+    lane = "team"; remember("lane", "team");
+  }
 }
 
 function openPicker(){
@@ -1638,15 +1646,18 @@ function renderBanner(){
 /* ─── season ─── */
 function seasonView(S){
   const wrap = el("div", {"class":"shell"});
+  const hasClub = state.fav && TEAMS[state.fav];
+  if (lane === "mine" && !hasClub) lane = "team";
+  if (lane === "mine") team = state.fav;
+
   wrap.appendChild(laneBar());
-  if (lane === "team"){
-    const left = el("div", {});
-    const fc = favCard();
-    if (fc) left.appendChild(fc);
-    left.appendChild(railEl());
-    wrap.appendChild(el("div", {"class":"season"}, [left, teamPanel(S)]));
+  if (lane === "week"){
+    wrap.appendChild(el("div", {"class":"season solo"}, [weekPanel(S)]));
+  } else if (lane === "mine"){
+    /* your own club needs no picker — you are already on it */
+    wrap.appendChild(el("div", {"class":"season solo"}, [teamPanel(S)]));
   } else {
-    wrap.appendChild(el("div", {"class":"season weeklane"}, [weekPanel(S)]));
+    wrap.appendChild(el("div", {"class":"season"}, [railEl(), teamPanel(S)]));
   }
   return wrap;
 }
@@ -1655,15 +1666,22 @@ function laneBar(){
   function seg(k, label){
     return el("button", {
       "aria-current":String(lane === k),
-      onclick:function(){ lane = k; cursor = -1; remember("lane", k); render(); }
+      onclick:function(){
+        lane = k; cursor = -1;
+        if (k === "mine" && state.fav){ team = state.fav; remember("team", team); }
+        remember("lane", k); render();
+      }
     }, [label]);
   }
+  const segs = [];
+  if (state.fav && TEAMS[state.fav]) segs.push(seg("mine", TEAMS[state.fav].nick));
+  segs.push(seg("team", "All clubs"));
+  segs.push(seg("week", "By week"));
+
   return el("div", {"class":"lanebar"}, [
-    el("div", {"class":"seg"}, [seg("team", "By team"), seg("week", "By week")]),
-    el("p", {"class":"lanehint"}, [lane === "team"
-      ? "One club's schedule, called win by win — the careful lane."
-      : "A full slate at once. Fastest way through the other 31 clubs."]),
-    el("div", {"class":"kbd"}, lane === "team" ? [
+    el("div", {"class":"seg"}, segs),
+    el("span", {style:"flex:1"}),
+    el("div", {"class":"kbd"}, lane !== "week" ? [
       el("b", {}, ["↑"]), el("b", {}, ["↓"]), el("span", {}, ["move"]),
       el("b", {}, ["W"]), el("b", {}, ["L"]), el("span", {}, ["call it"]),
       el("b", {}, ["⌫"]), el("span", {}, ["clear"])
@@ -1780,26 +1798,6 @@ function longDay(iso){
   return mons[+p[1] - 1] + " " + (+p[2]);
 }
 
-/* your club, sitting above the thirty-one others rather than inside them */
-function favCard(){
-  if (!state.fav || !TEAMS[state.fav]) return null;
-  const t = TEAMS[state.fav], r = R[state.fav];
-  const picked = BY_TEAM[state.fav].filter(function(g){ return resultOf(g.i); }).length;
-  return el("button", {
-    "class":"favcard", style:"--c:" + t.pop,
-    "aria-current":String(team === state.fav),
-    onclick:jumpToFav
-  }, [
-    crest(state.fav, "sm"),
-    el("span", {"class":"txt"}, [
-      el("span", {"class":"k"}, ["Your club"]),
-      el("span", {"class":"n"}, [t.nick]),
-      el("span", {"class":"s"}, [picked === 17 ? "season called" : picked + " of 17 called"])
-    ]),
-    el("span", {"class":"rc"}, [picked ? recStr(r) : "—"])
-  ]);
-}
-
 function railEl(){
   const rail = el("div", {"class":"rail"});
   DIV_KEYS.forEach(function(k){
@@ -1839,18 +1837,21 @@ function teamPanel(S){
         el("div", {"class":"city"}, [t.city]),
         el("div", {"class":"nick"}, [t.nick]),
         el("div", {"class":"div", html:t.divKey + " &middot; <b>" + ordinal(divPos) + " in the division</b>"}),
-        el("button", {
-          "class":"favbtn" + (state.fav === team ? " on" : ""), style:"margin-top:12px",
-          "aria-pressed":String(state.fav === team),
-          onclick:function(){
-            setFav(state.fav === team ? "" : team);
-            render();
-            toast(state.fav ? TEAMS[state.fav].name + " is your club." : "No club set.");
-          }
-        }, [
-          el("span", {"class":"st"}, [state.fav === team ? "★" : "☆"]),
-          state.fav === team ? "Your club" : "Make this my club"
-        ])
+        lane === "mine"
+          ? el("button", {"class":"favbtn", style:"margin-top:12px", onclick:openPicker},
+              [el("span", {"class":"st"}, ["★"]), "Change club"])
+          : el("button", {
+              "class":"favbtn" + (state.fav === team ? " on" : ""), style:"margin-top:12px",
+              "aria-pressed":String(state.fav === team),
+              onclick:function(){
+                setFav(state.fav === team ? "" : team);
+                render();
+                toast(state.fav ? TEAMS[state.fav].name + " is your club." : "No club set.");
+              }
+            }, [
+              el("span", {"class":"st"}, [state.fav === team ? "★" : "☆"]),
+              state.fav === team ? "Your club" : "Make this my club"
+            ])
       ]),
       el("div", {"class":"readout"}, [
         el("div", {"class":"rec"}, [picked ? recStr(r) : "0-0"]),
@@ -1884,7 +1885,7 @@ function teamPanel(S){
       BY_TEAM[team].forEach(function(g){ delete state.picks[g.i]; });
       save(); render();
     }}, ["Clear " + t.nick]),
-    el("button", {"class":"btn", onclick:nextUnpicked}, ["Next team with gaps"])
+    lane === "team" ? el("button", {"class":"btn", onclick:nextUnpicked}, ["Next club with gaps"]) : null
   ]));
   return panel;
 }
@@ -3263,7 +3264,6 @@ window.addEventListener("resize", function(){
 
 (async function boot(){
   load();
-  lane = recall("lane") === "week" ? "week" : "team";
 
   const m = location.hash.match(/[#&]p=([^&]+)/);
   if (m){
@@ -3290,6 +3290,11 @@ window.addEventListener("resize", function(){
       if (SCHEDULE.some(function(g){ return g.week === n && !resultOf(g.i); })){ weekSel = n; break; }
     }
   }
+
+  const savedLane = recall("lane");
+  lane = (savedLane === "week" || savedLane === "team" || savedLane === "mine")
+    ? savedLane : (state.fav && TEAMS[state.fav] ? "mine" : "team");
+  if (lane === "mine" && !(state.fav && TEAMS[state.fav])) lane = "team";
 
   /* land on your own club unless you have deliberately navigated elsewhere */
   const lastTeam = recall("team");
