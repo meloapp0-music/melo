@@ -404,6 +404,172 @@ tr.clinch td{background:rgba(232,181,74,.05)}
 .footer{border-top:1px solid var(--rule-soft);padding:22px 0 40px;font-size:12px;color:var(--chalk4);line-height:1.65}
 .footer a{color:var(--chalk3)}
 
+/* ─── lane bar + week lane ──────────────────────────────────── */
+.lanebar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:18px 0 4px}
+.seg{display:flex;padding:3px;gap:2px;border:1px solid var(--rule);border-radius:9px;background:var(--deck)}
+.seg button{
+  padding:6px 14px;border-radius:6px;font:600 12.5px/1 var(--body);
+  color:var(--chalk3);transition:background .16s,color .16s;
+}
+.seg button:hover{color:var(--chalk2)}
+.seg button[aria-current="true"]{background:var(--deck3);color:var(--chalk)}
+.lanehint{margin:0;flex:1;min-width:170px;font-size:12.5px;color:var(--chalk4)}
+.kbd{display:flex;align-items:center;gap:7px;font:400 11.5px/1 var(--body);color:var(--chalk4)}
+.kbd b{
+  display:inline-block;min-width:19px;padding:4px 5px;text-align:center;
+  border:1px solid var(--rule);border-radius:5px;background:var(--deck);
+  font:600 10.5px/1 var(--body);color:var(--chalk3);
+}
+@media (max-width:720px){.kbd{display:none}}
+
+.weekbar{
+  display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;
+  padding:14px 0 16px;margin-bottom:4px;
+}
+.weekbar::-webkit-scrollbar{display:none}
+.wkchip{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-width:52px;padding:8px 9px;border-radius:8px;border:1px solid var(--rule-soft);
+  background:var(--deck);transition:border-color .16s,background .16s;
+}
+.wkchip:hover{border-color:var(--chalk4)}
+.wkchip[aria-current="true"]{border-color:var(--team);background:color-mix(in srgb,var(--team) 14%,var(--deck))}
+.wkchip .n{font:700 15px/1 var(--display);color:var(--chalk2);letter-spacing:.03em}
+.wkchip[aria-current="true"] .n{color:var(--chalk)}
+.wkchip .dots{display:flex;gap:2px}
+.wkchip .dots i{width:3px;height:3px;border-radius:99px;background:var(--chalk4);opacity:.45}
+.wkchip .dots i.on{background:var(--team);opacity:1}
+.daygroup{margin:20px 0 9px;display:flex;align-items:center;gap:12px}
+.daygroup .lbl{font:600 10.5px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--chalk3);white-space:nowrap}
+.daygroup .ln{flex:1;height:1px;background:var(--rule-soft)}
+.slab.cursor{border-color:var(--pop)}
+.slab.cursor::after{
+  content:"";position:absolute;inset:-1px;border-radius:var(--r);pointer-events:none;
+  box-shadow:0 0 0 1px var(--pop);
+}
+.byelist{
+  margin-top:22px;padding:13px 15px;border:1px dashed var(--rule);border-radius:var(--r);
+  font-size:12.5px;color:var(--chalk4);line-height:1.7;
+}
+.byelist b{color:var(--chalk3);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:10px;display:block;margin-bottom:5px}
+
+/* ─── compare ───────────────────────────────────────────────── */
+.rivalbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+.rvchip{
+  display:flex;align-items:center;gap:9px;padding:8px 13px;border-radius:9px;
+  border:1px solid var(--rule-soft);background:var(--deck);transition:border-color .16s;
+}
+.rvchip:hover{border-color:var(--chalk4)}
+.rvchip[aria-current="true"]{border-color:var(--pop);background:var(--deck2)}
+.rvchip .nm{font:600 13.5px/1 var(--body);color:var(--chalk2)}
+.rvchip[aria-current="true"] .nm{color:var(--chalk)}
+.rvchip .pc{font:700 12px/1 var(--display);color:var(--chalk4);letter-spacing:.04em}
+.rvchip .x{color:var(--chalk4);font-size:14px;line-height:1;padding:0 1px}
+.rvchip .x:hover{color:var(--loss)}
+
+.agree{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;
+  border:1px solid var(--rule-soft);border-radius:12px;overflow:hidden;background:var(--rule-soft);
+}
+.agree > div{background:var(--deck);padding:17px 18px}
+.agree .k{font:600 10px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--chalk4)}
+.agree .v{font:700 clamp(24px,4vw,32px)/1 var(--display);margin-top:8px;letter-spacing:.02em}
+.agree .s{font-size:12px;color:var(--chalk4);margin-top:6px}
+
+.gaps{margin-top:26px}
+.gaprow{display:grid;grid-template-columns:132px minmax(0,1fr) 132px;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--rule-soft)}
+.gaprow:first-of-type{border-top:none}
+.gaprow .gs{display:flex;align-items:center;gap:8px;min-width:0}
+.gaprow .gs.r{flex-direction:row-reverse}
+.gaprow .gs .flag{width:3px;height:17px;border-radius:2px;background:var(--c);flex-shrink:0}
+.gaprow .rec{font:700 14px/1 var(--display);letter-spacing:.04em;white-space:nowrap}
+.gaprow .tmn{font:600 12.5px/1 var(--body);color:var(--chalk3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gapbar{position:relative;height:22px;display:flex;align-items:center;justify-content:center}
+.gapbar .mid{position:absolute;top:0;bottom:0;width:1px;background:var(--rule);left:50%}
+.gapbar i{position:absolute;height:6px;border-radius:99px;background:var(--c)}
+.gapbar .d{position:relative;font:700 11px/1 var(--display);color:var(--chalk4);background:var(--pitch);padding:0 6px;letter-spacing:.04em}
+.gaprow.gaphead{padding-bottom:3px}
+.gaprow.gaphead .tmn,.gaprow.gaphead .d,.gaprow.gaphead .rec{
+  font:600 9.5px/1 var(--body);letter-spacing:.13em;text-transform:uppercase;color:var(--chalk4);
+}
+.gaprow.gaphead .gapbar{height:auto}
+@media (max-width:620px){
+  .gaprow{grid-template-columns:1fr auto 1fr;gap:8px}
+  .gaprow .tmn{display:none}
+  .gapbar{min-width:60px}
+}
+
+.splits{margin-top:26px}
+.splithead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.splithead select{
+  padding:7px 11px;border:1px solid var(--rule);border-radius:8px;background:var(--deck);
+  font:600 12.5px/1 var(--body);color:var(--chalk2);
+}
+.splitrow{
+  display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:center;
+  padding:9px 0;border-top:1px solid var(--rule-soft);
+}
+.splitrow .wk{font:700 12px/1 var(--display);color:var(--chalk4);text-align:right;padding:0;letter-spacing:.04em}
+.splitrow .mt{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--chalk3)}
+.splitrow .pk{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;border:1px solid var(--rule);background:var(--deck)}
+.splitrow .pk .flag{width:3px;height:12px;border-radius:2px;background:var(--c)}
+.splitrow .pk b{font:700 12px/1 var(--display);color:var(--c);letter-spacing:.04em}
+.splitrow .pk span{font-size:10.5px;color:var(--chalk4)}
+.splitrow .gm{font:600 12.5px/1 var(--body);color:var(--chalk4);white-space:nowrap}
+.morebtn{margin-top:14px}
+
+.vsgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:26px}
+.vscard{border:1px solid var(--rule-soft);border-radius:12px;background:var(--deck);overflow:hidden}
+.vscard h4{margin:0;padding:11px 15px;font:600 10.5px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--chalk3);border-bottom:1px solid var(--rule-soft);background:rgba(0,0,0,.18)}
+.vsrow{display:grid;grid-template-columns:18px minmax(0,1fr) minmax(0,1fr);gap:9px;align-items:center;padding:7px 15px;border-top:1px solid var(--rule-soft)}
+.vsrow:first-of-type{border-top:none}
+.vsrow .sn{font:700 11px/1 var(--display);color:var(--chalk4)}
+.vsrow .c{display:flex;align-items:center;gap:7px;min-width:0}
+.vsrow .c .flag{width:3px;height:14px;border-radius:2px;background:var(--c);flex-shrink:0}
+.vsrow .c span{font:600 12.5px/1.2 var(--body);color:var(--chalk3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vsrow.same .c span{color:var(--chalk2)}
+.vsrow:not(.same){background:rgba(232,181,74,.05)}
+.vsrow:not(.same) .c span{color:var(--chalk)}
+
+/* ─── receipts ──────────────────────────────────────────────── */
+.rc-hero{
+  position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--rule-soft);
+  background:linear-gradient(150deg,color-mix(in srgb,var(--c) 30%,transparent),transparent 60%),var(--deck);
+  padding:clamp(24px,5vw,44px);text-align:center;
+}
+.rc-hero::before{
+  content:"";position:absolute;inset:0;opacity:.4;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 47px,rgba(238,242,248,.05) 47px 48px);
+  -webkit-mask-image:radial-gradient(ellipse at center,#000,transparent 72%);
+  mask-image:radial-gradient(ellipse at center,#000,transparent 72%);
+}
+.rc-hero > *{position:relative}
+.rc-hero .eyebrow{color:var(--brass)}
+.rc-hero .who{font:700 clamp(34px,8vw,68px)/.95 var(--display);letter-spacing:.01em;margin:12px 0 0;color:var(--c)}
+.rc-hero .line{margin-top:14px;font-size:13.5px;color:var(--chalk3)}
+.rc-hero .line b{color:var(--chalk2);font-weight:600}
+.rc-empty{text-align:center;padding:clamp(30px,7vw,60px);border:1px dashed var(--rule);border-radius:16px;color:var(--chalk3)}
+.rc-empty h3{font:700 22px/1.15 var(--display);color:var(--chalk2);margin:0 0 8px}
+
+.takes{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:12px;margin-top:22px}
+.take{border:1px solid var(--rule-soft);border-radius:12px;background:var(--deck);padding:16px 17px;position:relative;overflow:hidden}
+.take::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--rule))}
+.take .k{font:600 10px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--chalk4)}
+.take .v{font:700 clamp(19px,3vw,24px)/1.1 var(--display);margin-top:9px;color:var(--chalk)}
+.take .s{font-size:12.5px;color:var(--chalk3);margin-top:7px;line-height:1.5}
+.take.hot::before{background:var(--brass)}
+
+.champs8{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:9px;margin-top:14px}
+.champ8{display:flex;align-items:center;gap:10px;padding:10px 13px;border:1px solid var(--rule-soft);border-radius:9px;background:var(--deck)}
+.champ8 .flag{width:3px;height:20px;border-radius:2px;background:var(--c);flex-shrink:0}
+.champ8 .d{display:block;font:600 9.5px/1 var(--body);letter-spacing:.13em;text-transform:uppercase;color:var(--chalk4)}
+.champ8 .n{display:block;font:600 13.5px/1.2 var(--body);color:var(--chalk2);margin-top:5px}
+.champ8 .r{margin-left:auto;font:700 12.5px/1 var(--display);color:var(--chalk4);letter-spacing:.04em}
+.sect{margin-top:34px}
+.sect > h3{font:700 19px/1 var(--display);letter-spacing:.06em;margin:0 0 4px}
+.sect > p{margin:0 0 14px;font-size:13px;color:var(--chalk4)}
+.cardprev{width:100%;border-radius:12px;border:1px solid var(--rule);display:block}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
 }
@@ -715,6 +881,11 @@ const SCHEDULE_RAW = [
 "18|2027-01-10|13:00|PHI|NYG|",
 "18|2027-01-10|13:00|DAL|WAS|",
 ];
+// 2025 final regular-season records + postseason field, for the receipts screen.
+const LAST_YEAR = {"ARI":[3,14,0],"ATL":[8,9,0],"BAL":[8,9,0],"BUF":[12,5,0],"CAR":[8,9,0],"CHI":[11,6,0],"CIN":[6,11,0],"CLE":[5,12,0],"DAL":[7,9,1],"DEN":[14,3,0],"DET":[9,8,0],"GB":[9,7,1],"HOU":[12,5,0],"IND":[8,9,0],"JAX":[13,4,0],"KC":[6,11,0],"LA":[12,5,0],"LAC":[11,6,0],"LV":[3,14,0],"MIA":[7,10,0],"MIN":[9,8,0],"NE":[14,3,0],"NO":[6,11,0],"NYG":[4,13,0],"NYJ":[3,14,0],"PHI":[11,6,0],"PIT":[10,7,0],"SEA":[14,3,0],"SF":[12,5,0],"TB":[8,9,0],"TEN":[3,14,0],"WAS":[5,12,0]};
+const LY_FIELD = ["BUF","CAR","CHI","DEN","GB","HOU","JAX","LA","LAC","NE","PHI","PIT","SEA","SF"];
+const LY_CHAMP = "SEA", LY_RUNNER_UP = "NE";
+
 
 /* ═══ model ═══════════════════════════════════════════════════ */
 
@@ -778,18 +949,52 @@ function contrast(a, b){
 
 /* ═══ state ═══════════════════════════════════════════════════ */
 
-const KEY = "pickem26.v1";
+const KEY = "pickem26.v1", RKEY = "pickem26.rivals";
 let state = blank();
 let mode = "season";
+let lane = "team";        // "team" | "week"
 let team = "BUF";
-let shared = null;   // {name} when viewing someone else's picks
+let weekSel = 1;
+let shared = null;        // {name} when viewing someone else's picks
+let rivals = [];          // [{name, code, st}] — friends' sheets, decoded
+let rivalSel = 0;
+let computing = false;    // true while analysing someone else's state
+let cursor = -1;          // keyboard position within the rendered slab list
+let slabGames = [];       // game indices, in render order
 
 function blank(){
   return {name:"", picks:{}, po:{}, order:{AFC:[], NFC:[]}};
 }
 function save(){
-  if (shared) return;
+  if (shared || computing) return;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+}
+function remember(k, v){ try { localStorage.setItem(KEY + "." + k, v); } catch(e){} }
+function recall(k){ try { return localStorage.getItem(KEY + "." + k); } catch(e){ return null; } }
+
+/* run fn with someone else's picks installed as the current state. every
+   record/seed/bracket helper reads the globals, so swapping them here is
+   cheaper than threading a state argument through all of them. saving is
+   locked out for the duration so a friend's sheet can never overwrite yours. */
+function withState(st, fn){
+  const s0 = state, r0 = R, c0 = computing;
+  state = st; computing = true; R = buildRecords();
+  try { return fn(); } finally { state = s0; R = r0; computing = c0; }
+}
+
+/* everything the compare and receipts screens need from one sheet */
+function analyze(st){
+  return withState(st, function(){
+    const S = standings();
+    const A = bracketFor("AFC", S), N = bracketFor("NFC", S);
+    const res = [];
+    for (let i = 0; i < NGAMES; i++) res.push(resultOf(i));
+    return {
+      rec:R, S:S, res:res, afc:A, nfc:N,
+      sb:(A.champ && N.champ) ? advOf("SB", A.champ, N.champ) : null,
+      decided:res.filter(Boolean).length
+    };
+  });
 }
 function load(){
   try {
@@ -1029,8 +1234,12 @@ function rankGroup(pool, scope, depth){
   return out;
 }
 
-/* division standings + conference seeding */
+/* division standings + conference seeding.
+   rebuilds the record cache first on purpose: seeding feeds bracketFor, which
+   drops postseason picks whose matchup no longer exists. running that against
+   a stale R would quietly delete picks the user actually made. */
 function standings(){
+  R = buildRecords();
   const divRank = {};
   DIV_KEYS.forEach(function(k){ divRank[k] = rankGroup(DIVS[k], "div"); });
 
@@ -1132,7 +1341,9 @@ function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&
 const MODES = [
   {k:"season",   label:"Season"},
   {k:"standings",label:"Standings"},
-  {k:"playoffs", label:"Postseason"}
+  {k:"playoffs", label:"Postseason"},
+  {k:"receipts", label:"Receipts"},
+  {k:"compare",  label:"Compare"}
 ];
 
 function render(){
@@ -1152,9 +1363,13 @@ function render(){
 
   const view = $("#view");
   view.innerHTML = "";
+  slabGames = [];
   if (mode === "season") view.appendChild(seasonView(S));
   else if (mode === "standings") view.appendChild(standingsView(S));
-  else view.appendChild(playoffView(S));
+  else if (mode === "playoffs") view.appendChild(playoffView(S));
+  else if (mode === "receipts") view.appendChild(receiptsView(S));
+  else view.appendChild(compareView(S));
+  paintCursor(false);
 }
 
 function renderModes(done){
@@ -1163,12 +1378,14 @@ function renderModes(done){
   MODES.forEach(function(m){
     let tick = "";
     if (m.k === "season") tick = Math.round(done / NGAMES * 100) + "%";
+    if (m.k === "compare" && rivals.length) tick = String(rivals.length);
     wrap.appendChild(el("button", {
       "class":"mode", "aria-current":String(mode === m.k),
-      onclick:function(){ mode = m.k; render(); window.scrollTo({top:0}); }
+      onclick:function(){ go(m.k); }
     }, [m.label, tick ? el("span", {"class":"tick"}, [tick]) : null]));
   });
 }
+function go(m){ mode = m; render(); window.scrollTo({top:0}); }
 
 function renderBanner(){
   const b = $("#banner");
@@ -1186,10 +1403,139 @@ function renderBanner(){
 
 /* ─── season ─── */
 function seasonView(S){
-  const wrap = el("div", {"class":"shell season"});
-  wrap.appendChild(railEl());
-  wrap.appendChild(teamPanel(S));
+  const wrap = el("div", {"class":"shell"});
+  wrap.appendChild(laneBar());
+  if (lane === "team"){
+    wrap.appendChild(el("div", {"class":"season"}, [railEl(), teamPanel(S)]));
+  } else {
+    wrap.appendChild(el("div", {"class":"season weeklane"}, [weekPanel(S)]));
+  }
   return wrap;
+}
+
+function laneBar(){
+  function seg(k, label){
+    return el("button", {
+      "aria-current":String(lane === k),
+      onclick:function(){ lane = k; cursor = -1; remember("lane", k); render(); }
+    }, [label]);
+  }
+  return el("div", {"class":"lanebar"}, [
+    el("div", {"class":"seg"}, [seg("team", "By team"), seg("week", "By week")]),
+    el("p", {"class":"lanehint"}, [lane === "team"
+      ? "One club's whole season at a time — the careful lane."
+      : "A full slate at once. Fastest way to get through the other 31 clubs."]),
+    el("div", {"class":"kbd"}, [
+      el("b", {}, ["↑"]), el("b", {}, ["↓"]), el("span", {}, ["move"]),
+      el("b", {}, ["←"]), el("b", {}, ["→"]), el("span", {}, ["pick"]),
+      el("b", {}, ["⌫"]), el("span", {}, ["clear"])
+    ])
+  ]);
+}
+
+function weekPanel(S){
+  const panel = el("div", {});
+  panel.appendChild(weekBar());
+
+  const games = SCHEDULE.filter(function(g){ return g.week === weekSel; });
+  const picked = games.filter(function(g){ return resultOf(g.i); }).length;
+
+  panel.appendChild(el("div", {"class":"thead", style:"padding:18px 20px"}, [
+    el("div", {"class":"thead-in"}, [
+      el("div", {"class":"tname"}, [
+        el("div", {"class":"city"}, ["Week " + weekSel]),
+        el("div", {"class":"nick", style:"font-size:clamp(24px,4vw,34px)"},
+          [weekSel === 18 ? "Final Sunday" : games.length + " games"]),
+        el("div", {"class":"div", html:weekSpan(games) })
+      ]),
+      el("div", {"class":"readout"}, [
+        el("div", {"class":"rec"}, [picked + "/" + games.length]),
+        el("div", {"class":"sub"}, [picked === games.length ? "week complete" : "picked"])
+      ])
+    ])
+  ]));
+
+  const slabs = el("div", {"class":"slabs"});
+  let lastDay = null;
+  games.forEach(function(g){
+    if (g.date !== lastDay){
+      lastDay = g.date;
+      slabs.appendChild(el("div", {"class":"daygroup"}, [
+        el("span", {"class":"lbl"}, [dayLabel(g.date)]),
+        el("span", {"class":"ln"})
+      ]));
+    }
+    slabs.appendChild(slabEl(g, true));
+  });
+  panel.appendChild(slabs);
+
+  const byes = ORDER.filter(function(a){ return BYE[a] === weekSel; })
+    .map(function(a){ return TEAMS[a].name; });
+  if (byes.length){
+    panel.appendChild(el("div", {"class":"byelist"}, [
+      el("b", {}, ["On bye"]), byes.join(" · ")
+    ]));
+  }
+
+  panel.appendChild(el("div", {"class":"team-tools"}, [
+    el("p", {"class":"hint"}, [picked === games.length
+      ? "Week " + weekSel + " is done."
+      : (games.length - picked) + " left in week " + weekSel + "."]),
+    el("button", {"class":"btn", disabled:weekSel === 1 ? "disabled" : false,
+      onclick:function(){ setWeek(weekSel - 1); }}, ["← Week " + (weekSel - 1 || 1)]),
+    el("button", {"class":"btn btn-key", onclick:nextOpenWeek}, ["Next open week →"])
+  ]));
+  return panel;
+}
+
+function weekSpan(games){
+  if (!games.length) return "";
+  const a = games[0].date, b = games[games.length - 1].date;
+  return a === b ? longDay(a) : longDay(a) + " &ndash; " + longDay(b);
+}
+function weekBar(){
+  const bar = el("div", {"class":"weekbar"});
+  for (let w = 1; w <= 18; w++){
+    const gs = SCHEDULE.filter(function(g){ return g.week === w; });
+    const done = gs.filter(function(g){ return resultOf(g.i); }).length;
+    const dots = el("span", {"class":"dots"});
+    /* four dots stand in for the week's completion, so a glance down the bar
+       shows where the gaps are without reading numbers */
+    for (let d = 0; d < 4; d++){
+      dots.appendChild(el("i", {"class":done / gs.length > d / 4 ? "on" : ""}));
+    }
+    bar.appendChild(el("button", {
+      "class":"wkchip", "aria-current":String(w === weekSel),
+      "aria-label":"Week " + w + ", " + done + " of " + gs.length + " picked",
+      onclick:(function(n){ return function(){ setWeek(n); }; })(w)
+    }, [el("span", {"class":"n"}, [String(w)]), dots]));
+  }
+  return bar;
+}
+function setWeek(w){
+  weekSel = Math.max(1, Math.min(18, w));
+  cursor = -1;
+  remember("week", String(weekSel));
+  render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function nextOpenWeek(){
+  for (let k = 1; k <= 18; k++){
+    const w = ((weekSel - 1 + k) % 18) + 1;
+    if (SCHEDULE.some(function(g){ return g.week === w && !resultOf(g.i); })){ setWeek(w); return; }
+  }
+  toast("Every week is filled in. Head to Postseason.");
+}
+function dayLabel(iso){
+  const p = iso.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const mons = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return days[d.getUTCDay()] + " · " + mons[+p[1] - 1] + " " + (+p[2]);
+}
+function longDay(iso){
+  const p = iso.split("-");
+  const mons = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return mons[+p[1] - 1] + " " + (+p[2]);
 }
 
 function railEl(){
@@ -1270,6 +1616,12 @@ function teamPanel(S){
 function meta(k, v){
   return el("div", {}, [el("div", {"class":"k"}, [k]), el("div", {"class":"v"}, [v])]);
 }
+/* "the Bears", "the Bears and Jets", "the Bears, Jets and 4 more" */
+function listOf(names){
+  if (names.length <= 2) return names.join(" and ");
+  if (names.length <= 4) return names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+  return names.slice(0, 3).join(", ") + " and " + (names.length - 3) + " more";
+}
 function ordinal(n){
   const s = ["th","st","nd","rd"], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
@@ -1279,15 +1631,18 @@ function shortDate(iso){
   const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
   return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getUTCDay()] + " " + (+p[1]) + "/" + (+p[2]);
 }
+function timeLabel(time){
+  let h = +time.split(":")[0];
+  const m = time.split(":")[1], ap = h >= 12 ? "pm" : "am";
+  h = h % 12 || 12;
+  return h + ":" + m + " " + ap + " ET";
+}
 function longDate(iso, time){
   const p = iso.split("-");
   const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
   const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const mons = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  let h = +time.split(":")[0], m = time.split(":")[1];
-  const ap = h >= 12 ? "pm" : "am";
-  h = h % 12 || 12;
-  return days[d.getUTCDay()] + ", " + mons[+p[1] - 1] + " " + (+p[2]) + " · " + h + ":" + m + " " + ap + " ET";
+  return days[d.getUTCDay()] + ", " + mons[+p[1] - 1] + " " + (+p[2]) + " · " + timeLabel(time);
 }
 
 function byeEl(){
@@ -1297,14 +1652,15 @@ function byeEl(){
   ]);
 }
 
-function slabEl(g){
+function slabEl(g, compact){
   const res = resultOf(g.i);
-  const p = state.picks[g.i] || {};
   const ta = TEAMS[g.away], th = TEAMS[g.home];
   const edge = res === "A" ? ta.pop : res === "H" ? th.pop : res === "T" ? "var(--brass)" : "transparent";
+  slabGames.push(g.i);
 
   const slab = el("div", {
     "class":"slab" + (res ? " decided" : ""),
+    "data-i":String(g.i),
     style:"--edge:" + edge
   });
 
@@ -1318,12 +1674,57 @@ function slabEl(g){
   ]));
 
   slab.appendChild(el("div", {"class":"slab-foot"}, [
-    el("span", {"class":"when", html:longDate(g.date, g.time) +
+    el("span", {"class":"when", html:(compact ? timeLabel(g.time) : longDate(g.date, g.time)) +
       (g.neutral ? ' &middot; <span class="intl">' + esc(g.neutral) + "</span>" : "")}),
     el("span", {"class":"nudge-hint"}, [res ? "" : "Tap a side"])
   ]));
   return slab;
 }
+
+function paintCursor(scroll){
+  const prev = document.querySelector(".slab.cursor");
+  if (prev) prev.classList.remove("cursor");
+  if (cursor < 0 || cursor >= slabGames.length) return;
+  const n = document.querySelector('.slab[data-i="' + slabGames[cursor] + '"]');
+  if (!n) return;
+  n.classList.add("cursor");
+  if (scroll) n.scrollIntoView({block:"center", behavior:"smooth"});
+}
+
+document.addEventListener("keydown", function(e){
+  if (mode !== "season" || shared) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if ($("#modal").firstChild) return;
+  if (!slabGames.length) return;
+
+  const k = e.key;
+  if (k === "ArrowDown" || k === "ArrowUp"){
+    e.preventDefault();
+    const from = cursor < 0 ? (k === "ArrowDown" ? -1 : 1) : cursor;
+    cursor = Math.max(0, Math.min(slabGames.length - 1, from + (k === "ArrowDown" ? 1 : -1)));
+    paintCursor(true);
+  } else if (k === "ArrowLeft" || k === "ArrowRight"){
+    e.preventDefault();
+    if (cursor < 0) cursor = 0;
+    setWinner(slabGames[cursor], k === "ArrowLeft" ? "A" : "H");
+    const next = Math.min(slabGames.length - 1, cursor + 1);
+    render();
+    cursor = next;
+    paintCursor(true);
+  } else if (k === "Backspace" || k === "Delete"){
+    e.preventDefault();
+    if (cursor >= 0){
+      delete state.picks[slabGames[cursor]];
+      save();
+      const at = cursor;
+      render();
+      cursor = at;
+      paintCursor(false);
+    }
+  }
+});
 
 function sideEl(g, side, t, res){
   const won = res === side, lost = res && res !== side && res !== "T";
@@ -1332,7 +1733,13 @@ function sideEl(g, side, t, res){
     style:"--c:" + t.pop,
     "aria-pressed":String(won),
     title:(won ? "Picked to win — tap again to undo" : "Pick " + t.name + " to win"),
-    onclick:function(){ setWinner(g.i, side); render(); }
+    onclick:function(){
+      setWinner(g.i, side);
+      const at = slabGames.indexOf(g.i);
+      render();
+      cursor = at;
+      paintCursor(false);
+    }
   }, [
     el("span", {"class":"dot"}),
     el("span", {"class":"who"}, [
@@ -1603,6 +2010,652 @@ function superBowl(A, N){
   return sb;
 }
 
+/* ─── receipts ─── */
+
+function upsetsIn(B){
+  const out = [];
+  [].concat(B.wc, B.dv, [B.cc]).forEach(function(m){
+    if (!m.a) return;
+    const w = advOf(m.key, m.a, m.b);
+    if (!w) return;
+    const ws = w === m.a ? m.sa : m.sb, ls = w === m.a ? m.sb : m.sa;
+    if (ws > ls) out.push({w:w, l:w === m.a ? m.b : m.a, ws:ws, ls:ls});
+  });
+  return out;
+}
+
+function receiptData(S){
+  const A = bracketFor("AFC", S), N = bracketFor("NFC", S);
+  const champ = (A.champ && N.champ) ? advOf("SB", A.champ, N.champ) : null;
+  const divWinners = DIV_KEYS.map(function(k){ return {div:k, t:S.divRank[k][0].t}; });
+
+  const field = {};
+  ["AFC","NFC"].forEach(function(c){
+    S.seeds[c].forEach(function(x){ if (!x.outside) field[x.t] = x.seed; });
+  });
+
+  const swings = ORDER.map(function(a){
+    const ly = LAST_YEAR[a];
+    return {t:a, d:R[a].w - ly[0], now:R[a], was:ly};
+  }).sort(function(x, y){ return y.d - x.d; });
+
+  const byRec = ORDER.slice().sort(function(a, b){
+    return recPct(R[b]) - recPct(R[a]) || R[b].w - R[a].w;
+  });
+
+  let homePicks = 0, called = 0, ties = 0;
+  for (let i = 0; i < NGAMES; i++){
+    const r = resultOf(i);
+    if (!r) continue;
+    called++;
+    if (r === "H") homePicks++;
+    if (r === "T") ties++;
+  }
+
+  return {
+    A:A, N:N, champ:champ, divWinners:divWinners, field:field, swings:swings, byRec:byRec,
+    upsets:upsetsIn(A).concat(upsetsIn(N)),
+    crashers:Object.keys(field).filter(function(t){ return LY_FIELD.indexOf(t) < 0; }),
+    missing:LY_FIELD.filter(function(t){ return !field[t]; }),
+    homePicks:homePicks, called:called, ties:ties
+  };
+}
+
+function receiptsView(S){
+  const d = receiptData(S);
+  const done = decidedCount();
+  const wrap = el("div", {"class":"shell pane"});
+  wrap.appendChild(el("div", {"class":"pane-head"}, [
+    el("h2", {}, ["Your receipts"]),
+    el("p", {html:"Everything you just committed to, in one place, so it can be held against you in February."})
+  ]));
+
+  if (d.champ){
+    const t = TEAMS[d.champ];
+    const other = d.champ === d.A.champ ? d.N.champ : d.A.champ;
+    wrap.appendChild(el("div", {"class":"rc-hero", style:"--c:" + t.pop}, [
+      el("span", {"class":"eyebrow"}, ["Super Bowl LXI champions"]),
+      el("div", {"class":"who"}, [t.city, el("br"), t.nick]),
+      el("div", {"class":"line", html:"You have them beating <b>" + esc(TEAMS[other].name) +
+        "</b> in Inglewood, after a <b>" + recStr(R[d.champ]) + "</b> regular season as the " +
+        ordinal(d.field[d.champ]) + " seed."})
+    ]));
+  } else {
+    wrap.appendChild(el("div", {"class":"rc-empty"}, [
+      el("h3", {}, ["No champion yet"]),
+      el("p", {style:"margin:0 0 18px;font-size:13.5px"}, [done < NGAMES
+        ? "You have called " + done + " of " + NGAMES + " games. Fill in the season, then work the bracket and this page writes itself."
+        : "The season is done — go pick your way through the bracket."]),
+      el("button", {"class":"btn btn-key", onclick:function(){ go(done < NGAMES ? "season" : "playoffs"); }},
+        [done < NGAMES ? "Back to the season" : "Open the bracket"])
+    ]));
+  }
+
+  if (!done){ return wrap; }
+
+  /* division winners */
+  const champs = el("div", {"class":"champs8"});
+  d.divWinners.forEach(function(x){
+    const t = TEAMS[x.t];
+    champs.appendChild(el("div", {"class":"champ8", style:"--c:" + t.pop}, [
+      el("span", {"class":"flag"}),
+      el("span", {}, [el("span", {"class":"d"}, [x.div]), el("span", {"class":"n"}, [t.nick])]),
+      el("span", {"class":"r"}, [recStr(R[x.t])])
+    ]));
+  });
+  wrap.appendChild(el("div", {"class":"sect"}, [
+    el("h3", {}, ["Your eight division winners"]),
+    el("p", {}, ["Straight from the standings you built."]),
+    champs
+  ]));
+
+  /* the takes */
+  const takes = el("div", {"class":"takes"});
+  const riser = d.swings[0], faller = d.swings[d.swings.length - 1];
+  const best = d.byRec[0], worst = d.byRec[d.byRec.length - 1];
+
+  function take(k, v, s, color, hot){
+    return el("div", {"class":"take" + (hot ? " hot" : ""), style:color ? "--c:" + color : ""}, [
+      el("div", {"class":"k"}, [k]),
+      el("div", {"class":"v"}, [v]),
+      el("div", {"class":"s", html:s})
+    ]);
+  }
+
+  if (riser && riser.d > 0){
+    takes.appendChild(take("Biggest riser", TEAMS[riser.t].nick,
+      "You have them at <b>" + recStr(riser.now) + "</b> after " + riser.was[0] + "-" + riser.was[1] +
+      " last year. That is <b>" + riser.d + " more wins</b>.", TEAMS[riser.t].pop, riser.d >= 6));
+  }
+  if (faller && faller.d < 0){
+    takes.appendChild(take("Biggest faller", TEAMS[faller.t].nick,
+      "From " + faller.was[0] + "-" + faller.was[1] + " down to <b>" + recStr(faller.now) +
+      "</b> — you are docking them <b>" + Math.abs(faller.d) + " wins</b>.",
+      TEAMS[faller.t].pop, faller.d <= -6));
+  }
+  takes.appendChild(take("Best in the league", TEAMS[best].nick,
+    recStr(R[best]) + " · " + (d.field[best] ? ordinal(d.field[best]) + " seed in the " + TEAMS[best].conf
+      : "and somehow not in your field"), TEAMS[best].pop));
+  takes.appendChild(take("Worst in the league", TEAMS[worst].nick,
+    "You have them finishing <b>" + recStr(R[worst]) + "</b>.", TEAMS[worst].pop));
+
+  if (d.upsets.length){
+    /* headline the most dramatic one: biggest seed gap, and knocking out a
+       top seed outranks everything */
+    const u = d.upsets.slice().sort(function(a, b){
+      return (a.ls === 1 ? -1 : 0) - (b.ls === 1 ? -1 : 0) || (b.ws - b.ls) - (a.ws - a.ls) || a.ls - b.ls;
+    })[0];
+    takes.appendChild(take("Bracket buster", TEAMS[u.w].nick + " over " + TEAMS[u.l].nick,
+      "The " + ordinal(u.ws) + " seed knocking out the " + ordinal(u.ls) + ". " +
+      (d.upsets.length > 1 ? d.upsets.length + " lower seeds win in your bracket." : "Your only seeding upset."),
+      TEAMS[u.w].pop, u.ls === 1));
+  }
+  if (d.crashers.length){
+    const lead = d.crashers.slice().sort(function(a, b){ return recPct(R[b]) - recPct(R[a]); })[0];
+    const rest = d.crashers.filter(function(t){ return t !== lead; }).map(function(t){ return TEAMS[t].nick; });
+    takes.appendChild(take("Crashing the party", TEAMS[lead].nick,
+      recStr(R[lead]) + " and into your field after missing it last season" +
+      (rest.length ? ", along with " + listOf(rest) : "") + ".", TEAMS[lead].pop));
+  }
+  if (d.missing.length){
+    /* the biggest name to fall out is the one that was best a year ago */
+    const lead = d.missing.slice().sort(function(a, b){ return LAST_YEAR[b][0] - LAST_YEAR[a][0]; })[0];
+    const rest = d.missing.filter(function(t){ return t !== lead; }).map(function(t){ return TEAMS[t].nick; });
+    takes.appendChild(take("Left out in the cold", TEAMS[lead].nick,
+      "They went " + LAST_YEAR[lead][0] + "-" + LAST_YEAR[lead][1] + " and made the field last season. You have them at <b>" +
+      recStr(R[lead]) + "</b> and home in January" + (rest.length ? ", with " + listOf(rest) : "") + ".",
+      TEAMS[lead].pop));
+  }
+  if (d.champ === LY_CHAMP){
+    takes.appendChild(take("Back-to-back", "Seattle repeats",
+      "You have the reigning champions going all the way again.", TEAMS[LY_CHAMP].pop, true));
+  } else if (d.field[LY_CHAMP] === undefined && R[LY_CHAMP].played){
+    takes.appendChild(take("Champions out", "Seattle misses entirely",
+      "The reigning champions do not even make your field. Bold.", TEAMS[LY_CHAMP].pop, true));
+  }
+  takes.appendChild(take("Home cooking", Math.round(d.homePicks / d.called * 100) + "%",
+    "Of the " + d.called + " games you have called, that is how often you took the home side." +
+    (d.ties ? " You also predicted " + d.ties + (d.ties === 1 ? " tie." : " ties.") : ""), null));
+
+  wrap.appendChild(el("div", {"class":"sect"}, [
+    el("h3", {}, ["The takes"]),
+    el("p", {}, ["Measured against how last season actually finished."]),
+    takes
+  ]));
+
+  /* share card */
+  if (d.champ){
+    const holder = el("div", {});
+    wrap.appendChild(el("div", {"class":"sect"}, [
+      el("h3", {}, ["One image for the group chat"]),
+      el("p", {}, ["Your bracket, small enough to actually get looked at."]),
+      el("div", {"class":"team-tools", style:"margin-top:0"}, [
+        el("p", {"class":"hint"}, ["Saves as a PNG, or copies straight to your clipboard."]),
+        el("button", {"class":"btn btn-key", onclick:function(){ openCard(S, d); }}, ["Make the card"])
+      ]),
+      holder
+    ]));
+  }
+  return wrap;
+}
+
+/* ─── share card (canvas) ─── */
+
+async function openCard(S, d){
+  showModal([el("h2", {}, ["Building your card…"])]);
+  const canvas = await drawCard(d);
+  const url = canvas.toDataURL("image/png");
+  showModal([
+    el("h2", {}, ["Your season, one image"]),
+    el("p", {}, ["Save it or copy it, then drop it in the chat before anyone else finishes theirs."]),
+    el("img", {"class":"cardprev", src:url, alt:"Your predicted Super Bowl LXI champion and division winners"}),
+    el("div", {"class":"sheet-actions"}, [
+      el("button", {"class":"btn", onclick:function(){
+        canvas.toBlob(function(b){
+          const a = document.createElement("a");
+          a.download = "pick-em-26" + (state.name ? "-" + state.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "") + ".png";
+          a.href = URL.createObjectURL(b);
+          a.click();
+          setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+          toast("Card saved.");
+        }, "image/png");
+      }}, ["Download"]),
+      el("button", {"class":"btn btn-key", onclick:function(){
+        canvas.toBlob(function(b){
+          if (!navigator.clipboard || !window.ClipboardItem){ toast("Your browser cannot copy images — use Download."); return; }
+          navigator.clipboard.write([new ClipboardItem({"image/png":b})])
+            .then(function(){ toast("Card copied."); })
+            .catch(function(){ toast("Copy was blocked — use Download instead."); });
+        }, "image/png");
+      }}, ["Copy image"]),
+      el("button", {"class":"btn", onclick:closeModal}, ["Done"])
+    ])
+  ]);
+}
+
+async function drawCard(d){
+  const W = 1080, H = 1350, P = 74;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+
+  try {
+    await document.fonts.load('700 100px "Saira Condensed"');
+    await document.fonts.load('600 30px "IBM Plex Sans"');
+    await document.fonts.load('400 30px "IBM Plex Sans"');
+    await document.fonts.ready;
+  } catch(e){}
+
+  const t = TEAMS[d.champ];
+  const DSP = function(sz){ return '700 ' + sz + 'px "Saira Condensed", sans-serif'; };
+  const BDY = function(sz, w){ return (w || 400) + " " + sz + 'px "IBM Plex Sans", sans-serif'; };
+
+  x.fillStyle = "#0A0D12"; x.fillRect(0, 0, W, H);
+
+  const wash = x.createLinearGradient(0, 0, W * 0.85, H * 0.7);
+  wash.addColorStop(0, hexA(t.c1, 0.55));
+  wash.addColorStop(0.55, hexA(t.c1, 0.06));
+  wash.addColorStop(1, "rgba(10,13,18,0)");
+  x.fillStyle = wash; x.fillRect(0, 0, W, H);
+
+  /* yard lines */
+  x.save();
+  x.globalAlpha = 0.07; x.strokeStyle = "#EEF2F8"; x.lineWidth = 2;
+  for (let gx = P; gx < W; gx += 68){
+    x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, H); x.stroke();
+  }
+  x.restore();
+
+  x.textBaseline = "alphabetic";
+
+  /* header */
+  x.fillStyle = "#E8B54A"; x.font = BDY(23, 600);
+  x.letterSpacing = "5px";
+  x.fillText("PICK 'EM · 2026-27 SEASON", P, 108);
+  x.letterSpacing = "0px";
+
+  if (state.name){
+    x.fillStyle = "#7C879A"; x.font = BDY(27, 400);
+    x.fillText(state.name + "'s call", P, 152);
+  }
+
+  /* champion */
+  x.fillStyle = "#7C879A"; x.font = BDY(22, 600);
+  x.letterSpacing = "4px";
+  x.fillText("SUPER BOWL LXI CHAMPIONS", P, 296);
+  x.letterSpacing = "0px";
+
+  x.fillStyle = t.pop;
+  let size = 132;
+  x.font = DSP(size);
+  while (x.measureText(t.nick.toUpperCase()).width > W - P * 2 && size > 60){
+    size -= 4; x.font = DSP(size);
+  }
+  x.fillStyle = "#EEF2F8"; x.font = DSP(58);
+  x.fillText(t.city.toUpperCase(), P, 372);
+  x.fillStyle = t.pop; x.font = DSP(size);
+  x.fillText(t.nick.toUpperCase(), P, 372 + size * 0.86);
+
+  let y = 372 + size * 0.86 + 58;
+  const other = d.champ === d.A.champ ? d.N.champ : d.A.champ;
+  x.fillStyle = "#AEB9C8"; x.font = BDY(28, 400);
+  x.fillText("over the " + TEAMS[other].name + " · " + recStr(R[d.champ]) + " · " +
+             ordinal(d.field[d.champ]) + " seed", P, y);
+
+  /* rule */
+  y += 52;
+  x.strokeStyle = "#2A3442"; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(P, y); x.lineTo(W - P, y); x.stroke();
+
+  /* division winners, two columns */
+  y += 52;
+  x.fillStyle = "#7C879A"; x.font = BDY(21, 600);
+  x.letterSpacing = "4px";
+  x.fillText("DIVISION WINNERS", P, y);
+  x.letterSpacing = "0px";
+  y += 40;
+
+  const colW = (W - P * 2) / 2;
+  d.divWinners.forEach(function(dw, i){
+    const cx = P + (i % 2) * colW, cy = y + Math.floor(i / 2) * 74;
+    const tt = TEAMS[dw.t];
+    x.fillStyle = tt.pop; x.fillRect(cx, cy - 4, 5, 40);
+    x.fillStyle = "#59636F"; x.font = BDY(17, 600);
+    x.letterSpacing = "2px";
+    x.fillText(dw.div.toUpperCase(), cx + 20, cy + 12);
+    x.letterSpacing = "0px";
+    const nick = TEAMS[dw.t].nick.toUpperCase();
+    x.fillStyle = "#EEF2F8"; x.font = DSP(31);
+    x.fillText(nick, cx + 20, cy + 44);
+    x.fillStyle = "#59636F"; x.font = BDY(20, 400);
+    x.fillText(recStr(R[dw.t]), cx + 30 + measure(x, DSP(31), nick), cy + 44);
+  });
+  y += 4 * 74 + 26;
+
+  /* two takes */
+  x.strokeStyle = "#2A3442";
+  x.beginPath(); x.moveTo(P, y); x.lineTo(W - P, y); x.stroke();
+  y += 48;
+
+  const lines = [];
+  const riser = d.swings[0], faller = d.swings[d.swings.length - 1];
+  if (riser && riser.d > 0) lines.push([TEAMS[riser.t].nick + " +" + riser.d + " wins",
+    "up from " + riser.was[0] + "-" + riser.was[1] + " to " + recStr(riser.now)]);
+  if (faller && faller.d < 0) lines.push([TEAMS[faller.t].nick + " " + faller.d + " wins",
+    "down from " + faller.was[0] + "-" + faller.was[1] + " to " + recStr(faller.now)]);
+  if (d.upsets.length) lines.push([d.upsets.length + " seeding upset" + (d.upsets.length === 1 ? "" : "s"),
+    "lower seeds advancing in your bracket"]);
+
+  lines.slice(0, 3).forEach(function(L){
+    x.fillStyle = "#E8B54A"; x.font = DSP(34);
+    x.fillText(L[0].toUpperCase(), P, y);
+    x.fillStyle = "#79849A"; x.font = BDY(23, 400);
+    x.fillText(L[1], P, y + 32);
+    y += 78;
+  });
+
+  /* footer */
+  x.fillStyle = "#4E586B"; x.font = BDY(20, 400);
+  x.fillText("272 games · 18 weeks · every pick made by hand", P, H - 62);
+  return cv;
+}
+
+function measure(ctx, font, text){
+  const f = ctx.font; ctx.font = font;
+  const w = ctx.measureText(text).width;
+  ctx.font = f;
+  return w;
+}
+function hexA(hex, a){
+  const c = hexToRgb(hex);
+  return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")";
+}
+
+/* ─── compare ─── */
+
+function loadRivals(){
+  try { return JSON.parse(localStorage.getItem(RKEY) || "[]"); } catch(e){ return []; }
+}
+function saveRivals(){
+  try {
+    localStorage.setItem(RKEY, JSON.stringify(rivals.map(function(r){
+      return {name:r.name, code:r.code};
+    })));
+  } catch(e){}
+}
+function extractCode(text){
+  const t = (text || "").trim();
+  const m = t.match(/[#&?]p=([A-Za-z0-9\-_%]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  if (/^[zu][A-Za-z0-9\-_]{8,}$/.test(t)) return t;
+  return null;
+}
+async function addRival(text, fallbackName){
+  const code = extractCode(text);
+  if (!code) throw new Error("That does not look like a Pick 'Em link.");
+  const st = await decodePayload(code);
+  if (!st) throw new Error("That link is from a different version and cannot be read.");
+  const name = ((fallbackName || st.name || "").trim()) || ("Friend " + (rivals.length + 1));
+  const entry = {name:name, code:code, st:st};
+  let at = -1;
+  rivals.forEach(function(r, i){ if (r.name.toLowerCase() === name.toLowerCase()) at = i; });
+  if (at >= 0) rivals[at] = entry; else { rivals.push(entry); at = rivals.length - 1; }
+  rivalSel = at;
+  saveRivals();
+  return entry;
+}
+
+function pasteBox(compact){
+  const input = el("input", {type:"text", placeholder:"Paste your friend's link…", autocomplete:"off"});
+  const nameIn = el("input", {type:"text", placeholder:"Name (optional)", autocomplete:"off",
+    style:"max-width:170px"});
+  const err = el("p", {style:"margin:10px 0 0;font-size:12.5px;color:var(--loss);display:none"});
+  function submit(){
+    err.style.display = "none";
+    addRival(input.value, nameIn.value).then(function(r){
+      input.value = ""; nameIn.value = "";
+      mode = "compare"; render();
+      toast(r.name + "'s picks loaded.");
+    }).catch(function(e){
+      err.textContent = e.message || "That link could not be read.";
+      err.style.display = "block";
+    });
+  }
+  input.addEventListener("keydown", function(e){ if (e.key === "Enter") submit(); });
+  nameIn.addEventListener("keydown", function(e){ if (e.key === "Enter") submit(); });
+  return el("div", {"class":compact ? "" : "rc-empty", style:compact ? "" : "text-align:left"}, [
+    compact ? null : el("h3", {}, ["Nobody to argue with yet"]),
+    compact ? null : el("p", {style:"margin:0 0 16px;font-size:13.5px",
+      html:"Get a friend to hit <b>Share</b> on their own sheet and send you the link. Paste it here and their season sits next to yours &mdash; nothing leaves your browser."}),
+    el("div", {"class":"linkbox"}, [input, nameIn,
+      el("button", {"class":"btn btn-key", onclick:submit}, ["Load"])]),
+    err
+  ]);
+}
+
+function compareView(){
+  const wrap = el("div", {"class":"shell pane"});
+  wrap.appendChild(el("div", {"class":"pane-head"}, [
+    el("h2", {}, ["Where you split"]),
+    el("p", {html:"Paste a friend&rsquo;s share link and their whole season lands beside yours &mdash; every game you two disagree on, the clubs you see completely differently, and whose bracket survives."})
+  ]));
+
+  if (!rivals.length){ wrap.appendChild(pasteBox(false)); return wrap; }
+
+  const me = analyze(state);
+  const bar = el("div", {"class":"rivalbar"});
+  rivals.forEach(function(r, i){
+    const th = analyze(r.st);
+    let both = 0, same = 0;
+    for (let n = 0; n < NGAMES; n++){
+      if (me.res[n] && th.res[n]){ both++; if (me.res[n] === th.res[n]) same++; }
+    }
+    bar.appendChild(el("div", {
+      "class":"rvchip", "aria-current":String(i === rivalSel),
+      onclick:function(){ rivalSel = i; render(); }
+    }, [
+      el("span", {"class":"nm"}, [r.name]),
+      el("span", {"class":"pc"}, [both ? Math.round(same / both * 100) + "%" : "—"]),
+      el("button", {"class":"x", "aria-label":"Remove " + r.name, onclick:function(e){
+        e.stopPropagation();
+        rivals.splice(i, 1);
+        rivalSel = 0; saveRivals(); render();
+      }}, ["✕"])
+    ]));
+  });
+  bar.appendChild(el("button", {"class":"btn", onclick:function(){
+    showModal([
+      el("h2", {}, ["Add a friend"]),
+      el("p", {html:"Paste the link they sent you. Their picks stay on your device &mdash; adding them changes nothing about your own sheet."}),
+      pasteBox(true),
+      el("div", {"class":"sheet-actions"}, [el("button", {"class":"btn", onclick:closeModal}, ["Done"])])
+    ]);
+  }}, ["+ Add a friend"]));
+  wrap.appendChild(bar);
+
+  const rv = rivals[Math.min(rivalSel, rivals.length - 1)];
+  const th = analyze(rv.st);
+  wrap.appendChild(compareBody(me, th, rv));
+  return wrap;
+}
+
+function compareBody(me, th, rv){
+  const box = el("div", {});
+
+  /* ── headline ── */
+  let both = 0, same = 0;
+  const splits = [];
+  for (let i = 0; i < NGAMES; i++){
+    if (me.res[i] && th.res[i]){
+      both++;
+      if (me.res[i] === th.res[i]) same++; else splits.push(i);
+    }
+  }
+  const pctAgree = both ? Math.round(same / both * 100) : 0;
+  const champLine = function(a){
+    return a.sb ? TEAMS[a.sb].nick : (a.decided < NGAMES ? "not yet" : "bracket unfinished");
+  };
+  box.appendChild(el("div", {"class":"agree"}, [
+    el("div", {}, [
+      el("div", {"class":"k"}, ["You agree on"]),
+      el("div", {"class":"v num", style:"color:var(--pop)"}, [same + " of " + both]),
+      el("div", {"class":"s"}, [both
+        ? pctAgree + "% of the games you have both called" + (both < NGAMES ? " · " + (NGAMES - both) + " not yet comparable" : "")
+        : "Neither of you has called a game yet"])
+    ]),
+    el("div", {}, [
+      el("div", {"class":"k"}, ["Your champion"]),
+      el("div", {"class":"v", style:me.sb ? "color:" + TEAMS[me.sb].pop : ""}, [champLine(me)]),
+      el("div", {"class":"s"}, [me.sb ? TEAMS[me.sb].city + " · " + recStr(me.rec[me.sb]) : "Finish your bracket"])
+    ]),
+    el("div", {}, [
+      el("div", {"class":"k"}, [rv.name + "'s champion"]),
+      el("div", {"class":"v", style:th.sb ? "color:" + TEAMS[th.sb].pop : ""}, [champLine(th)]),
+      el("div", {"class":"s"}, [th.sb ? TEAMS[th.sb].city + " · " + recStr(th.rec[th.sb]) : "They have not finished theirs"])
+    ])
+  ]));
+
+  /* ── the clubs you see differently ── */
+  const gaps = ORDER.map(function(a){
+    return {a:a, mine:me.rec[a], theirs:th.rec[a], d:me.rec[a].w - th.rec[a].w};
+  }).filter(function(x){ return x.mine.played || x.theirs.played; })
+    .sort(function(x, y){ return Math.abs(y.d) - Math.abs(x.d); });
+
+  const maxD = gaps.length ? Math.max(1, Math.abs(gaps[0].d)) : 1;
+  const shown = gaps.filter(function(x){ return x.d !== 0; }).slice(0, 10);
+
+  const gapBox = el("div", {"class":"gaps sect"}, [
+    el("h3", {}, ["The arguments"]),
+    el("p", {}, [shown.length
+      ? "Clubs where your two seasons disagree the most. Wins, not games — a 5 means you have them five wins better than " + rv.name + " does."
+      : "You two have identical records for every club. Suspicious."])
+  ]);
+  if (shown.length){
+    gapBox.appendChild(el("div", {"class":"gaprow gaphead"}, [
+      el("span", {"class":"gs"}, [el("span", {"class":"tmn"}, ["Club"])]),
+      el("span", {"class":"gapbar"}, [el("span", {"class":"d"}, ["you · " + rv.name])]),
+      el("span", {"class":"gs r"}, [el("span", {"class":"rec"}, ["Swing"])])
+    ]));
+  }
+  shown.forEach(function(x){
+    const t = TEAMS[x.a], w = Math.abs(x.d) / maxD * 46;
+    gapBox.appendChild(el("div", {"class":"gaprow", style:"--c:" + t.pop}, [
+      el("span", {"class":"gs"}, [
+        el("span", {"class":"flag"}),
+        el("span", {"class":"tmn"}, [t.name])
+      ]),
+      el("span", {"class":"gapbar"}, [
+        el("span", {"class":"mid"}),
+        el("i", {style:x.d > 0
+          ? "left:50%;width:" + w + "%"
+          : "right:50%;width:" + w + "%"}),
+        el("span", {"class":"d"}, [recStr(x.mine) + "  ·  " + recStr(x.theirs)])
+      ]),
+      el("span", {"class":"gs r"}, [
+        el("span", {"class":"rec", style:"color:" + (x.d > 0 ? "var(--win)" : "var(--loss)")},
+          [(x.d > 0 ? "+" : "") + x.d])
+      ])
+    ]));
+  });
+  if (shown.length) box.appendChild(gapBox);
+
+  /* ── bracket showdown ── */
+  const vs = el("div", {"class":"vsgrid"});
+  ["AFC","NFC"].forEach(function(conf){
+    const card = el("div", {"class":"vscard"}, [
+      el("h4", {}, [conf + " field · you vs " + rv.name])
+    ]);
+    const mine = me.S.seeds[conf].filter(function(x){ return !x.outside; });
+    const yours = th.S.seeds[conf].filter(function(x){ return !x.outside; });
+    for (let s = 0; s < 7; s++){
+      const a = mine[s], b = yours[s];
+      card.appendChild(el("div", {"class":"vsrow" + (a && b && a.t === b.t ? " same" : "")}, [
+        el("span", {"class":"sn"}, [String(s + 1)]),
+        seedCell(a), seedCell(b)
+      ]));
+    }
+    vs.appendChild(card);
+  });
+  box.appendChild(el("div", {"class":"sect"}, [
+    el("h3", {}, ["The field"]),
+    el("p", {}, ["Highlighted rows are seeds you two do not agree on."]),
+    vs
+  ]));
+
+  /* ── every split game ── */
+  box.appendChild(splitList(me, th, rv, splits));
+  return box;
+}
+
+function seedCell(x){
+  if (!x) return el("span", {"class":"c"}, [el("span", {}, ["—"])]);
+  const t = TEAMS[x.t];
+  return el("span", {"class":"c", style:"--c:" + t.pop}, [
+    el("span", {"class":"flag"}), el("span", {}, [t.nick])
+  ]);
+}
+
+let splitFilter = "ALL", splitLimit = 30;
+function splitList(me, th, rv, splits){
+  const sect = el("div", {"class":"splits sect"});
+  const sel = el("select", {"aria-label":"Filter split games by team",
+    onchange:function(e){ splitFilter = e.target.value; splitLimit = 30; render(); }},
+    [el("option", {value:"ALL"}, ["Every club"])].concat(
+      ORDER.slice().sort(function(a, b){ return TEAMS[a].name < TEAMS[b].name ? -1 : 1; })
+        .map(function(a){
+          return el("option", {value:a, selected:splitFilter === a ? "selected" : false}, [TEAMS[a].name]);
+        })));
+
+  const list = splits.filter(function(i){
+    if (splitFilter === "ALL") return true;
+    return SCHEDULE[i].away === splitFilter || SCHEDULE[i].home === splitFilter;
+  });
+
+  sect.appendChild(el("div", {"class":"splithead"}, [
+    el("h3", {style:"margin:0"}, ["Head to head"]),
+    el("span", {style:"flex:1;font-size:13px;color:var(--chalk4)"},
+      [list.length + (list.length === 1 ? " game you called differently" : " games you called differently")]),
+    sel
+  ]));
+
+  if (!list.length){
+    sect.appendChild(el("p", {style:"font-size:13px;color:var(--chalk4);margin:0"},
+      [splitFilter === "ALL" ? "Not a single disagreement. Get better friends."
+        : "You two agree on every " + TEAMS[splitFilter].nick + " game."]));
+    return sect;
+  }
+
+  list.slice(0, splitLimit).forEach(function(i){
+    const g = SCHEDULE[i];
+    sect.appendChild(el("div", {"class":"splitrow"}, [
+      el("span", {"class":"wk"}, ["WK " + g.week]),
+      el("span", {"class":"mt"}, [
+        el("span", {"class":"gm"}, [g.away + " " + (g.neutral ? "vs" : "at") + " " + g.home]),
+        pickPill("You", me.res[i], g),
+        pickPill(rv.name, th.res[i], g)
+      ])
+    ]));
+  });
+  if (list.length > splitLimit){
+    sect.appendChild(el("button", {"class":"btn morebtn", onclick:function(){
+      splitLimit += 60; render();
+    }}, ["Show " + Math.min(60, list.length - splitLimit) + " more"]));
+  }
+  return sect;
+}
+
+function pickPill(who, res, g){
+  if (res === "T"){
+    return el("span", {"class":"pk", style:"--c:var(--brass)"}, [
+      el("span", {"class":"flag"}), el("b", {}, ["TIE"]), el("span", {}, [who])
+    ]);
+  }
+  const a = res === "A" ? g.away : g.home, t = TEAMS[a];
+  return el("span", {"class":"pk", style:"--c:" + t.pop}, [
+    el("span", {"class":"flag"}), el("b", {}, [a]), el("span", {}, [who])
+  ]);
+}
+
 /* ═══ share ═══════════════════════════════════════════════════ */
 
 function serialize(){
@@ -1791,6 +2844,8 @@ window.addEventListener("resize", function(){
 
 (async function boot(){
   load();
+  lane = recall("lane") === "week" ? "week" : "team";
+
   const m = location.hash.match(/[#&]p=([^&]+)/);
   if (m){
     try {
@@ -1798,6 +2853,25 @@ window.addEventListener("resize", function(){
       if (s){ state = s; shared = {name:s.name}; }
     } catch(e){ toast("That share link could not be read."); }
   }
+
+  /* friends' sheets are stored as the same codes the share links carry */
+  const saved = loadRivals();
+  for (let i = 0; i < saved.length; i++){
+    try {
+      const st = await decodePayload(saved[i].code);
+      if (st) rivals.push({name:saved[i].name, code:saved[i].code, st:st});
+    } catch(e){}
+  }
+
+  /* open on the week you left off, or the first one with games still to call */
+  const w = parseInt(recall("week"), 10);
+  if (w >= 1 && w <= 18) weekSel = w;
+  else {
+    for (let n = 1; n <= 18; n++){
+      if (SCHEDULE.some(function(g){ return g.week === n && !resultOf(g.i); })){ weekSel = n; break; }
+    }
+  }
+
   render();
 })();
 </script>

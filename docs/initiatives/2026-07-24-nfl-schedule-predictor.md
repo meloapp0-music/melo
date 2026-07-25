@@ -107,6 +107,45 @@ storage until "Use as my starting point" is pressed.
   the wild-card division rule, re-seeding, stale-pick pruning, tie handling,
   schedule integrity, color contrast), share round-trip across separate browser
   profiles, zero console errors, and no horizontal overflow at 390 px.
+- 2026-07-24: Round two, from the user's "make it more fun" pass. Picked three
+  of five proposals: head-to-head compare, a speed lane, and a receipts screen.
+
+  **Compare** — a new tab that takes a friend's share link and decodes their
+  whole season next to yours: agreement count, the ten clubs your two seasons
+  disagree on most (as a diverging bar of win differential), both playoff fields
+  seeded side by side with mismatched seeds highlighted, and a filterable list
+  of every game you called differently. Friends are stored as their share codes
+  under `pickem26.rivals` and re-decoded at boot; multiple friends are supported
+  and switchable. Nothing is uploaded — the whole comparison is local.
+
+  Analysing someone else's sheet reuses every existing record/seed/bracket
+  helper by swapping the state globals inside `withState()`, which also sets a
+  `computing` flag that hard-locks `save()` for the duration, so a friend's
+  season can never overwrite yours.
+
+  **Speed lane** — the Season tab gains a By team / By week toggle. The week
+  lane shows a full slate grouped by day, a week bar with per-week completion
+  dots, and the bye teams. Arrow keys drive a cursor through whichever lane is
+  open (↑↓ to move, ←→ to pick a side, ⌫ to clear), auto-advancing after each
+  pick. Key handling bails out inside inputs so score entry is untouched.
+
+  **Receipts** — a payoff screen: champion hero, the eight division winners, and
+  computed takes measured against how 2025 actually finished (biggest riser and
+  faller, best and worst clubs, the most dramatic seeding upset in the bracket,
+  who crashed the playoff field and who fell out of it, whether the reigning
+  champions repeat, and how often you took the home side). It renders to a
+  1080×1350 PNG via canvas for download or clipboard copy.
+
+  Added 2025 final records, the 2025 playoff field, and the Super Bowl LX result
+  (Seattle 29, New England 13) to the dataset for the comparisons above.
+
+- 2026-07-24: Fixed a latent bug found while testing the compare screen.
+  `standings()` read the module-level record cache `R` but never populated it,
+  relying on `render()` having done so first. Every real call path happened to
+  refresh it, but a stale cache would feed wrong seeds into `bracketFor()`,
+  which prunes postseason picks whose matchup no longer exists — silently
+  deleting the user's bracket. `standings()` now rebuilds `R` itself.
+  Regression tests cover idempotent analysis and pick preservation.
 
 ## Open questions / follow-ups
 
