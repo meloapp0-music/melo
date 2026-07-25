@@ -175,6 +175,44 @@ chips + lower layout render in BOTH the live reel and the canvas frames.
 Also: the missing share button on-device was a stale build — the export button
 shipped after the morning's spike build; rebuild fixes it.
 
+## Design handoff arrives (2026-07-24) — the cut system
+Aidan sent `design_handoff_melo_recap/` (README + DC source + the Melo design
+system tokens + his real Coldplay clips). It reframes the feature: a recap is a
+**post-log auto-generation** ("the morning after you log a show") offering
+**ELEVEN cuts** in three tiers, chosen from a picker.
+
+**Two things the handoff caught that the build had wrong:**
+1. **Verdict words** — the score renders as a WORD ("UNREAL"), never a number.
+   The number belongs ONLY on ticket-stub cuts. Fixed; scale re-anchored.
+2. **Brand watermark** — every stage carries a melo mark bottom-right. Added.
+Tokens were checked against `App.css`: the handoff's design system IS Melo's
+(`--bg`, `--orange`, `--amber`, `--brown`…), so nothing needed re-theming.
+
+**Built this pass (Aidan chose "picker + 2–3 cuts" over grinding all 11):**
+- **`lib/recapCuts.js`** — the cut registry. Every cut is just another scene-list
+  builder over the same show data, so adding one is an entry, not a rewrite.
+  Scenes carry a `theme` both renderers understand: `dark` / `paper` / `diary`.
+- **Cinematic** (Style tier) — slow zooms, 46px letterbox, long holds, no flash.
+  Exports (same generic scene shape as Beat drop).
+- **Ticket stubs** (Memory tier) — aged paper, Oswald print, perforation +
+  barcode, rotated stub card, **"RATED 9.8" stamp** (the numeric exception),
+  end card "Every stub, kept forever."
+- **Dear diary** (Memory tier) — Caveat handwriting on cream, tape-mounted
+  photo, gradient-clipped score, end "melo remembers, so you don't have to."
+  (Caveat added to index.html fonts.)
+- **`components/RecapPicker.jsx`** — "One recap · every vibe": the three-tier
+  gallery, swatch per cut, Default badge, and an honest "In-app only for now"
+  note on cuts whose Canvas exporter isn't written. Reachable from the bottom
+  bar and from the end card ("Try another cut").
+- The MP4 export button is now gated **per cut** (`cut.exportable`), so a cut
+  without a canvas renderer plays in-app without offering a broken export.
+
+**Still outstanding from the handoff:** 7 more cuts (Top 10 moments, Real time,
+Fast-cut hype as distinct from Beat drop, Scrapbook, VHS, Super 8, One year
+ago); the post-log **auto-generation trigger** (cron + push + a "recap ready"
+state on ShowDetail — reuses the daily-post infra); anniversary resurfacing for
+memory cuts; and canvas renderers for the paper/diary themes so they export.
+
 ## Open questions / follow-ups
 - Which shows qualify for a recap? (has a setlist? rated? has media?) — likely
   surface the action only when there's enough to make it sing.

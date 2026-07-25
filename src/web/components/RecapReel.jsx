@@ -11,16 +11,21 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
-import { buildScenes, beatScale } from '../lib/recap';
+import { beatScale } from '../lib/recap';
+import { buildCut, getCut, DEFAULT_CUT } from '../lib/recapCuts';
+import RecapPicker from './RecapPicker';
 import { fetchSongPreview } from '../api';
 import { canExportRecap, exportRecap } from '../lib/recapExport';
 import { shareBlob } from '../lib/shareCard';
 
 const PACE = 1; // scene-duration multiplier; the design exposes 12–26s total
 
-export default function RecapReel({ show, onClose }) {
+export default function RecapReel({ show, onClose, cutId: initialCut = DEFAULT_CUT }) {
   const { getArtistImage } = useApp();
-  const scenes = useMemo(() => buildScenes(show), [show]);
+  const [cutId, setCutId] = useState(initialCut);
+  const [picking, setPicking] = useState(false);
+  const cut = getCut(cutId);
+  const scenes = useMemo(() => buildCut(cutId, show), [cutId, show]);
   const [i, setI] = useState(0);
   const [square, setSquare] = useState(false); // false = 9:16, true = 1:1
   const [paused, setPaused] = useState(false);
@@ -92,9 +97,9 @@ export default function RecapReel({ show, onClose }) {
   // Show the export button only where the pipeline exists (iOS 16.4+ / Chrome).
   useEffect(() => {
     let gone = false;
-    canExportRecap().then((ok) => { if (!gone) setExportable(ok); });
+    canExportRecap().then((ok) => { if (!gone) setExportable(ok && cut.exportable); });
     return () => { gone = true; };
-  }, []);
+  }, [cut.exportable]);
 
   const doExport = async () => {
     if (exporting !== null) return;
@@ -112,6 +117,9 @@ export default function RecapReel({ show, onClose }) {
       setPaused(false);
     }
   };
+
+  // Switching cuts restarts the reel from the top.
+  useEffect(() => { setI(0); setProgress(0); setEnded(false); }, [cutId]);
 
   const back = () => setI((v) => Math.max(0, v - 1));
   const skip = () => {
@@ -146,6 +154,7 @@ export default function RecapReel({ show, onClose }) {
   const bgMedia = scene.video || scene.media || (show?.photos || [])[0] || artistImg || '';
   const isVideo = !!scene.video;
 
+  const theme = scene.theme || 'dark';
   const bigCls = scene.kind === 'score' ? 'recap-verdict-big'
     : scene.kind === 'title' || scene.kind === 'outro' ? 'recap-headline'
       : 'recap-beat';
@@ -159,32 +168,85 @@ export default function RecapReel({ show, onClose }) {
         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
       </button>
 
-      <div className={`recap-stage ${square ? 'square' : ''}`}>
-        {/* Backdrop */}
-        <div key={`bg${scene.id}`} className={`recap-bg recap-punch${scene.kb === -1 ? ' kb-rev' : ''}`} aria-hidden="true">
-          {bgMedia ? (
-            isVideo ? (
-              <video key={scene.id} src={`${scene.video}#t=0.01`} muted playsInline autoPlay loop
-                className="recap-bg-media recap-kenburns" />
+      <div className={`recap-stage ${square ? 'square' : ''} theme-${theme}`}>
+        {/* Backdrop — dark cuts go full-bleed media; paper/diary keep their page
+            and mount the photo as an inset (stub window / taped snapshot). */}
+        {theme === 'dark' ? (
+          <div key={`bg${scene.id}`} className={`recap-bg recap-punch${scene.kb === -1 ? ' kb-rev' : ''}`} aria-hidden="true">
+            {bgMedia ? (
+              isVideo ? (
+                <video key={scene.id} src={`${scene.video}#t=0.01`} muted playsInline autoPlay loop
+                  className="recap-bg-media recap-kenburns" />
+              ) : (
+                <div key={scene.id} className="recap-bg-media recap-kenburns"
+                  style={{ backgroundImage: `url("${bgMedia}")` }} />
+              )
             ) : (
-              <div key={scene.id} className="recap-bg-media recap-kenburns"
-                style={{ backgroundImage: `url("${bgMedia}")` }} />
-            )
-          ) : (
-            <div className="recap-bg-media" style={{ background: scene.grad }} />
-          )}
-          <div className="recap-scrim" />
-          <div className="recap-grain" />
-        </div>
+              <div className="recap-bg-media" style={{ background: scene.grad }} />
+            )}
+            <div className="recap-scrim" />
+            <div className="recap-grain" />
+          </div>
+        ) : (
+          <div className="recap-bg" aria-hidden="true">
+            <div className="recap-page" />
+            <div className="recap-grain" />
+          </div>
+        )}
 
-        {/* Letterbox bars */}
-        <div className="recap-letterbox top" />
-        <div className="recap-letterbox bottom" />
+        {/* Letterbox bars — heavier on the cinematic cut, per the handoff. */}
+        {theme === 'dark' && <>
+          <div className={`recap-letterbox top${scene.cinematic ? ' tall' : ''}`} />
+          <div className={`recap-letterbox bottom${scene.cinematic ? ' tall' : ''}`} />
+        </>}
 
         {/* Flash on beat entry */}
         {scene.flash ? <div key={`f${scene.id}`} className="recap-flash" style={{ '--amt': scene.flash }} /> : null}
 
-        {/* Content */}
+        {/* ---- PAPER (ticket stub) ---- */}
+        {theme === 'paper' && (
+          <div key={scene.id} className="stub-wrap">
+            <div className="stub-card">
+              <div className="stub-perf" aria-hidden="true" />
+              {scene.tag && <div className="stub-no">{scene.tag}</div>}
+              <div className="stub-head">{scene.big}</div>
+              {scene.sub && <div className="stub-sub">{scene.sub}</div>}
+              {scene.rows && (
+                <div className="stub-rows">
+                  {scene.rows.map(([k, v]) => (
+                    <div className="stub-row" key={k + v}>
+                      <span className="stub-k">{k}</span><span className="stub-v">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {scene.kind === 'stub-stamp' && <div className="stub-stamp">{scene.big}</div>}
+              {bgMedia && !isVideo && scene.kind === 'stub' && (
+                <div className="stub-window" style={{ backgroundImage: `url("${bgMedia}")` }} />
+              )}
+              <div className="stub-barcode" aria-hidden="true" />
+            </div>
+          </div>
+        )}
+
+        {/* ---- DIARY ---- */}
+        {theme === 'diary' && (
+          <div key={scene.id} className="diary-wrap">
+            {bgMedia && !isVideo && (
+              <div className="diary-photo" style={{ backgroundImage: `url("${bgMedia}")` }}>
+                <span className="diary-tape" aria-hidden="true" />
+              </div>
+            )}
+            <div className="diary-text">{scene.big}</div>
+            {scene.sub && (
+              <div className={scene.kind === 'diary-score' ? 'diary-score' : 'diary-sub'}>{scene.sub}</div>
+            )}
+            {scene.verdict && <div className="diary-verdict">{scene.verdict} 🔥</div>}
+          </div>
+        )}
+
+        {/* ---- DARK (beat drop / cinematic) ---- */}
+        {theme === 'dark' && (
         <div key={scene.id} className={`recap-content${scene.layout === 'lower' ? ' lower' : ''}`}>
           {scene.tag && <div className="recap-tag">TAKE {scene.tag}</div>}
           {scene.label && scene.kind === 'score' && <div className="recap-eyebrow">{scene.label}</div>}
@@ -197,6 +259,10 @@ export default function RecapReel({ show, onClose }) {
             <div className="recap-wordmark">melo</div>
           )}
         </div>
+        )}
+
+        {/* Persistent brand watermark (handoff: MeloLockup, bottom-right). */}
+        <div className="recap-mark" aria-hidden="true">melo</div>
 
         {/* Progress: one segment per scene, Story-style */}
         <div className="recap-progress">
@@ -227,14 +293,26 @@ export default function RecapReel({ show, onClose }) {
                 </button>
               )}
               <button className="recap-end-btn" onClick={replay}>↻  Watch again</button>
+              <button className="recap-end-btn" onClick={() => { setPicking(true); }}>🎬  Try another cut</button>
               <button className="recap-end-done" onClick={onClose}>Done</button>
             </div>
           </div>
         )}
       </div>
 
+      {picking && (
+        <RecapPicker
+          current={cutId}
+          onPick={(id) => { setCutId(id); setPicking(false); setPaused(false); }}
+          onClose={() => { setPicking(false); setPaused(false); }}
+        />
+      )}
+
       {/* Aspect toggle + export */}
       <div className="recap-aspect">
+        <button className="recap-cutbtn" onClick={() => { setPaused(true); setPicking(true); }}>
+          🎬 {cut.name}
+        </button>
         <button className={!square ? 'on' : ''} onClick={() => setSquare(false)}>9:16</button>
         <button className={square ? 'on' : ''} onClick={() => setSquare(true)}>1:1</button>
         {exportable && (
