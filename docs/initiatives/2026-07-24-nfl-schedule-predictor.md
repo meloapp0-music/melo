@@ -175,6 +175,36 @@ storage until "Use as my starting point" is pressed.
   which is also the natural reading order — crown a champion, then scroll into
   what that commits you to.
 
+- 2026-07-24: Round four — your club. The tool treated all 32 teams as equals,
+  so a Bears fan had no home base; their own season was one of thirty-two.
+
+  You now favourite a club and it follows you everywhere: pinned to the console
+  bar on every screen (crest + predicted record), a summary card above the club
+  rail on the Season page, a ★ toggle on any team header, its row highlighted in
+  the division table and the conference seed list, and a dedicated "Your club"
+  card at the top of the receipts — including how far it goes in your bracket
+  ("wins it all", "falls in the NFC Championship", "misses the playoffs") and
+  its swing against last season.
+
+  A first-run picker (32 crests, grouped by conference) asks once before the
+  wall of teams, so a friend opening the link starts personal rather than
+  staring at a list. The app then opens on your club unless you navigated
+  elsewhere. Compare gains a fourth headline card — your club's record in your
+  sheet vs theirs, the disagreement you actually care about — and rival chips
+  carry their club's crest.
+
+  The club rides in the share payload as a new trailing field, so a friend sees
+  "a Bears fan" on your sheet. Cloning someone's picks deliberately does *not*
+  inherit their club: it keeps yours, or none. Links made before this field
+  existed still decode (`p[7]` absent → empty).
+
+- 2026-07-24: Caught by the new tests, worth recording: the first draft of the
+  boot sequence declared `const saved` for the last-viewed team while `saved`
+  was already the rivals list a few lines up. That is a `SyntaxError`, which
+  kills the entire script tag — the page rendered nothing at all. Renamed to
+  `lastTeam`. A reminder that this file is one long script with a single shared
+  scope, so new locals in `boot()` need checking against what is already there.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The

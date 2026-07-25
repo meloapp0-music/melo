@@ -202,6 +202,71 @@ input{font:inherit;color:inherit}
   .tmeta{gap:14px 20px;margin-top:14px;padding-top:13px}
 }
 
+/* ─── your club ─────────────────────────────────────────────── */
+.club{
+  display:flex;align-items:center;gap:9px;flex-shrink:0;padding:5px 11px 5px 6px;
+  border:1px solid var(--rule);border-radius:99px;background:var(--deck);
+  transition:border-color .18s;
+}
+.club:hover{border-color:var(--team)}
+.club .txt{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.club .k{font:600 8.5px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--chalk4)}
+.club .v{font:700 14px/1 var(--display);letter-spacing:.04em;color:var(--team)}
+@media (max-width:760px){
+  .club .txt{display:none}
+  .club{padding:4px;border-radius:12px}
+}
+/* the club crest and the Share button both need room on a phone — the raw
+   count goes, since the bar and the Season tab's percentage both survive */
+@media (max-width:560px){
+  .console-in{gap:11px}
+  .mark b{font-size:19px}
+  .mark span{display:none}
+  .progress-wrap .count{display:none}
+}
+
+.favcard{
+  display:flex;align-items:center;gap:13px;width:100%;text-align:left;
+  padding:12px 13px;margin-bottom:16px;border-radius:11px;
+  border:1px solid color-mix(in srgb,var(--c) 42%,var(--rule-soft));
+  background:linear-gradient(120deg,color-mix(in srgb,var(--c) 17%,var(--deck)),var(--deck) 72%);
+  transition:border-color .18s;
+}
+.favcard:hover{border-color:var(--c)}
+.favcard .txt{min-width:0;flex:1}
+.favcard .k{display:block;font:600 9px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--c)}
+.favcard .n{display:block;font:700 17px/1.1 var(--display);color:var(--chalk);margin-top:6px;letter-spacing:.02em}
+.favcard .s{display:block;font:400 11px/1 var(--body);color:var(--chalk3);margin-top:6px}
+.favcard .rc{font:700 19px/1 var(--display);color:var(--c);letter-spacing:.03em}
+@media (max-width:900px){
+  .favcard{margin:0 0 2px;padding:9px 11px;gap:10px}
+  .favcard .n{font-size:15px;margin-top:4px}
+  .favcard .s{display:none}
+}
+
+.favbtn{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:99px;
+  border:1px solid var(--rule);background:rgba(0,0,0,.22);
+  font:600 11.5px/1 var(--body);color:var(--chalk3);transition:border-color .18s,color .18s;
+}
+.favbtn:hover{border-color:var(--team);color:var(--chalk)}
+.favbtn.on{border-color:var(--team);color:var(--team);background:color-mix(in srgb,var(--team) 13%,transparent)}
+.favbtn .st{font-size:12px;line-height:1}
+
+.picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:7px;margin:4px 0 6px}
+.pick-t{
+  display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 4px;
+  border:1px solid var(--rule-soft);border-radius:10px;background:var(--deck);
+  transition:border-color .16s,background .16s;
+}
+.pick-t:hover{border-color:var(--chalk4);background:var(--deck2)}
+.pick-t .n{font:600 10.5px/1.1 var(--body);color:var(--chalk3);text-align:center}
+.pick-conf{font:600 10px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--chalk4);margin:14px 0 9px}
+.pick-conf:first-child{margin-top:0}
+tr.fav td{background:color-mix(in srgb,var(--team) 11%,transparent)}
+tr.fav td:first-child{box-shadow:inset 3px 0 0 var(--team)}
+.seedrow.fav{background:color-mix(in srgb,var(--team) 9%,transparent)}
+
 /* ─── crest ─────────────────────────────────────────────────── */
 /* a club's own two colours, its abbreviation, and a helmet stripe — enough
    identity to recognise at a glance without borrowing anyone's trademark */
@@ -651,6 +716,7 @@ tr.clinch td{background:rgba(232,181,74,.05)}
 <header class="console">
   <div class="shell console-in">
     <div class="mark"><b class="dsp">PICK&nbsp;'EM</b><span>26·27</span></div>
+    <div id="club"></div>
     <div class="progress-wrap">
       <div class="bar"><i id="pbar" style="width:0%"></i></div>
       <div class="count" id="pcount">0<em>/272</em></div>
@@ -1037,7 +1103,7 @@ let cursor = -1;          // keyboard position within the rendered slab list
 let slabGames = [];       // game indices, in render order
 
 function blank(){
-  return {name:"", picks:{}, po:{}, order:{AFC:[], NFC:[]}};
+  return {name:"", fav:"", picks:{}, po:{}, order:{AFC:[], NFC:[]}};
 }
 function save(){
   if (shared || computing) return;
@@ -1439,6 +1505,7 @@ function render(){
   $("#pbar").style.width = (done / NGAMES * 100) + "%";
   $("#pcount").innerHTML = done + "<em>/" + NGAMES + "</em>";
 
+  renderClub(S);
   renderModes(done);
   renderBanner();
 
@@ -1458,8 +1525,16 @@ function render(){
 function revealActiveChip(){
   const rail = document.querySelector(".rail");
   const chip = rail && rail.querySelector('.chip[aria-current="true"]');
-  if (!rail || !chip || rail.scrollWidth <= rail.clientWidth) return;
-  rail.scrollLeft = chip.offsetLeft - rail.clientWidth / 2 + chip.offsetWidth / 2;
+  if (!rail || !chip) return;
+  if (rail.scrollWidth > rail.clientWidth){
+    rail.scrollLeft = chip.offsetLeft - rail.clientWidth / 2 + chip.offsetWidth / 2;
+  }
+  if (rail.scrollHeight > rail.clientHeight){
+    const top = chip.offsetTop, bottom = top + chip.offsetHeight;
+    if (top < rail.scrollTop || bottom > rail.scrollTop + rail.clientHeight){
+      rail.scrollTop = top - rail.clientHeight / 2 + chip.offsetHeight / 2;
+    }
+  }
 }
 
 function renderModes(done){
@@ -1477,6 +1552,72 @@ function renderModes(done){
 }
 function go(m){ mode = m; render(); window.scrollTo({top:0}); }
 
+/* your club's predicted record, pinned to the console bar so it stays in
+   front of you on every screen rather than being one of thirty-two */
+function renderClub(S){
+  const box = $("#club");
+  box.innerHTML = "";
+  if (!state.fav || !TEAMS[state.fav]){
+    box.appendChild(el("button", {"class":"btn", style:"flex-shrink:0",
+      onclick:openPicker}, ["Pick your club"]));
+    return;
+  }
+  const t = TEAMS[state.fav], r = R[state.fav];
+  const seed = S.seeds[t.conf].filter(function(x){ return x.t === state.fav; })[0];
+  const picked = BY_TEAM[state.fav].filter(function(g){ return resultOf(g.i); }).length;
+  box.appendChild(el("button", {
+    "class":"club", style:"--team:" + t.pop,
+    title:"Your club — " + t.name + (seed && !seed.outside ? ", " + ordinal(seed.seed) + " seed" : ""),
+    onclick:function(){ jumpToFav(); }
+  }, [
+    crest(state.fav, "xs"),
+    el("span", {"class":"txt"}, [
+      el("span", {"class":"k"}, ["Your club"]),
+      el("span", {"class":"v"}, [picked ? recStr(r) : t.abbr])
+    ])
+  ]));
+}
+function jumpToFav(){
+  if (!state.fav) return openPicker();
+  team = state.fav; lane = "team"; mode = "season"; cursor = -1;
+  remember("team", team); remember("lane", "team");
+  render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function setFav(abbr){
+  state.fav = abbr || "";
+  save();
+  if (abbr){ team = abbr; remember("team", abbr); }
+}
+
+function openPicker(){
+  const grid = function(conf){
+    const g = el("div", {"class":"picker"});
+    DIV_KEYS.filter(function(k){ return k.indexOf(conf) === 0; }).forEach(function(k){
+      DIVS[k].slice().sort().forEach(function(a){
+        const t = TEAMS[a];
+        g.appendChild(el("button", {
+          "class":"pick-t", title:t.name,
+          onclick:function(){ setFav(a); closeModal(); render(); toast(t.name + " — that's your club."); }
+        }, [crest(a, "sm"), el("span", {"class":"n"}, [t.nick])]));
+      });
+    });
+    return g;
+  };
+  showModal([
+    el("h2", {}, ["Who do you follow?"]),
+    el("p", {html:"Your club gets pinned to the top bar and leads every screen, so your own season never gets lost among the other thirty-one."}),
+    el("div", {"class":"pick-conf"}, ["AFC"]), grid("AFC"),
+    el("div", {"class":"pick-conf"}, ["NFC"]), grid("NFC"),
+    el("div", {"class":"sheet-actions"}, [
+      state.fav ? el("button", {"class":"btn", onclick:function(){
+        setFav(""); closeModal(); render();
+      }}, ["No club — I follow the league"]) : null,
+      el("button", {"class":"btn", onclick:closeModal}, [state.fav ? "Done" : "Skip"])
+    ])
+  ]);
+}
+
 function renderBanner(){
   const b = $("#banner");
   b.innerHTML = "";
@@ -1484,7 +1625,10 @@ function renderBanner(){
   if (!shared) return;
   b.className = "banner";
   b.appendChild(el("div", {"class":"shell banner-in"}, [
-    el("span", {html:"Viewing <b>" + esc(shared.name || "a friend") + "&rsquo;s</b> picks &mdash; read-only."}),
+    state.fav && TEAMS[state.fav] ? crest(state.fav, "xs") : null,
+    el("span", {html:"Viewing <b>" + esc(shared.name || "a friend") + "&rsquo;s</b> picks" +
+      (state.fav && TEAMS[state.fav] ? " &mdash; a " + esc(TEAMS[state.fav].nick) + " fan" : "") +
+      " &mdash; read-only."}),
     el("span", {"class":"sp"}),
     el("button", {"class":"btn btn-key", onclick:adoptShared}, ["Use as my starting point"]),
     el("button", {"class":"btn", onclick:leaveShared}, ["Back to my picks"])
@@ -1496,7 +1640,11 @@ function seasonView(S){
   const wrap = el("div", {"class":"shell"});
   wrap.appendChild(laneBar());
   if (lane === "team"){
-    wrap.appendChild(el("div", {"class":"season"}, [railEl(), teamPanel(S)]));
+    const left = el("div", {});
+    const fc = favCard();
+    if (fc) left.appendChild(fc);
+    left.appendChild(railEl());
+    wrap.appendChild(el("div", {"class":"season"}, [left, teamPanel(S)]));
   } else {
     wrap.appendChild(el("div", {"class":"season weeklane"}, [weekPanel(S)]));
   }
@@ -1632,6 +1780,26 @@ function longDay(iso){
   return mons[+p[1] - 1] + " " + (+p[2]);
 }
 
+/* your club, sitting above the thirty-one others rather than inside them */
+function favCard(){
+  if (!state.fav || !TEAMS[state.fav]) return null;
+  const t = TEAMS[state.fav], r = R[state.fav];
+  const picked = BY_TEAM[state.fav].filter(function(g){ return resultOf(g.i); }).length;
+  return el("button", {
+    "class":"favcard", style:"--c:" + t.pop,
+    "aria-current":String(team === state.fav),
+    onclick:jumpToFav
+  }, [
+    crest(state.fav, "sm"),
+    el("span", {"class":"txt"}, [
+      el("span", {"class":"k"}, ["Your club"]),
+      el("span", {"class":"n"}, [t.nick]),
+      el("span", {"class":"s"}, [picked === 17 ? "season called" : picked + " of 17 called"])
+    ]),
+    el("span", {"class":"rc"}, [picked ? recStr(r) : "—"])
+  ]);
+}
+
 function railEl(){
   const rail = el("div", {"class":"rail"});
   DIV_KEYS.forEach(function(k){
@@ -1670,7 +1838,19 @@ function teamPanel(S){
       el("div", {"class":"tname"}, [
         el("div", {"class":"city"}, [t.city]),
         el("div", {"class":"nick"}, [t.nick]),
-        el("div", {"class":"div", html:t.divKey + " &middot; <b>" + ordinal(divPos) + " in the division</b>"})
+        el("div", {"class":"div", html:t.divKey + " &middot; <b>" + ordinal(divPos) + " in the division</b>"}),
+        el("button", {
+          "class":"favbtn" + (state.fav === team ? " on" : ""), style:"margin-top:12px",
+          "aria-pressed":String(state.fav === team),
+          onclick:function(){
+            setFav(state.fav === team ? "" : team);
+            render();
+            toast(state.fav ? TEAMS[state.fav].name + " is your club." : "No club set.");
+          }
+        }, [
+          el("span", {"class":"st"}, [state.fav === team ? "★" : "☆"]),
+          state.fav === team ? "Your club" : "Make this my club"
+        ])
       ]),
       el("div", {"class":"readout"}, [
         el("div", {"class":"rec"}, [picked ? recStr(r) : "0-0"]),
@@ -1984,7 +2164,7 @@ function standingsView(S){
     S.divRank[k].forEach(function(x){
       const t = TEAMS[x.t], r = R[x.t], sd = seedMap[x.t];
       const nd = netPts(x.t);
-      body.appendChild(el("tr", {"class":sd ? "clinch" : ""}, [
+      body.appendChild(el("tr", {"class":(sd ? "clinch" : "") + (state.fav === x.t ? " fav" : "")}, [
         el("td", {}, [el("span", {"class":"tm", style:"--c:" + t.pop}, [
           crest(x.t, "xs"),
           el("button", {onclick:function(){ team = x.t; mode = "season"; render(); window.scrollTo({top:0}); }}, [t.nick]),
@@ -2013,7 +2193,8 @@ function seedCard(conf, S){
   const list = S.seeds[conf];
   list.forEach(function(x, i){
     const t = TEAMS[x.t], r = R[x.t];
-    const cls = "seedrow" + (x.outside ? "" : " in") + (i === 7 ? " gap" : "");
+    const cls = "seedrow" + (x.outside ? "" : " in") + (i === 7 ? " gap" : "") +
+      (state.fav === x.t ? " fav" : "");
     card.appendChild(el("div", {"class":cls, style:"--c:" + t.pop}, [
       el("span", {"class":"sn"}, [String(x.seed)]),
       el("span", {"class":"flag"}),
@@ -2275,6 +2456,37 @@ function receiptsSections(S){
 
   if (!done){ return wrap; }
 
+  /* your club's own verdict, ahead of the league-wide stuff */
+  if (state.fav && TEAMS[state.fav] && R[state.fav].played){
+    const f = state.fav, t = TEAMS[f], seed = d.field[f];
+    const ly = LAST_YEAR[f], swing = R[f].w - ly[0];
+    let run = "misses the playoffs";
+    if (seed){
+      if (d.champ === f) run = "wins it all";
+      else if (d.A.champ === f || d.N.champ === f) run = "loses the Super Bowl";
+      else if (d.A.cc.a === f || d.A.cc.b === f || d.N.cc.a === f || d.N.cc.b === f) run = "falls in the " + t.conf + " Championship";
+      else if ([].concat(d.A.dv, d.N.dv).some(function(m){ return m.a === f || m.b === f; })) run = "falls in the Divisional round";
+      else run = "makes the field as the " + ordinal(seed) + " seed";
+    }
+    wrap.appendChild(el("div", {"class":"sect", style:"margin-top:26px"}, [
+      el("h3", {}, ["Your club"]),
+      el("p", {}, ["The only line of this page that you actually have to live with."]),
+      el("div", {"class":"favcard", style:"--c:" + t.pop + ";margin:0;cursor:default"}, [
+        crest(f, "sm"),
+        el("span", {"class":"txt"}, [
+          el("span", {"class":"k"}, [t.divKey]),
+          el("span", {"class":"n"}, [t.name + " — " + run]),
+          el("span", {"class":"s", style:"display:block"}, [
+            ly[0] + "-" + ly[1] + " last season · " +
+            (swing > 0 ? "you have them +" + swing : swing < 0 ? "you have them " + swing : "you have them level") +
+            (swing === 0 ? " on wins" : " wins")
+          ])
+        ]),
+        el("span", {"class":"rc"}, [recStr(R[f])])
+      ])
+    ]));
+  }
+
   /* division winners */
   const champs = el("div", {"class":"champs8"});
   d.divWinners.forEach(function(x){
@@ -2456,9 +2668,12 @@ async function drawCard(d){
   x.fillText("PICK 'EM · 2026-27 SEASON", P, 108);
   x.letterSpacing = "0px";
 
-  if (state.name){
+  const byline = [state.name ? state.name + "'s call" : "",
+                  state.fav && TEAMS[state.fav] ? TEAMS[state.fav].nick + " fan" : ""]
+                 .filter(Boolean).join(" · ");
+  if (byline){
     x.fillStyle = "#7C879A"; x.font = BDY(27, 400);
-    x.fillText(state.name + "'s call", P, 152);
+    x.fillText(byline, P, 152);
   }
 
   /* champion */
@@ -2636,6 +2851,7 @@ function compareView(){
       "class":"rvchip", "aria-current":String(i === rivalSel),
       onclick:function(){ rivalSel = i; render(); }
     }, [
+      r.st.fav && TEAMS[r.st.fav] ? crest(r.st.fav, "xs") : null,
       el("span", {"class":"nm"}, [r.name]),
       el("span", {"class":"pc"}, [both ? Math.round(same / both * 100) + "%" : "—"]),
       el("button", {"class":"x", "aria-label":"Remove " + r.name, onclick:function(e){
@@ -2694,7 +2910,21 @@ function compareBody(me, th, rv){
       el("div", {"class":"k"}, [rv.name + "'s champion"]),
       el("div", {"class":"v", style:th.sb ? "color:" + TEAMS[th.sb].pop : ""}, [champLine(th)]),
       el("div", {"class":"s"}, [th.sb ? TEAMS[th.sb].city + " · " + recStr(th.rec[th.sb]) : "They have not finished theirs"])
-    ])
+    ]),
+    /* the disagreement you actually care about */
+    (state.fav && TEAMS[state.fav] && (me.rec[state.fav].played || th.rec[state.fav].played))
+      ? el("div", {}, [
+          el("div", {"class":"k"}, ["Your club · " + TEAMS[state.fav].nick]),
+          el("div", {"class":"v", style:"color:" + TEAMS[state.fav].pop},
+            [recStr(me.rec[state.fav]) + "  ·  " + recStr(th.rec[state.fav])]),
+          el("div", {"class":"s"}, [(function(){
+            const dw = me.rec[state.fav].w - th.rec[state.fav].w;
+            return dw === 0 ? "You two agree on their record"
+              : "You have them " + Math.abs(dw) + (Math.abs(dw) === 1 ? " win " : " wins ") +
+                (dw > 0 ? "better" : "worse") + " than " + rv.name + " does";
+          })()])
+        ])
+      : null
   ]));
 
   /* ── the clubs you see differently ── */
@@ -2853,7 +3083,8 @@ function serialize(){
   }
   const po = Object.keys(state.po).map(function(k){ return k + "=" + state.po[k]; });
   return ["1", (state.name || "").replace(/~/g, " ").slice(0, 40), win, scores.join(";"),
-          po.join(";"), (state.order.AFC || []).join(","), (state.order.NFC || []).join(",")].join("~");
+          po.join(";"), (state.order.AFC || []).join(","), (state.order.NFC || []).join(","),
+          state.fav || ""].join("~");
 }
 
 function deserialize(str){
@@ -2881,6 +3112,7 @@ function deserialize(str){
   });
   s.order.AFC = p[5] ? p[5].split(",").filter(Boolean) : [];
   s.order.NFC = p[6] ? p[6].split(",").filter(Boolean) : [];
+  s.fav = (p[7] && TEAMS[p[7]]) ? p[7] : "";   // absent in links made before clubs existed
   return s;
 }
 
@@ -2969,8 +3201,13 @@ async function openShare(){
 function adoptShared(){
   const copy = JSON.parse(JSON.stringify(state));
   copy.name = "";
+  /* their name and their club do not come with the picks — keep your own */
+  let mine = "";
+  try { mine = (JSON.parse(localStorage.getItem(KEY) || "{}").fav) || ""; } catch(e){}
+  copy.fav = TEAMS[mine] ? mine : "";
   shared = null;
   state = copy;
+  if (state.fav) team = state.fav;
   save();
   history.replaceState(null, "", location.pathname + location.search);
   render();
@@ -3054,7 +3291,15 @@ window.addEventListener("resize", function(){
     }
   }
 
+  /* land on your own club unless you have deliberately navigated elsewhere */
+  const lastTeam = recall("team");
+  if (lastTeam && TEAMS[lastTeam]) team = lastTeam;
+  else if (state.fav && TEAMS[state.fav]) team = state.fav;
+
   render();
+
+  /* first visit: ask once, before the wall of thirty-two */
+  if (!shared && !state.fav && !decidedCount() && !lastTeam) openPicker();
 })();
 </script>
 </body>
