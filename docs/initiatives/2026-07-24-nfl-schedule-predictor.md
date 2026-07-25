@@ -237,6 +237,48 @@ storage until "Use as my starting point" is pressed.
   centred so the pick controls stay near the club they belong to. `gridcheck.py`
   asserts the column widths in both lanes so this cannot regress silently.
 
+- 2026-07-24: Round six — two on-ramps, so a bracket no longer costs 272 picks.
+
+  User: "its a lot for people to go through every team but i want the postseason
+  to be part of it. thats the only way though right?" It wasn't. The bracket
+  needs *records*, not 272 individual calls — but partial picking produced a
+  useless bracket (everyone near 0-0, seeds falling through to the manual
+  tiebreak), so in practice the full season had been the only path.
+
+  **Fill the rest.** One button completes every game you have not called. Last
+  season's record becomes a rating, shrunk hard toward .500 (×0.135) because
+  year-over-year correlation is weak — without that the previous year's best
+  team sweeps and the projection looks silly. Home field is worth ~0.26, and a
+  FNV hash of the fixture decides each coin-flip, so it is deterministic but not
+  a pure ranking. The resulting league looks like a real season: a 14-3 top, a
+  2-15 bottom, 55% home wins, and the wins necessarily sum to 272. Offered from
+  the team tools, the week lane, and — most usefully — the "N games open"
+  warnings on Standings and Postseason.
+
+  **Win totals lane.** A fourth lane: 32 steppers grouped by division, each
+  showing last season's record for reference and how many of that club's games
+  you have called by hand. A running "league wins / 272" readout flags a total
+  that cannot exist. "Build the season" runs a solver: free games (anything not
+  hand-called) are assigned by urgency, then improved by straight swaps, then by
+  a two-step chain repair for the case where a club short of its target never
+  plays one with a surplus. On feasible targets it lands within 0–2 wins across
+  the whole league; the first draft without chain repair was off by 6, and
+  blaming that on "the fixtures" would have been a lie — it was a local optimum.
+
+  **Filled games are never passed off as yours.** They carry an `a` flag, render
+  with a dashed edge and outlined rather than filled W/L buttons, and are tagged
+  "filled". Touching one — a tap or a score — clears the flag and makes it
+  yours. The console bar splits the progress bar in two and reads "88/272 +184
+  filled". The receipts state the split outright, and the share card footer
+  drops "every pick made by hand" for "88 of 272 games called by hand · the rest
+  projected" whenever anything was filled. The share payload encodes the
+  distinction (winner chars gain `4`/`5` for filled away/home), so it survives a
+  round trip to a friend.
+
+  Also: the totals screen rounds 32 records to whole wins, which came to 271
+  because last season contained a tie — it now nudges the closest calls so the
+  screen does not open complaining about a gap the user did not create.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
