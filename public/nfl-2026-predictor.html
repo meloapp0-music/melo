@@ -156,11 +156,13 @@ input{font:inherit;color:inherit}
   .rail::-webkit-scrollbar{display:none}
   .rail-group{margin:0;display:flex;gap:6px}
   .rail-group .eyebrow{display:none}
-  .chip{width:auto;flex-shrink:0;padding:7px 11px;border:1px solid var(--rule-soft);background:var(--deck)}
+  /* the crest already carries the abbreviation, so the label would only
+     repeat it — chips go crest-only and eight fit on screen at once */
+  .chip{width:auto;flex-shrink:0;padding:6px;border:1px solid var(--rule-soft);background:var(--deck)}
   .chip[aria-current="true"]{background:color-mix(in srgb,var(--c) 16%,var(--deck));border-color:var(--c)}
-  .chip .flag{display:none}
-  .chip .nm{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.04em}
-  .chip .rc{display:none}
+  .chip .flag,.chip .nm,.chip .rc{display:none}
+  .chip .crest.xs{width:36px;height:36px;border-radius:9px;padding-left:6px;font-size:12.5px}
+  .chip .crest.xs::after{right:6px;width:5px}
 }
 
 /* ─── team header ───────────────────────────────────────────── */
@@ -198,6 +200,75 @@ input{font:inherit;color:inherit}
   .readout{text-align:left}
   .readout .sub{margin-top:4px}
   .tmeta{gap:14px 20px;margin-top:14px;padding-top:13px}
+}
+
+/* ─── crest ─────────────────────────────────────────────────── */
+/* a club's own two colours, its abbreviation, and a helmet stripe — enough
+   identity to recognise at a glance without borrowing anyone's trademark */
+.crest{
+  position:relative;flex-shrink:0;overflow:hidden;
+  display:inline-flex;align-items:center;justify-content:flex-start;
+  width:42px;height:42px;border-radius:10px;padding-left:7px;
+  background:var(--c1);border:1px solid rgba(255,255,255,.1);
+  font:700 14px/1 var(--display);letter-spacing:.02em;
+}
+.crest::after{
+  content:"";position:absolute;top:-2px;bottom:-2px;right:8px;width:6px;
+  background:var(--c2);transform:skewX(-12deg);opacity:.95;
+}
+.crest span{position:relative;z-index:1}
+.crest.xs{width:28px;height:28px;border-radius:7px;padding-left:4px;font-size:10.5px}
+.crest.xs::after{right:4px;width:4px}
+.crest.sm{width:34px;height:34px;border-radius:8px;padding-left:5px;font-size:12px}
+.crest.sm::after{right:6px;width:5px}
+.crest.lg{width:78px;height:78px;border-radius:17px;padding-left:12px;font-size:25px}
+.crest.lg::after{right:14px;width:11px}
+
+/* ─── team lane: one row per game, called W or L ─────────────── */
+.grow{
+  position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;
+  flex-wrap:wrap;padding:11px 15px;border:1px solid var(--rule-soft);
+  border-radius:var(--r);background:var(--deck);
+  transition:border-color .2s,background .25s;
+}
+.grow::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:var(--edge,transparent);transition:background .25s;
+}
+.grow.won{background:linear-gradient(90deg,color-mix(in srgb,var(--win) 13%,var(--deck)),var(--deck) 46%);border-color:color-mix(in srgb,var(--win) 26%,var(--rule-soft))}
+.grow.lost{background:linear-gradient(90deg,color-mix(in srgb,var(--loss) 13%,var(--deck)),var(--deck) 46%);border-color:color-mix(in srgb,var(--loss) 26%,var(--rule-soft))}
+.grow.tied{background:linear-gradient(90deg,color-mix(in srgb,var(--brass) 12%,var(--deck)),var(--deck) 46%)}
+.grow.cursor{border-color:var(--pop);box-shadow:0 0 0 1px var(--pop)}
+.grow .opp{display:flex;align-items:center;gap:12px;flex:1;min-width:150px}
+.grow .otxt{min-width:0}
+.grow .ha{display:block;font:600 10px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--chalk4)}
+.grow .onm{display:block;font:600 15.5px/1.2 var(--body);color:var(--chalk);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grow .ometa{display:block;font:400 11.5px/1 var(--body);color:var(--chalk4);margin-top:5px}
+.grow .ometa .intl{color:var(--brass);font-weight:600}
+.wl{display:flex;gap:3px;padding:3px;border:1px solid var(--rule);border-radius:10px;background:var(--pitch);flex-shrink:0}
+.wl button{
+  width:46px;padding:9px 0;border-radius:7px;text-align:center;
+  font:700 15px/1 var(--display);letter-spacing:.08em;color:var(--chalk4);
+  transition:background .16s,color .16s;
+}
+.wl button:hover{color:var(--chalk);background:var(--deck2)}
+.wl button.on.w{background:var(--win);color:#052015}
+.wl button.on.l{background:var(--loss);color:#2B0509}
+.grow .tiechip{
+  font:700 10px/1 var(--display);letter-spacing:.1em;color:var(--brass);
+  border:1px solid rgba(232,181,74,.4);border-radius:99px;padding:5px 9px;
+}
+.grow .scores{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.grow .scores .lbl{font:600 9px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--chalk4)}
+.sc.mini{
+  width:44px;height:34px;align-self:auto;border-radius:8px;font-size:17px;
+  border:1px solid var(--rule);
+}
+.sc.mini:focus{box-shadow:none;border-color:var(--pop)}
+@media (max-width:560px){
+  .grow{gap:10px;padding:11px 12px}
+  .grow .opp{min-width:100%}
+  .wl button{width:52px}
 }
 
 /* ─── game slabs ────────────────────────────────────────────── */
@@ -896,6 +967,9 @@ TEAM_ROWS.forEach(function(r){
   t.name = t.city + " " + t.nick;
   t.divKey = t.conf + " " + t.div;
   t.pop = readable(t.pop);
+  /* whichever of white or near-black actually reads on the primary colour */
+  t.on1 = contrast(hexToRgb(t.c1), [255,255,255]) >= contrast(hexToRgb(t.c1), [10,13,18])
+    ? "#FFFFFF" : "#0A0D12";
   TEAMS[t.abbr] = t; ORDER.push(t.abbr);
   CONF[t.conf].push(t.abbr);
   (DIVS[t.divKey] = DIVS[t.divKey] || []).push(t.abbr);
@@ -1338,11 +1412,18 @@ function el(tag, attrs, kids){
 }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
+function crest(abbr, size){
+  const t = TEAMS[abbr];
+  return el("span", {
+    "class":"crest" + (size ? " " + size : ""), "aria-hidden":"true",
+    style:"--c1:" + t.c1 + ";--c2:" + t.c2 + ";color:" + t.on1
+  }, [el("span", {}, [t.abbr])]);
+}
+
 const MODES = [
   {k:"season",   label:"Season"},
   {k:"standings",label:"Standings"},
   {k:"playoffs", label:"Postseason"},
-  {k:"receipts", label:"Receipts"},
   {k:"compare",  label:"Compare"}
 ];
 
@@ -1367,9 +1448,18 @@ function render(){
   if (mode === "season") view.appendChild(seasonView(S));
   else if (mode === "standings") view.appendChild(standingsView(S));
   else if (mode === "playoffs") view.appendChild(playoffView(S));
-  else if (mode === "receipts") view.appendChild(receiptsView(S));
   else view.appendChild(compareView(S));
   paintCursor(false);
+  revealActiveChip();
+}
+
+/* on narrow screens the club rail is a horizontal scroller — keep whichever
+   club you are on inside it rather than off the right edge */
+function revealActiveChip(){
+  const rail = document.querySelector(".rail");
+  const chip = rail && rail.querySelector('.chip[aria-current="true"]');
+  if (!rail || !chip || rail.scrollWidth <= rail.clientWidth) return;
+  rail.scrollLeft = chip.offsetLeft - rail.clientWidth / 2 + chip.offsetWidth / 2;
 }
 
 function renderModes(done){
@@ -1423,11 +1513,15 @@ function laneBar(){
   return el("div", {"class":"lanebar"}, [
     el("div", {"class":"seg"}, [seg("team", "By team"), seg("week", "By week")]),
     el("p", {"class":"lanehint"}, [lane === "team"
-      ? "One club's whole season at a time — the careful lane."
-      : "A full slate at once. Fastest way to get through the other 31 clubs."]),
-    el("div", {"class":"kbd"}, [
+      ? "One club's schedule, called win by win — the careful lane."
+      : "A full slate at once. Fastest way through the other 31 clubs."]),
+    el("div", {"class":"kbd"}, lane === "team" ? [
       el("b", {}, ["↑"]), el("b", {}, ["↓"]), el("span", {}, ["move"]),
-      el("b", {}, ["←"]), el("b", {}, ["→"]), el("span", {}, ["pick"]),
+      el("b", {}, ["W"]), el("b", {}, ["L"]), el("span", {}, ["call it"]),
+      el("b", {}, ["⌫"]), el("span", {}, ["clear"])
+    ] : [
+      el("b", {}, ["↑"]), el("b", {}, ["↓"]), el("span", {}, ["move"]),
+      el("b", {}, ["←"]), el("b", {}, ["→"]), el("span", {}, ["pick a side"]),
       el("b", {}, ["⌫"]), el("span", {}, ["clear"])
     ])
   ]);
@@ -1550,7 +1644,7 @@ function railEl(){
         style:"--c:" + t.pop,
         onclick:function(){ team = x.t; try{ localStorage.setItem(KEY + ".team", team); }catch(e){} render(); }
       }, [
-        el("span", {"class":"flag"}),
+        crest(x.t, "xs"),
         el("span", {"class":"nm"}, [window.innerWidth <= 900 ? t.abbr : t.nick]),
         el("span", {"class":"rc" + (picked === 17 ? " done" : "")}, [picked ? recStr(r) : "—"])
       ]));
@@ -1572,6 +1666,7 @@ function teamPanel(S){
 
   panel.appendChild(el("div", {"class":"thead"}, [
     el("div", {"class":"thead-in"}, [
+      crest(team, "lg"),
       el("div", {"class":"tname"}, [
         el("div", {"class":"city"}, [t.city]),
         el("div", {"class":"nick"}, [t.nick]),
@@ -1598,12 +1693,13 @@ function teamPanel(S){
       el("div", {"class":"num n"}, [String(w)]),
       g ? el("div", {"class":"d"}, [shortDate(g.date)]) : null
     ]);
-    slabs.appendChild(el("div", {"class":"wkrow"}, [wk, g ? slabEl(g) : byeEl()]));
+    slabs.appendChild(el("div", {"class":"wkrow"}, [wk, g ? growEl(g) : byeEl()]));
   }
   panel.appendChild(slabs);
 
   panel.appendChild(el("div", {"class":"team-tools"}, [
-    el("p", {"class":"hint", html:"Tap a side to call the winner. Scores are optional &mdash; fill them in and they decide the game (equal scores = a tie)."}),
+    el("p", {"class":"hint", html:"Call each game a win or a loss for the " + esc(t.nick) +
+      ". Scores are optional &mdash; fill them in and they decide the game (level scores = a tie)."}),
     el("button", {"class":"btn", onclick:function(){
       BY_TEAM[team].forEach(function(g){ delete state.picks[g.i]; });
       save(); render();
@@ -1652,6 +1748,80 @@ function byeEl(){
   ]);
 }
 
+/* the team lane reads like a club's own schedule: you are looking at one team,
+   so the call is W or L, not which of two clubs wins. it writes the same pick
+   the week lane does — a W for the home side is a home-side winner. */
+function growEl(g){
+  const home = g.home === team;
+  const opp = TEAMS[home ? g.away : g.home];
+  const res = resultOf(g.i);
+  const mine = home ? "H" : "A";
+  const won = res === mine, lost = res && res !== mine && res !== "T", tied = res === "T";
+  slabGames.push(g.i);
+
+  const edge = won ? "var(--win)" : lost ? "var(--loss)" : tied ? "var(--brass)" : "transparent";
+  const row = el("div", {
+    "class":"grow" + (won ? " won" : "") + (lost ? " lost" : "") + (tied ? " tied" : ""),
+    "data-i":String(g.i),
+    style:"--edge:" + edge
+  });
+
+  row.appendChild(el("div", {"class":"opp"}, [
+    crest(opp.abbr, "sm"),
+    el("span", {"class":"otxt"}, [
+      el("span", {"class":"ha"}, [g.neutral ? "vs" : (home ? "vs" : "at")]),
+      el("span", {"class":"onm"}, [opp.name]),
+      el("span", {"class":"ometa", html:opp.abbr + " " + recStr(R[opp.abbr]) + " · " + timeLabel(g.time) +
+        (g.neutral ? ' · <span class="intl">' + esc(g.neutral) + "</span>" : "")})
+    ])
+  ]));
+
+  if (tied) row.appendChild(el("span", {"class":"tiechip"}, ["TIE"]));
+
+  row.appendChild(el("div", {"class":"wl"}, [
+    wlBtn(g, "W", won, home), wlBtn(g, "L", lost, home)
+  ]));
+
+  row.appendChild(el("div", {"class":"scores"}, [
+    scoreFor(g, home ? "H" : "A", TEAMS[team]),
+    el("span", {"class":"lbl"}, ["–"]),
+    scoreFor(g, home ? "A" : "H", opp)
+  ]));
+  return row;
+}
+
+function wlBtn(g, kind, on, home){
+  /* a win for the selected club is a win for whichever side it is on */
+  const side = kind === "W" ? (home ? "H" : "A") : (home ? "A" : "H");
+  return el("button", {
+    "class":(kind === "W" ? "w" : "l") + (on ? " on" : ""),
+    "aria-pressed":String(on),
+    "aria-label":(kind === "W" ? "Win" : "Loss") + " for the " + TEAMS[team].nick,
+    title:on ? "Tap again to undo" : (kind === "W" ? "Call it a win" : "Call it a loss"),
+    onclick:function(){
+      setWinner(g.i, side);
+      const at = slabGames.indexOf(g.i);
+      render();
+      cursor = at;
+      paintCursor(false);
+    }
+  }, [kind]);
+}
+
+function scoreFor(g, side, t){
+  const p = state.picks[g.i] || {};
+  const v = side === "A" ? p.as : p.hs;
+  return el("input", {
+    type:"number", min:"0", max:"199", placeholder:"–",
+    inputmode:"numeric", value:(v == null ? "" : String(v)),
+    "class":"sc mini" + (v == null ? "" : " set"),
+    "aria-label":"Predicted score for the " + t.name,
+    title:"Predicted score for the " + t.name + " (optional)",
+    onchange:function(e){ setScore(g.i, side, e.target.value); render(); },
+    onkeydown:function(e){ if (e.key === "Enter") e.target.blur(); }
+  });
+}
+
 function slabEl(g, compact){
   const res = resultOf(g.i);
   const ta = TEAMS[g.away], th = TEAMS[g.home];
@@ -1682,10 +1852,10 @@ function slabEl(g, compact){
 }
 
 function paintCursor(scroll){
-  const prev = document.querySelector(".slab.cursor");
+  const prev = document.querySelector(".cursor[data-i]");
   if (prev) prev.classList.remove("cursor");
   if (cursor < 0 || cursor >= slabGames.length) return;
-  const n = document.querySelector('.slab[data-i="' + slabGames[cursor] + '"]');
+  const n = document.querySelector('[data-i="' + slabGames[cursor] + '"]');
   if (!n) return;
   n.classList.add("cursor");
   if (scroll) n.scrollIntoView({block:"center", behavior:"smooth"});
@@ -1705,10 +1875,21 @@ document.addEventListener("keydown", function(e){
     const from = cursor < 0 ? (k === "ArrowDown" ? -1 : 1) : cursor;
     cursor = Math.max(0, Math.min(slabGames.length - 1, from + (k === "ArrowDown" ? 1 : -1)));
     paintCursor(true);
-  } else if (k === "ArrowLeft" || k === "ArrowRight"){
+  } else if (k === "ArrowLeft" || k === "ArrowRight" || /^[wWlL]$/.test(k)){
+    const letter = /^[wWlL]$/.test(k);
+    if (letter && lane !== "team") return;   // W/L only mean something for one club
     e.preventDefault();
     if (cursor < 0) cursor = 0;
-    setWinner(slabGames[cursor], k === "ArrowLeft" ? "A" : "H");
+    const gi = slabGames[cursor], g = SCHEDULE[gi];
+    let side;
+    if (lane === "team"){
+      const home = g.home === team;
+      const wantWin = k === "ArrowRight" || k === "w" || k === "W";
+      side = wantWin ? (home ? "H" : "A") : (home ? "A" : "H");
+    } else {
+      side = k === "ArrowLeft" ? "A" : "H";
+    }
+    setWinner(gi, side);
     const next = Math.min(slabGames.length - 1, cursor + 1);
     render();
     cursor = next;
@@ -1741,7 +1922,7 @@ function sideEl(g, side, t, res){
       paintCursor(false);
     }
   }, [
-    el("span", {"class":"dot"}),
+    crest(t.abbr, "xs"),
     el("span", {"class":"who"}, [
       el("span", {"class":"ab", style:"display:block"}, [t.abbr]),
       el("span", {"class":"fn", style:"display:block"}, [
@@ -1805,7 +1986,7 @@ function standingsView(S){
       const nd = netPts(x.t);
       body.appendChild(el("tr", {"class":sd ? "clinch" : ""}, [
         el("td", {}, [el("span", {"class":"tm", style:"--c:" + t.pop}, [
-          el("span", {"class":"flag"}),
+          crest(x.t, "xs"),
           el("button", {onclick:function(){ team = x.t; mode = "season"; render(); window.scrollTo({top:0}); }}, [t.nick]),
           sd ? el("span", {"class":"sd" + (sd.div ? "" : " wc")}, [String(sd.seed)]) : null
         ])]),
@@ -1898,6 +2079,7 @@ function playoffView(S){
     el("p", {"class":"hint"}, ["Clearing only wipes the postseason — your 272 regular-season calls stay put."]),
     el("button", {"class":"btn", onclick:function(){ state.po = {}; save(); render(); }}, ["Clear bracket"])
   ]));
+  wrap.appendChild(receiptsSections(S));
   return wrap;
 }
 
@@ -1954,7 +2136,7 @@ function muEl(m, B){
       }
     }, [
       el("span", {"class":"sn"}, [String(pair[1])]),
-      el("span", {"class":"flag"}),
+      crest(a, "xs"),
       el("span", {"class":"nm"}, [t.name]),
       el("span", {"class":"rc"}, [recStr(R[a])])
     ]));
@@ -2061,10 +2243,12 @@ function receiptData(S){
   };
 }
 
-function receiptsView(S){
+/* lives at the foot of the Postseason page: you crown a champion, then scroll
+   straight into what that commits you to */
+function receiptsSections(S){
   const d = receiptData(S);
   const done = decidedCount();
-  const wrap = el("div", {"class":"shell pane"});
+  const wrap = el("div", {"class":"sect", style:"margin-top:46px;padding-top:34px;border-top:1px solid var(--rule)"});
   wrap.appendChild(el("div", {"class":"pane-head"}, [
     el("h2", {}, ["Your receipts"]),
     el("p", {html:"Everything you just committed to, in one place, so it can be held against you in February."})
@@ -2083,11 +2267,9 @@ function receiptsView(S){
   } else {
     wrap.appendChild(el("div", {"class":"rc-empty"}, [
       el("h3", {}, ["No champion yet"]),
-      el("p", {style:"margin:0 0 18px;font-size:13.5px"}, [done < NGAMES
-        ? "You have called " + done + " of " + NGAMES + " games. Fill in the season, then work the bracket and this page writes itself."
-        : "The season is done — go pick your way through the bracket."]),
-      el("button", {"class":"btn btn-key", onclick:function(){ go(done < NGAMES ? "season" : "playoffs"); }},
-        [done < NGAMES ? "Back to the season" : "Open the bracket"])
+      el("p", {style:"margin:0", "class":"", html:done < NGAMES
+        ? "You have called <b>" + done + " of " + NGAMES + "</b> games. Finish the season and work the bracket above, and this writes itself."
+        : "Work the bracket above and this writes itself."})
     ]));
   }
 
@@ -2098,7 +2280,7 @@ function receiptsView(S){
   d.divWinners.forEach(function(x){
     const t = TEAMS[x.t];
     champs.appendChild(el("div", {"class":"champ8", style:"--c:" + t.pop}, [
-      el("span", {"class":"flag"}),
+      crest(x.t, "xs"),
       el("span", {}, [el("span", {"class":"d"}, [x.div]), el("span", {"class":"n"}, [t.nick])]),
       el("span", {"class":"r"}, [recStr(R[x.t])])
     ]));

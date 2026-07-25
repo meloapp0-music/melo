@@ -147,6 +147,34 @@ storage until "Use as my starting point" is pressed.
   deleting the user's bracket. `standings()` now rebuilds `R` itself.
   Regression tests cover idempotent analysis and pick preservation.
 
+- 2026-07-24: Round three — the team lane redesign, crests, and a trim.
+
+  **Team lane is now W/L, not pick-a-side.** The two-sided slab is the right
+  control for the week lane, where neither club is yours, but it was the wrong
+  mental model for a single team's schedule: you think "W, W, L, W", not "who
+  wins Bills–Texans". The team lane now renders one row per game in schedule
+  format — opponent crest, "at/vs Opponent", their record and kickoff — with W
+  and L buttons and a green or red edge bar. It writes exactly the same pick the
+  week lane does (a W for the club is a win for whichever side it is on), so the
+  two lanes stay in sync and the opponent's own page shows the mirror image.
+  Score fields are ordered your-team-first in this lane. Keyboard follows: W/L
+  or ←/→ in the team lane, ←/→ for away/home in the week lane.
+
+  **Crests for all 32 clubs.** Not NFL logos — those live on CDNs this
+  environment cannot reach, the published page blocks external requests, and
+  baking the league's trademarks into a file meant to be passed around is not
+  something to do casually. Instead each club gets a generated crest: a tile in
+  its official primary colour, a helmet stripe in its secondary, and the
+  abbreviation in the condensed face, with the text colour picked per club by
+  whichever of white or near-black actually contrasts. Used in the club rail,
+  team header, opponent rows, week slabs, standings, bracket and receipts. On
+  narrow screens the rail becomes crest-only (the label would just repeat the
+  abbreviation) and auto-scrolls to keep the selected club in view.
+
+  **Five tabs down to four.** Receipts folded into the foot of Postseason,
+  which is also the natural reading order — crown a champion, then scroll into
+  what that commits you to.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
