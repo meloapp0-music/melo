@@ -604,6 +604,25 @@ tr.clinch td{background:rgba(232,181,74,.05)}
 }
 .seg button:hover{color:var(--chalk2)}
 .seg button[aria-current="true"]{background:var(--deck3);color:var(--chalk)}
+.switch{
+  display:inline-flex;align-items:center;gap:8px;flex-shrink:0;
+  padding:6px 12px 6px 8px;border:1px solid var(--rule);border-radius:99px;
+  background:var(--deck);font:600 11.5px/1 var(--body);color:var(--chalk3);
+  transition:border-color .16s,color .16s;
+}
+.switch:hover{border-color:var(--chalk4);color:var(--chalk2)}
+.switch[aria-pressed="true"]{color:var(--chalk);border-color:color-mix(in srgb,var(--team) 45%,var(--rule))}
+.switch .track{
+  position:relative;flex-shrink:0;width:26px;height:15px;border-radius:99px;
+  background:var(--deck3);transition:background .18s;
+}
+.switch[aria-pressed="true"] .track{background:var(--team)}
+.switch .knob{
+  position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:99px;
+  background:var(--chalk3);transition:transform .18s,background .18s;
+}
+.switch[aria-pressed="true"] .knob{transform:translateX(11px);background:var(--pitch)}
+
 .kbd{display:flex;align-items:center;gap:7px;font:400 11.5px/1 var(--body);color:var(--chalk4)}
 .kbd b{
   display:inline-block;min-width:19px;padding:4px 5px;text-align:center;
@@ -1153,6 +1172,7 @@ let shared = null;        // {name} when viewing someone else's picks
 let rivals = [];          // [{name, code, st}] — friends' sheets, decoded
 let rivalSel = 0;
 let computing = false;    // true while analysing someone else's state
+let showScores = false;   // predicted scores are opt-in — most people only call winners
 let cursor = -1;          // keyboard position within the rendered slab list
 let slabGames = [];       // game indices, in render order
 
@@ -1243,6 +1263,13 @@ function setScore(i, side, val){
   save();
 }
 
+function hasAnyScores(){
+  for (const k in state.picks){
+    const p = state.picks[k];
+    if (p && (p.as != null || p.hs != null)) return true;
+  }
+  return false;
+}
 function decidedCount(){
   let n = 0;
   for (let i = 0; i < NGAMES; i++) if (resultOf(i)) n++;
@@ -1885,6 +1912,17 @@ function laneBar(){
   return el("div", {"class":"lanebar"}, [
     el("div", {"class":"seg"}, segs),
     el("span", {style:"flex:1"}),
+    lane === "totals" ? null : el("button", {
+      "class":"switch", "aria-pressed":String(showScores),
+      title:showScores
+        ? "Hide the predicted score boxes"
+        : "Show a score box on every game. Anything you have already entered still counts toward point differential.",
+      onclick:function(){
+        showScores = !showScores;
+        remember("scores", showScores ? "1" : "0");
+        render();
+      }
+    }, [el("span", {"class":"track"}, [el("span", {"class":"knob"})]), "Scores"]),
     lane === "totals" ? null : el("div", {"class":"kbd"}, lane !== "week" ? [
       el("b", {}, ["↑"]), el("b", {}, ["↓"]), el("span", {}, ["move"]),
       el("b", {}, ["W"]), el("b", {}, ["L"]), el("span", {}, ["call it"]),
@@ -2209,8 +2247,10 @@ function teamPanel(S){
   panel.appendChild(slabs);
 
   panel.appendChild(el("div", {"class":"team-tools"}, [
-    el("p", {"class":"hint", html:"Call each game a win or a loss for the " + esc(t.nick) +
-      ". Scores are optional &mdash; fill them in and they decide the game (level scores = a tie)."}),
+    el("p", {"class":"hint", html:"Call each game a win or a loss for the " + esc(t.nick) + "." +
+      (showScores
+        ? " Scores are optional &mdash; fill them in and they decide the game (level scores = a tie)."
+        : " Turn on <b>Scores</b> above to predict them too.")}),
     el("button", {"class":"btn", onclick:function(){
       BY_TEAM[team].forEach(function(g){ delete state.picks[g.i]; });
       save(); render();
@@ -2299,11 +2339,13 @@ function growEl(g){
     wlBtn(g, "W", won, home, auto), wlBtn(g, "L", lost, home, auto)
   ]));
 
-  row.appendChild(el("div", {"class":"scores"}, [
-    scoreFor(g, home ? "H" : "A", TEAMS[team]),
-    el("span", {"class":"lbl"}, ["–"]),
-    scoreFor(g, home ? "A" : "H", opp)
-  ]));
+  if (showScores){
+    row.appendChild(el("div", {"class":"scores"}, [
+      scoreFor(g, home ? "H" : "A", TEAMS[team]),
+      el("span", {"class":"lbl"}, ["–"]),
+      scoreFor(g, home ? "A" : "H", opp)
+    ]));
+  }
   return row;
 }
 
@@ -2352,12 +2394,12 @@ function slabEl(g, compact){
   });
 
   slab.appendChild(el("div", {"class":"slab-in"}, [
-    el("div", {"class":"half away"}, [sideEl(g, "A", ta, res), scoreEl(g, "A", ta)]),
+    el("div", {"class":"half away"}, [sideEl(g, "A", ta, res), showScores ? scoreEl(g, "A", ta) : null]),
     el("div", {"class":"at"}, [
       res === "T" ? el("span", {"class":"tie"}, ["TIE"]) : null,
       el("span", {}, [g.neutral ? "VS" : "AT"])
     ]),
-    el("div", {"class":"half home"}, [sideEl(g, "H", th, res), scoreEl(g, "H", th)])
+    el("div", {"class":"half home"}, [sideEl(g, "H", th, res), showScores ? scoreEl(g, "H", th) : null])
   ]));
 
   slab.appendChild(el("div", {"class":"slab-foot"}, [
@@ -3642,6 +3684,11 @@ window.addEventListener("resize", function(){
       if (SCHEDULE.some(function(g){ return g.week === n && !resultOf(g.i); })){ weekSel = n; break; }
     }
   }
+
+  const savedScores = recall("scores");
+  showScores = savedScores === "1" ? true
+             : savedScores === "0" ? false
+             : hasAnyScores();          // a shared sheet with scores shows them
 
   const savedLane = recall("lane");
   lane = (["week","team","mine","totals"].indexOf(savedLane) >= 0)

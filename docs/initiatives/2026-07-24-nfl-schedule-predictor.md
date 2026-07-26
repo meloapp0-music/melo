@@ -279,6 +279,25 @@ storage until "Use as my starting point" is pressed.
   because last season contained a tie — it now nudges the closest calls so the
   screen does not open complaining about a gap the user did not create.
 
+- 2026-07-24: Predicted scores moved behind a toggle. They were the highest
+  noise-per-use element on the screen that gets the most traffic — two number
+  boxes on all 272 rows for something most people never fill in. A `Scores`
+  switch now sits in the lane bar and governs both the team lane and the week
+  lane; off by default. Any scores already entered stay in the data and keep
+  counting toward point differential and ties, so hiding is purely visual. The
+  preference is remembered per browser and is *not* part of the share payload —
+  but when it has never been set, it defaults to whether the sheet being opened
+  actually contains scores, so a friend receiving a scored sheet sees them.
+
+- 2026-07-24: Test-harness flaw worth recording. The Playwright suites seed
+  `localStorage` via `add_init_script`, which re-runs on **every** navigation —
+  including `page.reload()`. It was unconditionally overwriting `pickem26.v1`,
+  so every "survives reload" assertion was passing against freshly-seeded state
+  rather than anything the page had saved. It surfaced only because the scores
+  toggle needed a genuine reload to prove persistence. All seeds are now
+  conditional (`if (!localStorage.getItem(...))`). Any future harness seeding
+  must do the same or the persistence coverage is theatre.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
