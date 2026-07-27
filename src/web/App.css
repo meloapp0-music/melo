@@ -10376,3 +10376,52 @@ h4 { font-size: 17px; }
   font-size: 11.5px; color: var(--brown-muted, #9B8A7E); text-align: center;
   padding: 4px 10px 2px; line-height: 1.45;
 }
+
+/* ============================================================
+   "Recap ready" — the arrival moment (design handoff §2.1).
+   The recap is a gift that shows up, not a button you go find.
+   ============================================================ */
+.recapready { margin-bottom: 16px; }
+.recapready-chip {
+  display: inline-block; margin-bottom: 9px;
+  background: rgba(0, 168, 140, 0.12); color: #00A88C;
+  font-family: var(--font-heading); font-weight: 750; font-size: 12.5px;
+  border-radius: 999px; padding: 6px 12px;
+}
+.recapready-card {
+  position: relative; display: block; width: 100%; border: none; padding: 0;
+  height: 188px; border-radius: 20px; overflow: hidden; cursor: pointer;
+  background-size: cover; background-position: center;
+  box-shadow: 0 12px 30px rgba(61, 44, 30, 0.28);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.14s ease;
+  text-align: left;
+}
+.recapready-card:active { transform: scale(0.985); }
+.recapready-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(20,12,6,0.12) 0%, rgba(20,12,6,0.42) 46%, rgba(20,12,6,0.9) 100%);
+}
+/* The shimmer badge — a 220% gradient sweeping on a 2.6s loop, per the spec. */
+.recapready-badge {
+  position: absolute; top: 12px; left: 12px; z-index: 2;
+  font-family: var(--font-heading); font-weight: 800; font-size: 11.5px;
+  color: #2B1D12; border-radius: 999px; padding: 5px 10px;
+  background: linear-gradient(100deg, #FFC75F 0%, #FBF6EE 45%, #F4A261 60%, #FFC75F 100%);
+  background-size: 220% 100%;
+  animation: recapShimmer 2.6s linear infinite;
+}
+@keyframes recapShimmer { from { background-position: 220% 0; } to { background-position: -20% 0; } }
+.recapready-body {
+  position: absolute; left: 14px; right: 14px; bottom: 13px; z-index: 2;
+  display: flex; flex-direction: column; gap: 9px; align-items: flex-start;
+}
+.recapready-head {
+  font-family: var(--font-heading); font-weight: 800; font-size: 19px;
+  letter-spacing: -0.02em; color: #FBF6EE; text-shadow: 0 2px 14px rgba(0,0,0,0.5);
+}
+.recapready-cta {
+  display: inline-block; background: linear-gradient(135deg, #F4A261, #E8573A);
+  color: #fff; font-family: var(--font-heading); font-weight: 750; font-size: 14px;
+  border-radius: 15px; padding: 9px 16px;
+  box-shadow: 0 6px 18px rgba(232, 87, 58, 0.42);
+}

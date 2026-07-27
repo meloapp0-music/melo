@@ -101,6 +101,17 @@ export function buildScenes(show) {
     }));
   }
 
+  // WHO YOU WERE WITH — the handoff lists this alongside setlist + score as core
+  // recap content, and it's the share engine: a recap that names your friends is
+  // one you send TO them. Buddies are free-text on the show, so no lookup.
+  const people = (show.buddies || []).filter(Boolean).slice(0, 4);
+  if (people.length) {
+    const names = people.length <= 2
+      ? people.join(' & ')
+      : `${people.slice(0, 2).join(', ')} + ${people.length - 2} more`;
+    push({ kind: 'people', dur: 1.8, label: 'With', big: names, flash: 0.35, ...bg(songs.length + 1) });
+  }
+
   // A vibe accent (the user's own words for the night), if any.
   const vibes = (show.vibes || []).filter(Boolean).slice(0, 3);
   if (vibes.length) {

@@ -246,6 +246,19 @@ export default function App() {
       }
       return done();
     }
+    // recap_ready — "melo made you a recap" the morning after a log. Opens the
+    // show AND its reel: the notification promised a recap, so tapping it should
+    // land ON the recap, not on a detail page with a button.
+    if (kind === 'recap_ready') {
+      const show = shows.find((s) => s.id === pushNav.showId);
+      if (show) {
+        setSubPage(null);
+        setSelectedShow(show);
+        setRecapShow(show);
+      }
+      return done();
+    }
+
     // daily_post — the founder/ops nudge from the `daily-post` cron. Opens the
     // screenshot-ready card at melo.show/tonight; falls back to Discover (whose
     // "Tonight in {city}" rail is the same data) if the payload has no url.

@@ -11,6 +11,7 @@ import PhotoGallery from './PhotoGallery';
 import ShowSocial from './ShowSocial';
 import ShareCardView from './ShareCardView';
 import { canRecap } from '../lib/recap';
+import { buildCut, DEFAULT_CUT } from '../lib/recapCuts';
 
 // Rough "how long ago" label for the pre-show card. Years once it's
 // been 12+ months, otherwise months. Good enough for "you last saw
@@ -409,12 +410,32 @@ export default function ShowDetail({ show, onClose }) {
           {/* melo made you a recap — a per-show story reel. Own shows only, and
               only when there's enough (setlist / media / a rating) to make it
               sing (canRecap). */}
-          {isOwner && canRecap(show) && (
-            <button className="detail-recap-btn" onClick={() => setRecapShow(show)}>
-              <span aria-hidden="true">✨</span>
-              <span>melo made you a recap</span>
-            </button>
-          )}
+          {/* THE ARRIVAL — the handoff's "Recap ready" state (§2.1). The recap is
+              a post-log GIFT, not a button you hunt for: an in-the-books chip, a
+              poster card with the shimmer badge, the runtime, and one CTA. */}
+          {isOwner && canRecap(show) && (() => {
+            const secs = Math.round(buildCut(DEFAULT_CUT, show).reduce((a, sc) => a + sc.dur, 0));
+            const poster = (show.photos || [])[0] || getArtistImage(show.artist) || '';
+            return (
+              <div className="recapready">
+                <div className="recapready-chip">🎉 {show.artist} is in the books</div>
+                <button
+                  className="recapready-card"
+                  onClick={() => setRecapShow(show)}
+                  style={poster
+                    ? { backgroundImage: `url("${poster}")` }
+                    : { background: getArtistGradient(show.artist) }}
+                >
+                  <span className="recapready-scrim" aria-hidden="true" />
+                  <span className="recapready-badge">✨ melo made you a recap</span>
+                  <span className="recapready-body">
+                    <span className="recapready-head">Your {secs}s recap is ready.</span>
+                    <span className="recapready-cta">▶  Watch &amp; share</span>
+                  </span>
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Share this show — own shows only (the card says "I was
               there / my rating", so sharing a friend's show would

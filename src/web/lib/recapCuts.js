@@ -48,6 +48,8 @@ function buildCinematic(show) {
   songs.slice(0, 5).forEach((song, i) => {
     push({ kind: 'beat', dur: 2.4, label: song, kb: i % 2 === 0 ? 1 : -1, layout: 'lower', ...bg(i + 1) });
   });
+  const withWho = (show.buddies || []).filter(Boolean).slice(0, 3);
+  if (withWho.length) push({ kind: 'beat', dur: 2.2, label: `with ${withWho.join(' & ')}`, layout: 'lower', ...bg(2) });
   if (verdict) push({ kind: 'score', dur: 2.6, label: 'Your verdict', big: verdict, score: scoreLabel(score), ...bg(1) });
   push({ kind: 'outro', dur: 2.8, big: `${artist}.`, sub: 'Kept forever.', ...bg(0) });
   return scenes;
@@ -75,6 +77,10 @@ function buildStubs(show) {
   if (songs.length) {
     push({ kind: 'stub-list', dur: 2.6, big: 'THE SET', rows: songs.slice(0, 6).map((s, i) => [String(i + 1).padStart(2, '0'), s]) });
   }
+  const party = (show.buddies || []).filter(Boolean).slice(0, 4);
+  if (party.length) {
+    push({ kind: 'stub-list', dur: 2.2, big: 'ADMITS', rows: party.map((p2, i) => [String(i + 1).padStart(2, '0'), p2]) });
+  }
   // The number, stamped — the handoff's structural exception to verdict words.
   if (score > 0) push({ kind: 'stub-stamp', dur: 2.2, big: `RATED ${scoreLabel(score)}`, sub: where });
   push({ kind: 'stub-end', dur: 2.4, big: 'Every stub,', sub: 'kept forever.' });
@@ -96,6 +102,8 @@ function buildDiary(show) {
   push({ kind: 'diary', dur: 2.4, big: 'the entry I keep re-reading…', ...(media[0] || {}) });
   (show.notes ? [show.notes] : songs.slice(0, 2).map((s) => `${s} — still hear it`)).slice(0, 2)
     .forEach((line, i) => push({ kind: 'diary', dur: 2.4, big: line, ...(media[(i + 1) % Math.max(media.length, 1)] || {}) }));
+  const withWho2 = (show.buddies || []).filter(Boolean).slice(0, 3);
+  if (withWho2.length) push({ kind: 'diary', dur: 2.2, big: `went with ${withWho2.join(' & ')} ♡` });
   if (score > 0) push({ kind: 'diary-score', dur: 2.2, big: 'my score, no notes:', sub: scoreLabel(score), verdict });
   push({ kind: 'diary', dur: 2.6, big: 'melo remembers,', sub: "so you don't have to." });
   return scenes;

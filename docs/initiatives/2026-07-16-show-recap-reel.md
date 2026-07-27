@@ -213,6 +213,46 @@ ago); the post-log **auto-generation trigger** (cron + push + a "recap ready"
 state on ShowDetail — reuses the daily-post infra); anniversary resurfacing for
 memory cuts; and canvas renderers for the paper/diary themes so they export.
 
+## The arrival (2026-07-27) — "how do we make people WANT to open it?"
+Aidan: *"it's good but I feel like the recap needs something people are going to
+want to open and share and watch."* The handoff answers this in its first line —
+and it's a mechanic, not a better reel:
+
+> "a **post-log** feature: **the morning after** a user logs a show, melo
+> auto-cuts their photos and clips — plus the setlist, their score, **and who
+> they went with** — into a 15–20 second vertical reel built for sharing."
+
+The reel was a button you had to hunt for. It's supposed to be a **gift that
+shows up**. Three mechanics, one per verb:
+
+- **WANT TO OPEN → it arrives.** New `supabase/functions/recap-ready` — a daily
+  cron that finds shows logged in the last ~26h with enough material
+  (mirrors `canRecap`), picks each user's richest one, and pushes *"melo made
+  you a recap ✨ · Coldplay — 4 songs, 1 photo. Tap to watch."* Copy names
+  what's IN the reel, because specificity earns the tap. Deduped via
+  `notifications_sent` (kind `recap_ready`, ref showId); dead tokens pruned;
+  one per user per run. `App.jsx` handles the tap by opening the show AND the
+  reel — the notification promised a recap, so it lands ON the recap.
+- **WANT TO SHARE → who you were with.** The handoff lists this beside setlist
+  and score as core recap content, and it's the share engine: a reel naming
+  your friends is one you send TO them. Added to all four cuts in each one's
+  voice — a "With Sam & Claire" beat, a cinematic lower-third, an "ADMITS" stub
+  row, and diary's "went with Sam & Claire ♡".
+- **WANT TO WATCH AGAIN → the ready card** (handoff §2.1, high-fidelity):
+  replaced the plain button with the green "🎉 {artist} is in the books" chip,
+  a poster card carrying the **shimmer badge** ("✨ melo made you a recap", a
+  220% gradient sweeping on a 2.6s loop), the real runtime ("Your 15s recap is
+  ready.") and the gradient "▶ Watch & share" CTA.
+
+Verified in-browser: the ready card renders chip/badge/headline/CTA with the
+computed runtime and the old plain button is gone; the who-you-were-with scene
+appears in all four cuts.
+
+**Deploy needed:** `supabase functions deploy recap-ready --no-verify-jwt` +
+a dashboard cron at `0 15 * * *` (≈10am Chicago — "the morning after").
+Anniversary resurfacing ("One year ago tonight") is the remaining third of the
+handoff's open/share/watch loop.
+
 ## Open questions / follow-ups
 - Which shows qualify for a recap? (has a setlist? rated? has media?) — likely
   surface the action only when there's enough to make it sing.
