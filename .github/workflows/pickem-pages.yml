@@ -37,11 +37,17 @@ jobs:
           test -f pickem/manifest.webmanifest
           test -f pickem/sw.js
           python3 -c "import json; json.load(open('pickem/manifest.webmanifest'))"
-          for i in icon-192 icon-512 apple-touch-icon maskable-192 maskable-512; do
-            test -f "pickem/icons/$i.png" || { echo "missing icon: $i"; exit 1; }
+          for i in icon-192 icon-512 apple-touch-icon maskable-192 maskable-512 social-card; do
+            test -f "pickem/icons/$i.png" || { echo "missing image: $i"; exit 1; }
           done
           grep -q 'rel="manifest"' pickem/index.html
-          echo "pickem/ looks deployable"
+          grep -q 'og:image' pickem/index.html
+          # the custom domain must match what the meta tags claim
+          test -f pickem/CNAME
+          domain=$(tr -d '[:space:]' < pickem/CNAME)
+          grep -q "https://$domain/" pickem/index.html || {
+            echo "CNAME ($domain) does not match the canonical/og URLs in index.html"; exit 1; }
+          echo "pickem/ looks deployable for $domain"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

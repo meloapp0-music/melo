@@ -350,6 +350,27 @@ storage until "Use as my starting point" is pressed.
     HTTPS is required: without it the service worker will not register and the
     app will not be installable.
 
+- 2026-07-24: Domain chosen — **football-sundays.com**. Wired in:
+
+  - **Link previews.** `canonical`, Open Graph and Twitter card tags, all
+    absolute against the domain, plus a generated 1200x630 `social-card.png`
+    (same crest motif: field wash, yard lines, the wordmark in Saira, the brass
+    stripe). Pasting the link into a group chat now shows a title card instead
+    of a bare URL. Site build only — the artifact copy still ships no `<meta>`
+    or `<link>`, which the build asserts.
+  - **`pickem/CNAME`** so GitHub Pages serves the custom domain.
+  - **The manifest deliberately stays relative** (`start_url`, `scope` and `id`
+    all `./`). An absolute `id`/`start_url` on football-sundays.com would be
+    out of scope — and therefore invalid — on any preview deploy or staging
+    host, breaking installability exactly where you want to test it. Relative
+    works identically on the real domain and anywhere else.
+  - The Pages workflow now cross-checks that `CNAME` matches the domain the
+    canonical and og tags claim, so the two can never drift apart silently.
+
+  Worth recording: `footballsundays.com` (no hyphen) is registered to someone
+  else. Anyone typing the name by hand will land there, so this should be shared
+  as a link or QR code rather than dictated.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
