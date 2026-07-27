@@ -15,9 +15,10 @@ also picks through to a Super Bowl winner.
 This is **not** a Melo product feature. It is a personal, shareable one-off
 that happens to live in this repo. It deliberately does not touch `AppContext`,
 Supabase, `src/web/lib/db/*`, or any Melo surface — nothing imports it and it
-imports nothing. It ships as a single self-contained file under `public/`, so
-Vite serves it at `/nfl-2026-predictor.html` without a build step, and the same
-file can be handed to anyone as an attachment.
+imports nothing. It ships as its own static site under `pickem/` — one
+self-contained HTML file plus a manifest, a service worker and icons — with no
+build step and no dependencies, so it can be dropped on any HTTPS host, or the
+single HTML file handed to someone as an attachment.
 
 ## Plan
 
@@ -297,6 +298,57 @@ storage until "Use as my starting point" is pressed.
   toggle needed a genuine reload to prove persistence. All seeds are now
   conditional (`if (!localStorage.getItem(...))`). Any future harness seeding
   must do the same or the persistence coverage is theatre.
+
+- 2026-07-24: Turned into an installable web app. The artifact link cannot be
+  one — a Claude artifact has no manifest, no service worker and no control over
+  its own scope — so this needs hosting the user controls.
+
+  `public/nfl-2026-predictor.html` **moved to `pickem/`**, which is now a
+  self-contained static site: `index.html`, `manifest.webmanifest`, `sw.js` and
+  `icons/`. There is deliberately no second copy to drift.
+
+  - **Manifest**: standalone display, relative `start_url`/`scope` (so it works
+    at any subpath, including a project Pages URL), theme and background both
+    `#0A0D12`, five icons including two maskable with a 12% safe area.
+  - **Icons** are generated (`icons.py`, Pillow + the same Saira face the app
+    uses) rather than hand-drawn: the crest motif the app already leans on —
+    dark ground, yard-line texture, "26" in condensed white, brass helmet
+    stripe. 192/512/1024, a 180px `apple-touch-icon`, maskable pair, favicons.
+  - **Service worker**: precaches the shell and icons; navigations are
+    network-first falling back to the cached page, everything else cache-first
+    with a background refresh. `CACHE` is stamped with a hash of the built HTML,
+    so each deploy installs a fresh worker and drops the previous cache.
+    Verified offline: the page loads with no network, picks are intact, and you
+    can keep picking.
+  - **iOS**: `apple-mobile-web-app-capable`, black-translucent status bar,
+    app title, and an in-app sheet explaining Share → Add to Home Screen, since
+    iOS has no install prompt. That sheet also warns about the real trap — iOS
+    gives a home-screen app storage separate from Safari, so picks made in the
+    browser do not appear inside the installed app; the fix is to open your own
+    share link once from inside it.
+  - **Install button** appears only when a manifest is present, so the artifact
+    copy never offers to install itself (which would have bookmarked the wrong
+    page entirely). Asserted in the build and covered by `artcheck.py`.
+
+  The build now emits both targets from the one template: `pickem/index.html`
+  with the PWA head and worker registration, and `artifact.html` with neither.
+
+  ### Deploying it
+
+  `pickem/` is a plain static directory — no build step, no dependencies, no
+  server code. Any of these work:
+
+  - **GitHub Pages** — `.github/workflows/pickem-pages.yml` deploys `pickem/`
+    on pushes to `main` that touch it. A repo admin must first set
+    Settings → Pages → Source to "GitHub Actions". Pages on a *private* repo
+    needs a paid plan; public repos are free. Lands on
+    `https://<owner>.github.io/melo/`.
+  - **Netlify / Cloudflare Pages / Vercel** — drag the `pickem` folder onto
+    their drop target, or point the project at the repo with publish directory
+    `pickem` and no build command.
+  - **Any web host** — copy the four items to a directory served over HTTPS.
+    HTTPS is required: without it the service worker will not register and the
+    app will not be installable.
 
 ## Open questions / follow-ups
 

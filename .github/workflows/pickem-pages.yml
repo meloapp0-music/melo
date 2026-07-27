@@ -1,0 +1,51 @@
+# Publishes the Pick 'Em predictor (pickem/) to GitHub Pages.
+#
+# One-time setup by a repo admin: Settings → Pages → Source: "GitHub Actions".
+# Private repositories need a paid GitHub plan for Pages; public ones do not.
+#
+# Only touches pickem/ — the Melo app itself is not built or deployed here.
+name: Deploy Pick 'Em
+
+on:
+  push:
+    branches: [main]
+    paths: ['pickem/**', '.github/workflows/pickem-pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the build is intact
+        run: |
+          set -e
+          test -f pickem/index.html
+          test -f pickem/manifest.webmanifest
+          test -f pickem/sw.js
+          python3 -c "import json; json.load(open('pickem/manifest.webmanifest'))"
+          for i in icon-192 icon-512 apple-touch-icon maskable-192 maskable-512; do
+            test -f "pickem/icons/$i.png" || { echo "missing icon: $i"; exit 1; }
+          done
+          grep -q 'rel="manifest"' pickem/index.html
+          echo "pickem/ looks deployable"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pickem
+      - id: deploy
+        uses: actions/deploy-pages@v4
