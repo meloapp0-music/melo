@@ -79,6 +79,29 @@ Read those before re-deriving anything here.
     on. Instead the orphaned route at `App.jsx` was annotated so it reads as
     parked-with-a-blocker rather than as an accident.
 
+- 2026-07-28: Phase 2 (overlay stack). Replaced the thirteen overlay `useState`s
+  in `App.jsx` with one `{ id, type, props }` stack in `lib/overlays.js`.
+  - Shipped with **back-compat shims on the context**, so all 15 consumer files
+    were untouched by this commit — `setSelectedShow(show)` still opens and
+    `setSelectedShow(null)` still closes.
+  - **Two bugs fixed on the way.** (1) A push notification arriving while a
+    sheet was open left that sheet stranded on top of the destination — the
+    handlers only reset `tab`/`subPage`. Now the effect clears the stack first.
+    (2) The moment pop-up guard was three copies of a nine-term `&&` chain that
+    listed overlays by hand and **missed four of them** (festival, venue,
+    artist, recap), so a rate prompt could pop over an open VenueDetail. Now one
+    `quiet` flag derived from the stack, which can't drift.
+  - `recap_ready` uses a single atomic `set` action — it's the only handler that
+    opens two overlays, and a partial commit would show a detail page with no
+    reel, contradicting the notification.
+  - `id` is a monotonic counter, never an array index: an index key would
+    remount every overlay above one that closes, losing scroll position and
+    local state.
+  - Added `src/web/lib/__tests__/overlays.test.mjs` — 18 assertions covering the
+    remount invariant, atomic set, close semantics, clear-identity and
+    immutability. There's no test runner in the repo, so it's a plain node
+    script: `node src/web/lib/__tests__/overlays.test.mjs`.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with

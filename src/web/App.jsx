@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useReducer, createContext, useContext, useCallback, useMemo, useRef, Fragment } from 'react';
 import { prefetchArtistImages, getCachedImage, getCachedVenueImage, prefetchVenueImages as prefetchVenueImagesUtil } from './api';
 import { useSession, signOut } from './lib/auth';
 import { getMyProfile, updateMyProfile } from './lib/db/profiles';
@@ -7,6 +7,7 @@ import * as showsDb from './lib/db/shows';
 import { registerForPush, onPushTap } from './lib/push';
 import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
+import { overlayReducer, findOverlay } from './lib/overlays';
 import { isGoing, daysUntil, SHOW_STATUS } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
@@ -72,31 +73,25 @@ export default function App() {
   const [settings, setSettings] = useState({ setlistFmKey: '', hasSetlistFmKey: false });
   const [profile, setProfile] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
-  const [showLog, setShowLog] = useState(false);
-  // When set, LogShow opens in edit mode for this existing record. Used
-  // by Home's "How was [show]?" CTA on past Going shows so the user
-  // lands directly in the score/vibes editor with all fields prefilled.
-  const [logEditTarget, setLogEditTarget] = useState(null);
-  // Opens LogShow straight into a specific mode instead of a blank form —
-  // e.g. a tapped tour/genre-alert notification opens Wishlist's Search
-  // view, pre-searched for that artist. { status, mode, tourArtist } | null.
-  const [logPrefill, setLogPrefill] = useState(null);
-  const [selectedShow, setSelectedShow] = useState(null);
-  // A festival outing opened as its own detail page (from the My Shows card).
-  const [selectedFestival, setSelectedFestival] = useState(null);
-  // A venue opened as its own page ({ name, city }) — from Stats / Venues.
-  const [selectedVenue, setSelectedVenue] = useState(null);
-  const [selectedArtist, setSelectedArtist] = useState(null);
-  const [recapShow, setRecapShow] = useState(null);
-  // The very-first-logged-show celebration: auto-opens the share card once.
-  const [firstCardShow, setFirstCardShow] = useState(null);
-  const [selectedUserId, setSelectedUserId] = useState(null);
+  // ---- Overlays: ONE stack, not thirteen useStates ----------------------
+  // Every full-screen sheet (log, show detail, venue, artist, recap, wrapped…)
+  // used to be its own boolean/object here — thirteen of them, three of which
+  // (showLog / logEditTarget / logPrefill) described the SAME overlay. They
+  // could contradict each other, nothing knew what was on top, and a push
+  // notification arriving over an open sheet left it stranded on screen.
+  //
+  // Now they're a stack of { id, type, props }. `id` is a monotonic counter
+  // used as the React key — NEVER an array index, or closing a lower overlay
+  // would remount the one above it and lose its scroll position.
+  //
+  // Consumers don't see any of this: the context still exposes setSelectedShow,
+  // setRecapShow, setCompareShow … with their original signatures (see the
+  // shims further down), so this landed without touching the 15 files that
+  // call them. See docs/initiatives/2026-07-28-ia-simplification.md.
+  const [overlays, dispatchOverlay] = useReducer(overlayReducer, []);
   const [subPage, setSubPage] = useState(null);
   const [artistImages, setArtistImages] = useState({});
   const [venueImages, setVenueImages] = useState({}); // `${name}|${city}` -> photo record
-  const [wrappedYear, setWrappedYear] = useState(null);
-  const [compareShow, setCompareShow] = useState(null);
-  const [showQuickLog, setShowQuickLog] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(isPasswordRecovery());
 
   const userId = session.user?.id;
@@ -205,6 +200,12 @@ export default function App() {
     // can never disagree with the memos across midnight.
     setMomentSnoozedDay(dayStamp);
 
+    // Clear whatever was already open. A tapped notification is an explicit
+    // "take me there", and before the overlay stack existed the destination
+    // branches only reset `tab`/`subPage` — so a push arriving while a venue
+    // sheet was up left that sheet stranded on top of the destination.
+    dispatchOverlay({ type: 'clear' });
+
     // Show-targeted pushes (pre-show, showtime change, post-show rate,
     // and likes/comments on your show) → open that exact show. The
     // rate prompt opens the score editor; everything else opens the
@@ -217,8 +218,12 @@ export default function App() {
       setSubPage(null);
       setTab('home');
       if (show) {
-        if (kind === 'postshow_rate') setLogEditTarget(show);
-        else setSelectedShow(show);
+        dispatchOverlay({
+          type: 'set',
+          list: kind === 'postshow_rate'
+            ? [{ type: 'log', props: { editingShow: show } }]
+            : [{ type: 'show', props: { show } }],
+        });
       }
       return done();
     }
@@ -231,7 +236,10 @@ export default function App() {
     // still offering the direct tickets link as a fast-path toast on top.
     if (kind === 'tour_alert' || kind === 'city_match' || kind === 'genre_alert') {
       if (pushNav.artist) {
-        setLogPrefill({ status: SHOW_STATUS.WISHLIST, mode: 'tour', tourArtist: pushNav.artist });
+        dispatchOverlay({
+          type: 'set',
+          list: [{ type: 'log', props: { prefill: { status: SHOW_STATUS.WISHLIST, mode: 'tour', tourArtist: pushNav.artist } } }],
+        });
       }
       if (pushNav.ticketUrl) {
         const url = pushNav.ticketUrl;
@@ -252,8 +260,13 @@ export default function App() {
       const show = shows.find((s) => s.id === pushNav.showId);
       if (show) {
         setSubPage(null);
-        setSelectedShow(show);
-        setRecapShow(show);
+        // ONE atomic `set`, not two pushes: this is the only handler that opens
+        // two overlays, and a partial commit would render the detail page with
+        // no reel — contradicting the notification that just promised a recap.
+        dispatchOverlay({
+          type: 'set',
+          list: [{ type: 'show', props: { show } }, { type: 'recap', props: { show } }],
+        });
       }
       return done();
     }
@@ -453,7 +466,7 @@ export default function App() {
         if (!shown) {
           try { localStorage.setItem('melo_first_card_shown', '1'); } catch {}
           track('first_show_logged');
-          setTimeout(() => setFirstCardShow(created), 700);
+          setTimeout(() => openOverlay('firstCard', { show: created }), 700);
         }
       }
       return created;
@@ -497,7 +510,9 @@ export default function App() {
     if (!userId) return;
     const prev = shows;
     setShows((p) => p.filter((s) => s.id !== id));
-    setSelectedShow(null);
+    // Deleting always happens from inside the show's own sheet, so closing
+    // whatever ShowDetail is open is the right meaning here.
+    closeOverlay('show');
     try {
       await showsDb.deleteShow(id, userId);
     } catch (err) {
@@ -563,10 +578,13 @@ export default function App() {
   // page reached from the nav bar later.
   const [statsYear, setStatsYear] = useState(null);
 
+  const openOverlay = useCallback((type, props) => dispatchOverlay({ type: 'push', overlay: type, props }), []);
+  const closeOverlay = useCallback((type) => dispatchOverlay({ type: 'closeType', overlay: type }), []);
+
   const navigate = (page, opts = {}) => {
     setStatsYear(opts.year ?? null);
     if (page === 'log') {
-      setShowLog(true);
+      openOverlay('log', {});
     } else if (['home', 'shows', 'map', 'songs', 'profile', 'buddies', 'stats'].includes(page)) {
       setSubPage(null);
       setTab(page);
@@ -585,6 +603,14 @@ export default function App() {
     // no-op in Phase 1 — buddies are derived from shows
   };
 
+  // Two overlays are also READ by consumers, not just set. Derive them from the
+  // stack so the context keeps exposing the same values it always did.
+  const recapShow = findOverlay(overlays, 'recap')?.props.show || null;
+  const selectedUserId = findOverlay(overlays, 'user')?.props.userId || null;
+
+  // Is the screen free for an unprompted moment card?
+  const quiet = overlays.length === 0 && !pushNav;
+
   const ctx = {
     shows,
     buddies,
@@ -598,16 +624,33 @@ export default function App() {
     updateShow,
     deleteShow,
     setBuddies,
-    setShowLog,
-    setLogEditTarget,
-    setSelectedShow,
-    setSelectedFestival,
-    setSelectedVenue,
-    setSelectedArtist,
+
+    // ---- Overlay API ----
+    // The real one. New code should use these.
+    openOverlay,
+    closeOverlay,
+    closeAllOverlays: () => dispatchOverlay({ type: 'clear' }),
+    overlayCount: overlays.length,
+
+    // Back-compat shims. Fifteen files call these with their original
+    // signatures — `setX(value)` opens, `setX(null|false)` closes — so the
+    // stack landed without touching any of them. They're not deprecated so
+    // much as the ergonomic form: `setSelectedShow(show)` reads better at the
+    // call site than `openOverlay('show', { show })`.
+    setShowLog: (b) => (b ? openOverlay('log', {}) : closeOverlay('log')),
+    setLogEditTarget: (s) => (s ? openOverlay('log', { editingShow: s }) : closeOverlay('log')),
+    setSelectedShow: (s) => (s ? openOverlay('show', { show: s }) : closeOverlay('show')),
+    setSelectedFestival: (o) => (o ? openOverlay('festival', { outing: o }) : closeOverlay('festival')),
+    setSelectedVenue: (v) => (v ? openOverlay('venue', { venue: v }) : closeOverlay('venue')),
+    setSelectedArtist: (a) => (a ? openOverlay('artist', { artist: a }) : closeOverlay('artist')),
+    setRecapShow: (s) => (s ? openOverlay('recap', { show: s }) : closeOverlay('recap')),
+    setSelectedUserId: (u) => (u ? openOverlay('user', { userId: u }) : closeOverlay('user')),
+    setWrappedYear: (y) => (y ? openOverlay('wrapped', { year: y }) : closeOverlay('wrapped')),
+    setCompareShow: (s) => (s ? openOverlay('compare', { showA: s }) : closeOverlay('compare')),
+    setShowQuickLog: (b) => (b ? openOverlay('quicklog', {}) : closeOverlay('quicklog')),
     recapShow,
-    setRecapShow,
     selectedUserId,
-    setSelectedUserId,
+
     subPage,
     navigate,
     statsYear,
@@ -619,9 +662,6 @@ export default function App() {
     prefetchImages,
     getVenueImage,
     prefetchVenueImages,
-    setWrappedYear,
-    setCompareShow,
-    setShowQuickLog,
     signOut,
   };
 
@@ -709,72 +749,53 @@ export default function App() {
     <AppContext.Provider value={ctx}>
       <div className="app">
         {renderPage()}
-        {(showLog || logEditTarget || logPrefill) && (
-          <LogShow
-            editingShow={logEditTarget}
-            prefill={logPrefill}
-            onClose={() => { setShowLog(false); setLogEditTarget(null); setLogPrefill(null); }}
-          />
-        )}
-        {selectedFestival && (
-          <FestivalDetail
-            outing={selectedFestival}
-            onClose={() => setSelectedFestival(null)}
-            onOpenShow={(s) => setSelectedShow(s)}
-          />
-        )}
-        {selectedVenue && (
-          <VenueDetail
-            venue={selectedVenue}
-            onClose={() => setSelectedVenue(null)}
-            onOpenShow={(s) => setSelectedShow(s)}
-          />
-        )}
-        {selectedArtist && (
-          <ArtistDetail
-            artist={selectedArtist}
-            onClose={() => setSelectedArtist(null)}
-            onOpenShow={(s) => setSelectedShow(s)}
-          />
-        )}
-        {selectedShow && (
-          <ShowDetail show={selectedShow} onClose={() => setSelectedShow(null)} />
-        )}
-        {recapShow && (
-          <RecapReel show={recapShow} onClose={() => setRecapShow(null)} />
-        )}
-        {firstCardShow && (
-          <ShareCardView
-            show={firstCardShow}
-            handle={profile?.username}
-            firstRun
-            onShared={() => track('first_show_card_shared')}
-            onClose={() => setFirstCardShow(null)}
-          />
-        )}
-        {selectedUserId && (
-          <UserProfileView
-            userId={selectedUserId}
-            onClose={() => setSelectedUserId(null)}
-          />
-        )}
-        {wrappedYear && (
-          <Wrapped year={wrappedYear} onClose={() => setWrappedYear(null)} />
-        )}
-        {compareShow && (
-          <ShowComparison showA={compareShow} onClose={() => setCompareShow(null)} />
-        )}
-        {showQuickLog && (
-          <QuickLog
-            onClose={() => setShowQuickLog(false)}
-            onOpenFull={() => { setShowQuickLog(false); setShowLog(true); }}
-          />
-        )}
-        {/* Moment pop-ups — only when nothing else is open and no
-            notification deep-link is about to land somewhere else.
-            Rate prompt outranks hype; one card max per day. */}
-        {ratePrompt && !pushNav && !selectedShow && !showLog && !logEditTarget &&
-          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
+        {/* The overlay stack. Render order IS stack order, which reproduces
+            the old hand-written z-order exactly (festival → venue → artist →
+            show → recap), because that's the real drill-in sequence. */}
+        {overlays.map((o) => {
+          const close = () => dispatchOverlay({ type: 'closeId', id: o.id });
+          const p = o.props;
+          const openShow = (s) => openOverlay('show', { show: s });
+          return (
+            <Fragment key={o.id}>
+              {o.type === 'log' && (
+                <LogShow editingShow={p.editingShow || null} prefill={p.prefill || null} onClose={close} />
+              )}
+              {o.type === 'quicklog' && (
+                <QuickLog
+                  onClose={close}
+                  onOpenFull={(draft) => { close(); openOverlay('log', { prefill: draft || null }); }}
+                />
+              )}
+              {o.type === 'festival' && <FestivalDetail outing={p.outing} onClose={close} onOpenShow={openShow} />}
+              {o.type === 'venue' && <VenueDetail venue={p.venue} onClose={close} onOpenShow={openShow} />}
+              {o.type === 'artist' && <ArtistDetail artist={p.artist} onClose={close} onOpenShow={openShow} />}
+              {o.type === 'show' && <ShowDetail show={p.show} onClose={close} />}
+              {o.type === 'recap' && <RecapReel show={p.show} onClose={close} />}
+              {o.type === 'firstCard' && (
+                <ShareCardView
+                  show={p.show}
+                  handle={profile?.username}
+                  firstRun
+                  onShared={() => track('first_show_card_shared')}
+                  onClose={close}
+                />
+              )}
+              {o.type === 'user' && <UserProfileView userId={p.userId} onClose={close} />}
+              {o.type === 'wrapped' && <Wrapped year={p.year} onClose={close} />}
+              {o.type === 'compare' && <ShowComparison showA={p.showA} onClose={close} />}
+            </Fragment>
+          );
+        })}
+        {/* Moment pop-ups — only when nothing else is open and no notification
+            deep-link is about to land somewhere else. Rate prompt outranks
+            hype; one card max per day.
+
+            `quiet` replaces three copies of a nine-term && chain that listed
+            overlays by hand and MISSED four of them (festival, venue, artist,
+            recap) — so a rate prompt could pop over an open VenueDetail. The
+            stack knows what's open; asking it can't drift. */}
+        {ratePrompt && quiet && (
           <RatePromptCard
             show={ratePrompt.show}
             daysAgo={-ratePrompt.d}
@@ -785,17 +806,15 @@ export default function App() {
               // candidate permanently; this only covers the cancel case.
               const s = ratePrompt.show;
               dismissRatePrompt();
-              setLogEditTarget(s);
+              openOverlay('log', { editingShow: s });
             }}
             onClose={dismissRatePrompt}
           />
         )}
-        {!ratePrompt && kbyg && !pushNav && !selectedShow && !showLog && !logEditTarget &&
-          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
+        {!ratePrompt && kbyg && quiet && (
           <KnowBeforeYouGo show={kbyg.show} onClose={dismissKbyg} />
         )}
-        {!ratePrompt && !kbyg && hype && !pushNav && !selectedShow && !showLog && !logEditTarget &&
-          !selectedUserId && !wrappedYear && !compareShow && !showQuickLog && !firstCardShow && (
+        {!ratePrompt && !kbyg && hype && quiet && (
           <HypeCard show={hype.show} daysLeft={hype.d} onClose={dismissHype} />
         )}
         <NavBar />
