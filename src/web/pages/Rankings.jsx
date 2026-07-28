@@ -129,11 +129,11 @@ export default function Rankings() {
       <div className="rank-section" style={{ padding: '24px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h3>Leaderboard</h3>
-          <button className="back-btn" onClick={() => navigate('home')}>
+          <button className="back-btn" onClick={() => navigate('you')}>
             <svg viewBox="0 0 24 24">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            Back
+            You
           </button>
         </div>
         <div className="rank-list">

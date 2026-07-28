@@ -63,6 +63,11 @@ const localDayKey = () => {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 };
 
+// Four tabs. Everything else is a subPage reached from one of them.
+const TABS = ['home', 'shows', 'you'];
+// Legacy page names kept working rather than renamed across every call site.
+const PAGE_ALIAS = { stats: 'you', profile: 'you' };
+
 export default function App() {
   const session = useSession();
 
@@ -282,8 +287,12 @@ export default function App() {
       return done();
     }
     if (kind === 'friend_request') {
-      setSubPage(null);
-      setTab('buddies');
+      // Buddies is a subPage under You now, not a tab. setTab('buddies') would
+      // fall through renderPage's switch to `default: <Home />` and silently
+      // strand the tap on the wrong screen — the exact regression a user
+      // already reported for genre alerts (see the tour_alert comment above).
+      setTab('you');
+      setSubPage('buddies');
       return done();
     }
     done();
@@ -581,14 +590,22 @@ export default function App() {
   const closeOverlay = useCallback((type) => dispatchOverlay({ type: 'closeType', overlay: type }), []);
 
   const navigate = (page, opts = {}) => {
+    // Set the year scope BEFORE resolving the alias — a legacy
+    // navigate('stats', { year }) must not lose its scope on the way through.
     setStatsYear(opts.year ?? null);
-    if (page === 'log') {
+    // 'stats' and 'profile' are the pre-merge names for the You tab. Aliasing
+    // here means the call sites that still use them keep working, so the tab
+    // restructure didn't have to be a mechanical rename across eight files.
+    const p = PAGE_ALIAS[page] || page;
+    if (p === 'log') {
       openOverlay('log', {});
-    } else if (['home', 'shows', 'map', 'songs', 'profile', 'buddies', 'stats'].includes(page)) {
+    } else if (TABS.includes(p)) {
       setSubPage(null);
-      setTab(page);
+      setTab(p);
     } else {
-      setSubPage(page);
+      // Everything else — including map / songs / buddies, which used to be
+      // tabs — falls through to a subPage.
+      setSubPage(p);
     }
   };
 
@@ -732,17 +749,13 @@ export default function App() {
     // works again. Kept deliberately; the planned camera-roll backfill builds
     // on it. See docs/initiatives/2026-07-28-ia-simplification.md.
     if (subPage === 'import-calendar') return <ImportFromCalendar onDone={() => setSubPage('settings')} />;
+    // Former tabs, now drill-ins from You.
+    if (subPage === 'buddies') return <Buddies />;
+    if (subPage === 'map') return <ConcertMap />;
+    if (subPage === 'songs') return <Songs />;
     switch (tab) {
-      case 'home': return <Home />;
       case 'shows': return <MyShows />;
-      case 'buddies': return <Buddies />;
-      case 'map': return <ConcertMap />;
-      case 'songs': return <Songs />;
-      // Both still route here in this phase: the merge ships before the nav
-      // change, so 'stats' and 'profile' are two names for one page until the
-      // four-tab restructure renames them to 'you'.
-      case 'stats': return <You />;
-      case 'profile': return <You />;
+      case 'you': return <You />;
       default: return <Home />;
     }
   };

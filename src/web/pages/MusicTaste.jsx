@@ -35,11 +35,11 @@ export default function MusicTaste() {
 
   return (
     <div className="page page-top">
-      <button className="back-btn" onClick={() => navigate('profile')}>
+      <button className="back-btn" onClick={() => navigate('you')}>
         <svg viewBox="0 0 24 24">
           <polyline points="15 18 9 12 15 6" />
         </svg>
-        Profile
+        You
       </button>
 
       <div className="shows-header" style={{ marginBottom: 8 }}>

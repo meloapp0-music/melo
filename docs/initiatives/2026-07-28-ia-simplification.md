@@ -131,6 +131,34 @@ Read those before re-deriving anything here.
   - Both tabs route to `You` for now — the merge ships before the nav change.
   - Added `src/web/lib/__tests__/you-counts.test.mjs` pinning the count change.
 
+- 2026-07-28: Phase 4 (four tabs). `Home | Shows | + | You`. The grid was
+  already `repeat(5, 1fr)` and the FAB still occupies the middle slot, so the
+  tab bar needed **no CSS change at all**.
+  - `TAB_ALIAS` deleted. It solved the opposite problem — mapping orphan *tabs*
+    (map/songs/buddies) onto a visible tab — and those are subPages now.
+    Replaced with `SUBPAGE_PARENT`, which keeps the parent tab lit inside a
+    drill-in. **This fixed a live bug:** `activeKey = subPage || …` resolved to
+    a value matching no tab on every subPage, so the whole bar went dark.
+  - `PAGE_ALIAS = { stats: 'you', profile: 'you' }` inside `navigate()` means
+    the tab rename didn't have to be a mechanical find-and-replace across eight
+    files. `setStatsYear` runs BEFORE alias resolution so a legacy
+    `navigate('stats', { year })` keeps its scope.
+  - Re-pointed nine back buttons and corrected their labels (three still said
+    "Stats"/"Profile", two said "Back" while going somewhere specific).
+  - **`Songs.jsx` had no back button** — it never needed one as a tab, and as a
+    drill-in it was a dead end. Added one floated over its full-bleed hero
+    (new `.hero-back`), plus `navigate` to its `useApp()` destructure.
+  - **The `friend_request` push was the highest-risk item and is fixed.** It
+    did `setTab('buddies')`; with buddies no longer a tab that falls through
+    `renderPage`'s switch to `default: <Home />` and silently lands on the wrong
+    screen — the exact regression a user already reported for genre alerts. Now
+    `setTab('you') + setSubPage('buddies')`.
+  - Added `src/web/lib/__tests__/nav-graph.test.mjs` — a static audit that
+    parses TABS, PAGE_ALIAS, SUBPAGE_PARENT, every `navigate('…')` literal and
+    every `<Tile to="…">`, then asserts every target resolves and every drill-in
+    has a real parent tab. It strips comments first, so prose about the old
+    routing can't be mistaken for the old routing.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with

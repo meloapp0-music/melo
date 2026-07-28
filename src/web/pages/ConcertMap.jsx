@@ -167,11 +167,11 @@ export default function ConcertMap() {
   return (
     <div className="map-container">
       <div className="map-title">
-        <button className="back-btn" onClick={() => navigate('home')}>
+        <button className="back-btn" onClick={() => navigate('you')}>
           <svg viewBox="0 0 24 24">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          Back
+          You
         </button>
         <h1>Concert Map</h1>
         <p style={{ color: '#9B8A7E', fontSize: 14, marginTop: 4 }}>

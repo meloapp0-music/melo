@@ -5,7 +5,7 @@ import { getArtistGradient, formatDate, isAttended } from '../store';
 import { fetchSongPreview } from '../api';
 
 export default function Songs() {
-  const { shows, getArtistImage } = useApp();
+  const { shows, getArtistImage, navigate } = useApp();
   const { scoped: yearShows } = useYearScope(shows);
   const attended = yearShows.filter(isAttended);
   const [expanded, setExpanded] = useState(() => new Set());
@@ -174,6 +174,13 @@ export default function Songs() {
           summary overlaid on a darkening gradient. Falls back to a
           branded gradient when the user has no artist images yet. */}
       <div className={`songs-hero ${heroImages.length === 0 ? 'songs-hero-empty' : ''}`}>
+        {/* Songs was a nav tab and so never needed a way out. It's a drill-in
+            from You now, and without this the page is a dead end. Floated over
+            the hero because this one bleeds to the top edge. */}
+        <button className="back-btn hero-back" onClick={() => navigate('you')}>
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+          You
+        </button>
         {heroImages.length > 0 && (
           <div className="songs-hero-bg" aria-hidden="true">
             {heroImages.map((img, i) => (

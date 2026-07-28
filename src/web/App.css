@@ -2498,6 +2498,22 @@ h4 { font-size: 17px; }
 /* Songs page hero — full-bleed photo collage (top artist images) with
    a darkening gradient overlay and the page title overlaid. Matches
    the visual vocabulary of Profile hero + Wrapped photo backdrops. */
+/* A back button floated over a full-bleed hero (Songs). The plain .back-btn
+   sits in normal flow, which the hero pages don't have room for. */
+.hero-back {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 14px;
+  z-index: 3;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  padding: 7px 14px 7px 10px;
+  margin: 0;
+}
+.hero-back svg { stroke: #fff; }
+
 .songs-hero {
   position: relative;
   height: 220px;

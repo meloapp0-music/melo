@@ -155,9 +155,9 @@ export default function Artists() {
 
   return (
     <div className="page page-top">
-      <button className="back-btn" onClick={() => navigate('stats')}>
+      <button className="back-btn" onClick={() => navigate('you')}>
         <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
-        Stats
+        You
       </button>
       <div className="shows-header" style={{ marginBottom: 6 }}><h1>Your Lineup</h1></div>
       <YearScopeBanner />

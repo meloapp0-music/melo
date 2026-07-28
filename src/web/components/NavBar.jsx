@@ -25,19 +25,8 @@ const tabs = [
   },
   { id: 'plus' },
   {
-    id: 'stats',
-    label: 'Stats',
-    icon: (
-      <svg viewBox="0 0 24 24">
-        <line x1="6" y1="20" x2="6" y2="12" />
-        <line x1="12" y1="20" x2="12" y2="4" />
-        <line x1="18" y1="20" x2="18" y2="9" />
-      </svg>
-    ),
-  },
-  {
-    id: 'profile',
-    label: 'Profile',
+    id: 'you',
+    label: 'You',
     icon: (
       <svg viewBox="0 0 24 24">
         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
@@ -47,14 +36,23 @@ const tabs = [
   },
 ];
 
-// Pages with no nav slot of their own fold onto the tab they launch from, so
-// the bar shows an active tab instead of going dark. Cities (map) and Songs
-// are Stats destinations; Buddies now lives under Profile.
-const TAB_ALIAS = { map: 'stats', songs: 'stats', buddies: 'profile' };
+// Which tab stays lit while you're inside a drill-in page.
+//
+// This replaces TAB_ALIAS, which solved the opposite problem — it mapped
+// orphan TABS (map/songs/buddies) onto a visible tab. Those are subPages now,
+// so the mapping runs the other way. The old `activeKey = subPage || …` was
+// also a live bug: on any subPage it resolved to a value matching no tab, so
+// the whole bar went dark. See docs/initiatives/2026-07-28-ia-simplification.md.
+const SUBPAGE_PARENT = {
+  rankings: 'you', artists: 'you', venues: 'you', songs: 'you',
+  map: 'you', buddies: 'you', 'music-taste': 'you',
+  settings: 'you', legal: 'you',
+  festivals: 'home',
+};
 
 export default function NavBar() {
   const { tab, subPage, navigate, shows } = useApp();
-  const activeKey = subPage || TAB_ALIAS[tab] || tab;
+  const activeKey = (subPage ? SUBPAGE_PARENT[subPage] : null) || tab;
   // First-run nudge: gently pulse the + until the user logs their first show.
   const firstTime = (shows?.length || 0) === 0;
 
