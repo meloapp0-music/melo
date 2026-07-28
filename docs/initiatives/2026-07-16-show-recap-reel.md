@@ -253,6 +253,88 @@ a dashboard cron at `0 15 * * *` (≈10am Chicago — "the morning after").
 Anniversary resurfacing ("One year ago tonight") is the remaining third of the
 handoff's open/share/watch loop.
 
+## All sixteen cuts, built from the prototype (2026-07-27)
+Aidan: *"the ones you chose for users to pick are bad and i want them to have
+options… these video recaps need to be perfect and you are not doing a good job."*
+
+**He was right, and the cause was process.** The earlier pass read the handoff
+README's *headings* and invented four cuts from them ("Cinematic", "Ticket
+stubs", "Dear diary" as I imagined them). The handoff ships a working prototype
+— `Melo Recap.dc.html` — with the real thing: **16 stages, 113 authored scenes**,
+each with its own `data-dur` and copy. Paraphrasing a spec that contains the
+answer is how you end up with four plausible cuts instead of sixteen right ones.
+
+**The fix, and how to not repeat it:** extract, don't summarise. A ~50-line
+HTMLParser script walks the prototype and dumps every stage → scene → duration →
+copy as a flat outline. That outline is now the source of truth this file's cuts
+were written against — same order, same durations, same words. Any future recap
+work should start by re-running that extraction, not by re-reading the README.
+
+**The biggest miss it exposed: the five no-camera cuts.** Handoff line 6 calls
+this "the central product constraint" — a recap must be worth looking forward to
+*whether or not the user shot any photos or video*, because most people put the
+phone down at a great show. Five of the sixteen render from structured data
+alone. They were entirely absent, which meant the recap silently failed for the
+majority of logged shows, worst of all on the nights too good to film, and gave
+a brand-new user with one logged show nothing at all. They are now the FIRST
+tier, not a fallback.
+
+### What landed
+- **`lib/recapCuts.js` rewritten** — all 16 cuts, in tier order:
+  - *No camera needed* — **The setlist** (EQ title → credits roll → encore held
+    out on its own card → tally), **The receipt** (thermal stock, Oswald, dotted
+    leaders, ember-gradient TOTAL, barcode), **Where it ranks** (giant gradient
+    rank, top-5 board with this show outlined in ember), **The gig poster**
+    (ochre stock, COLD/PLAY split, brick inverse card, rotated overprint stamp),
+    **In your words** (vibe pills in their own colours, note as a pull quote,
+    verdict).
+  - *Quick* — Beat drop, **Top 10 moments** (the countdown: huge rank numeral
+    top-left, moment bottom-left, #1 = the closer), **Real time**.
+  - *Style* — the handoff's "same night, four more looks": **Fast-cut hype,
+    Cinematic, Scrapbook, VHS**, plus **Super 8**. All five share one `look()`
+    shaper and differ only in pace, casing, theme and chrome — which is what
+    makes them read as the same night four ways.
+  - *Memory* — **Ticket stubs** (now including **THE DRAWER**: your other stubs
+    fanned -14°/-4°/+6° under "The ones you'll never throw out"), **One year
+    ago**, **Dear diary**.
+- **The fallback ladder is real selection logic** (handoff §3c), not prose:
+  every cut declares `needs`, `cutEligible()` gates it, and `pickAutoCut()`
+  picks the richest fillable cut — 4+ clips → quick cuts, 1–3 photos → style,
+  none → the no-camera floor. Verified: bare show → receipt, data-only →
+  setlist, 1 photo → cinematic, 4 clips → beatdrop. Opening the reel with no
+  explicit cut now runs this instead of hard-defaulting to Beat drop.
+- **`components/RecapScene.jsx` (new)** — the reel owns timing/taps/audio, this
+  owns what a scene looks like, one self-contained block per theme.
+- **Picker** — all four tiers in the handoff's order with the "always on" and
+  "resurfaces over time" badges, a distinct swatch per cut, and unfillable cuts
+  DIMMED with what to go add ("🔒 Add 2 more photos") rather than hidden.
+
+### Bugs found by looking at it rather than trusting the build
+- `.rc-body` took the class `rc-${theme}`, which collided with the inner card
+  classes `.rc-stub` / `.rc-receipt` / `.rc-poster` / `.rc-diary` — the
+  full-bleed body inherited the card's paper background. Now `rc-t-${theme}`.
+- `.rc-center` is a shrink-to-fit flex item, so the setlist roll (its only
+  child, `width:100%`) computed to **0px wide** and rendered nothing. `.rc-center`
+  now sets `width:100%`.
+- Top 10 counted down to the wrong end of the set — `moments[r-1]` put an early
+  song at #1. Now `moments[i]`, so #1 is the closer.
+- Setlist roll rows wrapped (29/57/86px tall), destroying the credits rhythm.
+- Ticket stub printed "ADMIT ONE" as both eyebrow and tag, overlapping.
+- The tally set the venue name at 34px amber next to a count; both stats are
+  numeric now.
+- Removed 111 lines of dead `.stub-*` / `.diary-*` CSS the rewrite orphaned.
+
+### Still open
+- Canvas renderers (`lib/recapFrame.js`) exist only for the dark themes, so the
+  eleven paper/print cuts play in-app but can't export to MP4 yet. The picker
+  marks them "In-app only for now".
+- **Real time infers a clock.** Melo stores a show's date but no start time, so
+  it runs from a 8:00 PM nominal downbeat at ~4.5 min/song. It reads as the
+  shape of the night, not a claim about any minute — but if start times ever
+  land in the schema, delete `clock()` and use them.
+- Anniversary resurfacing (surfacing "One year ago" on the day) is still the
+  unbuilt third of the open/share/watch loop.
+
 ## Open questions / follow-ups
 - Which shows qualify for a recap? (has a setlist? rated? has media?) — likely
   surface the action only when there's enough to make it sing.

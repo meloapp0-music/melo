@@ -67,7 +67,9 @@ export function buildScenes(show) {
 
   const scenes = [];
   let n = 0;
-  const push = (s) => scenes.push({ id: `s${n++}`, grad, ...s });
+  // `theme` explicitly, not by renderer default — every other cut declares one,
+  // and the Canvas exporter shouldn't have to guess which look a scene wants.
+  const push = (s) => scenes.push({ id: `s${n++}`, grad, theme: 'dark', ...s });
 
   // --- Intro -------------------------------------------------------------
   push({ kind: 'title', dur: 1.4, big: 'melo made you a recap', flash: 0.4, ...bg(0) });

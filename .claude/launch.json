@@ -1,26 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    {
-      "name": "melo-web",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "vite"
-      ],
-      "port": 5173,
-      "autoPort": true
-    },
-    {
-      "name": "landing-preview",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "4601",
-        "--directory",
-        "/tmp/mlp"
-      ],
-      "port": 4601
-    }
+    { "name": "melo", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 }
   ]
 }

@@ -1,16 +1,35 @@
 // RecapPicker — "One recap · every vibe".
 // =======================================
-// The cut gallery from the design handoff (§5): every recap style grouped into
-// Quick / Style / Memory tiers. Beat drop is the one-tap default; the rest are
-// a choice. Cuts whose Canvas exporter isn't written yet still play in-app —
-// they're just marked as in-app only rather than hidden, so the shelf reads as
-// the full system it is.
+// The cut gallery from the design handoff (§5): all sixteen cuts grouped into
+// four tiers in the handoff's order — No camera needed (badged "always on"),
+// Quick, Style, then Memory (badged "resurfaces over time"). Cuts whose Canvas
+// exporter isn't written yet still play in-app; they're marked, not hidden, so
+// the shelf reads as the full system it is.
+//
+// Cuts this show can't fill are shown DIMMED with the reason rather than
+// removed — "add 2 more photos" is an invitation to finish logging the show,
+// and a gallery that silently shrinks teaches nothing.
 //
 // docs/initiatives/2026-07-16-show-recap-reel.md
 
-import { CUTS, TIERS } from '../lib/recapCuts';
+import { eligibleCuts, TIERS, TIER_BADGE } from '../lib/recapCuts';
 
-export default function RecapPicker({ current, onPick, onClose }) {
+/** Why a cut is greyed out — phrased as the thing to go add. */
+function missing(cut, show, shows) {
+  const n = cut.needs || {};
+  const media = (show.photos || []).length + (show.videos || []).length;
+  const songs = (show.setlist || []).filter(Boolean).length;
+  if (n.media && media < n.media) return `Add ${n.media - media} more photo${n.media - media === 1 ? '' : 's'}`;
+  if (n.songs && songs < n.songs) return 'Add the setlist';
+  if (n.score && !(show.score > 0)) return 'Rate the show';
+  if (n.words) return 'Add vibes or a note';
+  if (n.library && (shows || []).length < n.library) return 'Log a few more shows';
+  if (n.aged) return 'Unlocks on the anniversary';
+  return 'Not available yet';
+}
+
+export default function RecapPicker({ current, onPick, onClose, show = {}, shows = [] }) {
+  const cuts = eligibleCuts(show, { shows });
   return (
     <div className="cutpick-overlay">
       <div className="cutpick-sheet">
@@ -26,17 +45,21 @@ export default function RecapPicker({ current, onPick, onClose }) {
 
         <div className="cutpick-scroll">
           {TIERS.map((tier) => {
-            const cuts = CUTS.filter((c) => c.tier === tier);
-            if (!cuts.length) return null;
+            const inTier = cuts.filter((c) => c.tier === tier);
+            if (!inTier.length) return null;
             return (
               <div key={tier} className="cutpick-tier">
-                <div className="cutpick-tier-name">{tier}</div>
+                <div className="cutpick-tier-head">
+                  <span className="cutpick-tier-name">{tier}</span>
+                  {TIER_BADGE[tier] && <span className="cutpick-tier-badge">{TIER_BADGE[tier]}</span>}
+                </div>
                 <div className="cutpick-list">
-                  {cuts.map((c) => (
+                  {inTier.map((c) => (
                     <button
                       key={c.id}
-                      className={`cutpick-card${c.id === current ? ' on' : ''}`}
-                      onClick={() => onPick(c.id)}
+                      className={`cutpick-card${c.id === current ? ' on' : ''}${c.ok ? '' : ' off'}`}
+                      onClick={() => c.ok && onPick(c.id)}
+                      disabled={!c.ok}
                     >
                       <span className={`cutpick-swatch sw-${c.id}`} aria-hidden="true" />
                       <span className="cutpick-meta">
@@ -45,7 +68,9 @@ export default function RecapPicker({ current, onPick, onClose }) {
                           {c.default && <span className="cutpick-badge">Default</span>}
                         </span>
                         <span className="cutpick-blurb">{c.blurb}</span>
-                        {!c.exportable && <span className="cutpick-note">In-app only for now</span>}
+                        {!c.ok
+                          ? <span className="cutpick-note lock">🔒 {missing(c, show, shows)}</span>
+                          : !c.exportable && <span className="cutpick-note">In-app only for now</span>}
                       </span>
                       {c.id === current && <span className="cutpick-check">✓</span>}
                     </button>
@@ -54,7 +79,9 @@ export default function RecapPicker({ current, onPick, onClose }) {
               </div>
             );
           })}
-          <div className="cutpick-foot">More cuts on the way — Top 10 moments, Real time, VHS, Super 8, One year ago.</div>
+          <div className="cutpick-foot">
+            The five up top need no photos at all — they build themselves from what you logged.
+          </div>
         </div>
       </div>
     </div>
