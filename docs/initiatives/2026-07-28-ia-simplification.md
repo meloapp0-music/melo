@@ -102,6 +102,35 @@ Read those before re-deriving anything here.
     immutability. There's no test runner in the repo, so it's a plain node
     script: `node src/web/lib/__tests__/overlays.test.mjs`.
 
+- 2026-07-28: Phase 3 (the merge). `pages/Stats.jsx` + `pages/Profile.jsx` →
+  `pages/You.jsx`; both originals deleted. Built from Stats as the base (year
+  scope, festival-aware counts, navigating tiles) with Profile's five unique
+  blocks folded in: avatar hero, Wrapped archive, Milestones, Your Story, nav row.
+  - **The two pages disagreed more than the inventory suggested.** On a library
+    with one three-set Coachella weekend, Profile showed **4 shows / 4 venues**
+    and Stats showed **2 shows / 1 venue**. You keeps Stats' math: a festival is
+    one night out, and "Sahara Tent" is not a room you've been to. Users with
+    festivals WILL see their Shows and Venues counts drop. That's the bug being
+    fixed, not a regression.
+  - Deleted three duplicated blocks (stat grid, streak cards, Top Genres) and
+    the three memos behind them.
+  - **The empty-state early return was a landmine and is gone.** Stats returned
+    early at zero shows; carried over verbatim that would have hidden the avatar
+    AND the nav row — and Settings (so sign-out and account deletion) is linked
+    from this page and nowhere else. The hero and nav row now render outside the
+    branch, so a brand-new account is never stranded.
+  - Nav row trimmed 6 buttons → 3 (Buddies, Music Taste, Settings). Rankings,
+    Songs and Map are reachable from the stat tiles.
+  - Scope decisions: Your Story is year-scoped (already year-grouped, so it
+    reads as "that chapter"); Milestones stay all-time and now *say* "All time"
+    when a year is picked, because a "First Show" badge that locks when you
+    select 2024 is a bug, not a filter; the Wrapped archive is all-time (it IS a
+    year picker).
+  - Fixed a latent mutation while transcribing: Profile sorted `yearShows`
+    in place inside render.
+  - Both tabs route to `You` for now — the merge ships before the nav change.
+  - Added `src/web/lib/__tests__/you-counts.test.mjs` pinning the count change.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with

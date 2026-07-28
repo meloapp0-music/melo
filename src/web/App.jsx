@@ -28,11 +28,10 @@ import LogShow from './pages/LogShow';
 import MyShows from './pages/MyShows';
 import Rankings from './pages/Rankings';
 import ConcertMap from './pages/ConcertMap';
-import Stats from './pages/Stats';
 import Venues from './pages/Venues';
 import Songs from './pages/Songs';
 import Buddies from './pages/Buddies';
-import Profile from './pages/Profile';
+import You from './pages/You';
 import Settings from './pages/Settings';
 import Wrapped from './pages/Wrapped';
 import Festivals from './pages/Festivals';
@@ -739,8 +738,11 @@ export default function App() {
       case 'buddies': return <Buddies />;
       case 'map': return <ConcertMap />;
       case 'songs': return <Songs />;
-      case 'stats': return <Stats />;
-      case 'profile': return <Profile />;
+      // Both still route here in this phase: the merge ships before the nav
+      // change, so 'stats' and 'profile' are two names for one page until the
+      // four-tab restructure renames them to 'you'.
+      case 'stats': return <You />;
+      case 'profile': return <You />;
       default: return <Home />;
     }
   };

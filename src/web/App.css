@@ -805,6 +805,20 @@ h4 { font-size: 17px; }
   -webkit-tap-highlight-color: transparent;
 }
 
+/* "All time" — marks a section on You that deliberately ignores the year
+   filter above it (Milestones are lifetime achievements). A silently
+   unfiltered block reads as a bug; saying so costs one line. */
+.stats-scope-note {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brown-muted, #9B8A7E);
+  background: rgba(61, 44, 30, 0.06);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
 /* Recent Shows Scroll */
 .home-scroll {
   display: flex;
