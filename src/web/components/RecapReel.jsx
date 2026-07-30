@@ -21,10 +21,10 @@ import { shareBlob } from '../lib/shareCard';
 const PACE = 1; // scene-duration multiplier; the design exposes 12–26s total
 
 export default function RecapReel({ show, onClose, cutId: initialCut }) {
-  const { getArtistImage, shows } = useApp();
+  const { getArtistImage, shows, rankPositions } = useApp();
   // The ranking, receipt and stub-drawer cuts are ABOUT the collection, so the
   // whole library travels with the show into every builder.
-  const ctx = useMemo(() => ({ shows }), [shows]);
+  const ctx = useMemo(() => ({ shows, positions: rankPositions }), [shows, rankPositions]);
   // No cut passed in means this is the one-tap arrival: melo picks the richest
   // cut this show can actually fill (handoff §3c), rather than defaulting to a
   // media cut that would render half-empty for someone who didn't film.

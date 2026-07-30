@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
-import { getRankings, saveRankings } from '../lib/db/rankings';
+import { getRankings, saveRankings, getPositions } from '../lib/db/rankings';
+import { rankedOrder } from '../lib/ranking';
 
 function getRandomPair(shows, seen) {
   if (shows.length < 2) return null;
@@ -20,6 +21,10 @@ export default function Rankings() {
   const userId = session?.user?.id;
   const attended = shows.filter(isAttended);
   const [elo, setElo] = useState({});
+  // The TRUE order, from binary-insertion placement at log time. Where a show
+  // has a position, it wins outright — ELO is an estimate over random pairs and
+  // this is an answer the user actually gave. See lib/ranking.js.
+  const [positions, setPositions] = useState({});
   const [seen, setSeen] = useState(new Set());
   const [pair, setPair] = useState(null);
 
@@ -28,8 +33,10 @@ export default function Rankings() {
     let cancelled = false;
     (async () => {
       try {
-        const map = await getRankings();
-        if (!cancelled) setElo(map);
+        const [map, pos] = await Promise.all([getRankings(), getPositions()]);
+        if (cancelled) return;
+        setElo(map);
+        setPositions(pos);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[Melo] getRankings failed', err);
@@ -69,9 +76,13 @@ export default function Rankings() {
     setPair(getRandomPair(attended, new Set([...seen, key])));
   };
 
-  const ranked = [...attended]
-    .map((s) => ({ ...s, elo: elo[s.id] || 1200 }))
-    .sort((a, b) => b.elo - a.elo);
+  // Placed shows first, in the order the user gave; anything never placed
+  // trails behind by score. Falls back to pure ELO order for a library that
+  // predates ranking entirely.
+  const hasPlacements = Object.keys(positions).length > 0;
+  const ranked = hasPlacements
+    ? rankedOrder(attended, positions).map((s) => ({ ...s, elo: elo[s.id] || 1200 }))
+    : [...attended].map((s) => ({ ...s, elo: elo[s.id] || 1200 })).sort((a, b) => b.elo - a.elo);
 
   const getMedal = (i) => {
     if (i === 0) return 'gold';
@@ -153,7 +164,9 @@ export default function Rankings() {
                   {show.venue} &middot; {formatDate(show.date)}
                 </div>
               </div>
-              <div className="rank-elo">{show.elo}</div>
+              <div className="rank-elo">
+                {hasPlacements && positions[show.id] ? `#${positions[show.id]}` : show.elo}
+              </div>
             </div>
           ))}
         </div>

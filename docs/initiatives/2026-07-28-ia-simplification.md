@@ -1,7 +1,7 @@
 # IA Simplification — four tabs, one overlay stack, four-tap logging
 
 - Started: 2026-07-28
-- Status: shipped (main plan) — the three editions remain
+- Status: main plan shipped · Edition A (Beli) shipped · B and C remain
 - Last updated: 2026-07-28
 
 ## Context
@@ -219,12 +219,57 @@ Read those before re-deriving anything here.
     the draft — including a hand-typed venue — arrives in LogShow with every
     field seeded.
 
+- 2026-07-28: **Edition A — the Beli mechanic.** Rank-at-log-time by binary
+  insertion, replacing random-pair ELO as the source of truth.
+  - **Why the old mechanic was wrong, not just slow.** `Rankings.jsx` voted on
+    random pairs and fed ELO. That converges slowly, converges only to an
+    *estimate*, and lives on a page two levels under You — so most libraries had
+    no meaningful order at all. And it never asked about the show you just
+    logged, which is the one moment you actually have an opinion.
+  - **What replaced it.** `lib/ranking.js` binary-searches a new show into the
+    existing ranked list. ⌈log₂(n+1)⌉ questions, and the answer is EXACT
+    immediately: 7 shows → 3 questions, 31 → 5, 1000 → 9.
+  - **Why it matters beyond the game:** it fixes a cut already shipped. "Where
+    it ranks" sorted on the 1–10 score, and scores compress hard into 8–10
+    because nobody buys tickets to shows they expect to hate. That cut was
+    announcing a rank the user never agreed to. It now reads the true order.
+  - `components/RankDuel.jsx` opens ~450ms after any *attended* show is saved
+    (both sheets close before their `addShow` resolves, so it lands on a clean
+    screen). Skippable, and "Good enough — place it here" commits at the best
+    current guess rather than discarding the answers already given.
+  - Migration `0019_ranking_position.sql` adds `position` to `rankings`. **`elo`
+    is kept, not dropped** — Battle Mode still writes it and existing rows still
+    carry it. Readers prefer `position` and fall back to score order. RLS is
+    untouched; the 0001 "rankings self all" policy already scopes to `auth.uid()`
+    and a new column inherits it.
+  - Positions are rewritten **wholesale** on each insert rather than patched.
+    Inserting at k shifts everything below anyway, and a partial update can
+    leave a gap or two shows at #4 — invisible until a leaderboard renders it.
+  - `rankPositions` loads once with the rest of app state and `RankDuel` writes
+    back into it, so the leaderboard, the receipt and the recap cut all read one
+    answer without each re-fetching.
+  - Added `src/web/lib/__tests__/ranking.test.mjs` — **exhaustive**: every
+    insertion position for every list size 0–30 (496 cases) checked against a
+    known-correct ordering, plus question-count scaling, early exit, mixed
+    placed/unplaced ordering, and immutability.
+  - Verified in a browser harness against an 8-show library: the duel compared
+    against indices 3 → 1 → 2 (textbook binary search), landed the show at #4
+    of 8, and rewrote positions densely with no gaps or duplicate ranks. All
+    four result-copy paths checked — #1, mid, last, and the "Better than Big
+    Thief" displaced-show line.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with
   `{ year: navYear }` but `Rankings.jsx` never calls `useYearScope`, so a
   year-scoped Avg Score tile opens an all-time leaderboard. Fix during Phase 3
   or drop the year from that tile.
+- **Migration 0019 is not applied yet** — run it in the Supabase SQL editor
+  before this ships, or `savePositions` will fail on the missing column (the
+  duel catches it and toasts, so nothing breaks, but no ranking persists).
+- **Battle Mode still writes ELO** and is now a second, weaker ordering. Once
+  enough libraries have positions, consider retiring it or rebranding it as a
+  "settle some ties" mode that writes positions instead.
 - **No hardware-back / `popstate` handling exists anywhere in `src/web`.** The
   Phase 2 overlay stack makes a real back handler trivial
   (`dispatch({type:'pop'})`) — worth doing as a follow-up.

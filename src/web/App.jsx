@@ -4,11 +4,12 @@ import { useSession, signOut } from './lib/auth';
 import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
+import { getPositions } from './lib/db/rankings';
 import { registerForPush, onPushTap } from './lib/push';
 import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
 import { overlayReducer, findOverlay } from './lib/overlays';
-import { isGoing, daysUntil, SHOW_STATUS } from './store';
+import { isGoing, isAttended, daysUntil, SHOW_STATUS } from './store';
 import NavBar from './components/NavBar';
 import ShowDetail from './components/ShowDetail';
 import FestivalDetail from './components/FestivalDetail';
@@ -20,6 +21,7 @@ import HypeCard from './components/HypeCard';
 import KnowBeforeYouGo from './components/KnowBeforeYouGo';
 import RatePromptCard from './components/RatePromptCard';
 import ShowComparison from './components/ShowComparison';
+import RankDuel from './components/RankDuel';
 import UserProfileView from './pages/UserProfileView';
 import QuickLog from './components/QuickLog';
 import AuthGate from './components/AuthGate';
@@ -94,6 +96,11 @@ export default function App() {
   // call them. See docs/initiatives/2026-07-28-ia-simplification.md.
   const [overlays, dispatchOverlay] = useReducer(overlayReducer, []);
   const [subPage, setSubPage] = useState(null);
+  // The user's ranked order, { showId: position }. Loaded once with everything
+  // else and updated in place by RankDuel, so the leaderboard, the "Where it
+  // ranks" recap cut and the receipt all read the same answer without each
+  // re-fetching it.
+  const [rankPositions, setRankPositions] = useState({});
   const [artistImages, setArtistImages] = useState({});
   const [venueImages, setVenueImages] = useState({}); // `${name}|${city}` -> photo record
   const [recoveryMode, setRecoveryMode] = useState(isPasswordRecovery());
@@ -111,6 +118,7 @@ export default function App() {
       setShows([]);
       setSettings({ setlistFmKey: '', hasSetlistFmKey: false });
       setProfile(null);
+      setRankPositions({});
       setLoadError(false);
       resetFeedCache(); // don't leak A's friends feed to the next account
       return;
@@ -120,15 +128,19 @@ export default function App() {
     setLoadError(false);
     (async () => {
       try {
-        const [p, s, sh] = await Promise.all([
+        const [p, s, sh, pos] = await Promise.all([
           getMyProfile(),
           getSettings(),
           showsDb.listMyShows(),
+          // Never block the app on rankings — an empty map just means
+          // "nothing placed yet", which is the correct starting state.
+          getPositions().catch(() => ({})),
         ]);
         if (cancelled) return;
         setProfile(p);
         setSettings(s);
         setShows(sh);
+        setRankPositions(pos || {});
 
         // One-time cleanup of legacy sample-data keys from pre-auth days.
         if (!hasCleanedLegacyRef.current) {
@@ -477,6 +489,17 @@ export default function App() {
           setTimeout(() => openOverlay('firstCard', { show: created }), 700);
         }
       }
+
+      // "Which was better?" — place the new show in the ranked library while
+      // the user is still thinking about it. Only for shows they've actually
+      // BEEN to (ranking a wishlist entry is nonsense), and only when there's
+      // something to compare against; the first show ever is #1 by definition
+      // and gets the share card above instead. Both sheets close before their
+      // addShow resolves, so this lands on a clean screen.
+      const attendedCount = shows.filter(isAttended).length;
+      if (created && isAttended(created) && attendedCount >= 1) {
+        setTimeout(() => openOverlay('rank', { show: created }), 450);
+      }
       return created;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -671,6 +694,8 @@ export default function App() {
     recapShow,
     selectedUserId,
 
+    rankPositions,
+    setRankPositions,
     subPage,
     navigate,
     statsYear,
@@ -803,6 +828,7 @@ export default function App() {
               {o.type === 'user' && <UserProfileView userId={p.userId} onClose={close} />}
               {o.type === 'wrapped' && <Wrapped year={p.year} onClose={close} />}
               {o.type === 'compare' && <ShowComparison showA={p.showA} onClose={close} />}
+              {o.type === 'rank' && <RankDuel show={p.show} onClose={close} />}
             </Fragment>
           );
         })}

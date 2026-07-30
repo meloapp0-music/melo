@@ -22,6 +22,7 @@
 
 import { formatDate, getArtistGradient, getYear, isAttended } from '../store';
 import { buildScenes as buildBeatDrop, scoreVerdict } from './recap';
+import { rankedOrder } from './ranking';
 
 const scoreLabel = (s) => (Number.isInteger(s) ? String(s) : Number(s).toFixed(1));
 const ORDINAL = ['', '1ST', '2ND', '3RD'];
@@ -148,10 +149,15 @@ function buildRanks(show, ctx) {
   let n = 0;
   const push = (x) => s.push({ id: `rk${n++}`, theme: 'ranks', ...x });
 
-  const scored = b.all.filter((o) => o.score > 0).sort((x, y) => y.score - x.score);
-  const rank = scored.findIndex((o) => o.id === show.id) + 1;
-  const board = scored.slice(0, 5).map((o, i) => ({
-    pos: i + 1, artist: o.artist, score: scoreLabel(o.score), me: o.id === show.id,
+  // Prefer the TRUE order — the one the user built by answering "which was
+  // better?" at log time. Sorting on the 1–10 score is the fallback, and it's a
+  // weak one: scores compress into 8–10, so a score sort is mostly ties and
+  // this cut would confidently announce a rank the user never agreed to.
+  // See lib/ranking.js.
+  const ordered = rankedOrder(b.all.filter((o) => o.score > 0 || (ctx.positions || {})[o.id]), ctx.positions || {});
+  const rank = ordered.findIndex((o) => o.id === show.id) + 1;
+  const board = ordered.slice(0, 5).map((o, i) => ({
+    pos: i + 1, artist: o.artist, score: scoreLabel(o.score || 0), me: o.id === show.id,
   }));
 
   push({ kind: 'rank-intro', dur: 1.9, big: `Of all ${b.all.length} shows\nyou’ve ever\nlogged…` });
