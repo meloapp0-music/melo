@@ -15,7 +15,7 @@ import { getArtistGradient, formatDate, isAttended } from '../store';
 import { savePositions } from '../lib/db/rankings';
 import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex, remaining,
-  rankedOrder, toPositions, meloScore, scoreText,
+  rankedOrder, toPositions, meloScore, scoreText, bucketOf,
 } from '../lib/ranking';
 import { track } from '../lib/analytics';
 
@@ -54,7 +54,13 @@ export default function RankDuel({ show, queue, onClose }) {
       (s) => isAttended(s) && s.id !== current.id && posRef.current[s.id]
     );
     const ordered = rankedOrder(placedOnly, posRef.current).map((s) => s.id);
-    setState(startPlacement(ordered, current.id));
+    // Confine the search to the bucket the user picked at log time. That's
+    // fewer questions AND it never asks whether a night you loved beat one you
+    // didn't — a comparison with no useful answer. See lib/ranking.js BUCKETS.
+    setState(startPlacement(ordered, current.id, {
+      bucket: bucketOf(current),
+      bucketOf: (id) => bucketOf(byId[id]),
+    }));
     setDone(null);
     track('rank_duel_started', { library_size: ordered.length, queued: line.length });
     // Keyed on `round` only — re-running mid-placement would restart the search

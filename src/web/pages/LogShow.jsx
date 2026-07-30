@@ -9,6 +9,7 @@ import { listFriends } from '../lib/db/friendships';
 import { tagAttendee, untagAttendee, listAttendees } from '../lib/db/shows';
 import { track } from '../lib/analytics';
 import ArtistShowPicker, { titleCase } from '../components/ArtistShowPicker';
+import { BUCKETS, bucketOf, bucketScore } from '../lib/ranking';
 import PhotoPicker from '../components/PhotoPicker';
 import VideoPicker from '../components/VideoPicker';
 
@@ -114,7 +115,9 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   const [venueUrl, setVenueUrl] = useState(editingShow?.venueUrl || '');
   const [festival, setFestival] = useState(editingShow?.festival || seed?.festival || '');
   const [genre, setGenre] = useState(editingShow?.genre || seed?.genre || '');
-  const [score, setScore] = useState(editingShow?.score || seed?.score || 0);
+  // Stored as a number in `score`, chosen from three buckets. An existing
+  // 1–10 classifies itself, so editing an old show shows the right one.
+  const [bucket, setBucket] = useState(() => bucketOf({ score: editingShow?.score || seed?.score || 0 }));
   const [vibes, setVibes] = useState(editingShow?.vibes || []);
   const [notes, setNotes] = useState(editingShow?.notes || '');
   const [setlist, setSetlist] = useState(
@@ -328,7 +331,7 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
       venueUrl: venueUrl.trim(),
       festival: keepAll ? festival.trim() : '',
       genre: keepAll ? genre : '',
-      score: keepAll ? score : 0,
+      score: keepAll ? bucketScore(bucket) : 0,
       vibes: keepAll ? vibes : [],
       notes: keepAll ? notes.trim() : '',
       setlist: keepAll ? setlist.filter((s) => s.trim()) : [],
@@ -1193,15 +1196,22 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
           {/* Score — Attended only (Going & Wishlist haven't happened yet) */}
           {isAttendedTab && (
             <div className="log-section">
-              <div className="log-section-title">Score</div>
-              <div className="log-scores">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+              <div className="log-section-title">How was it?</div>
+              {/* Three options, not ten. A ten-point scale asks for precision
+                  nobody has on the way home, and the answers pile up at 8–10
+                  anyway. This is the gut call; the duel does the fine ordering,
+                  and it only ever compares within the bucket you picked. */}
+              <div className="bucket-row">
+                {BUCKETS.map((b) => (
                   <button
-                    key={n}
-                    className={`log-score ${score === n ? 'active' : ''}`}
-                    onClick={() => setScore(score === n ? 0 : n)}
+                    key={b.id}
+                    type="button"
+                    className={`bucket-btn${bucket === b.id ? ' active' : ''} bucket-${b.id}`}
+                    onClick={() => setBucket(bucket === b.id ? null : b.id)}
                   >
-                    {n}
+                    <span className="bucket-emoji" aria-hidden="true">{b.emoji}</span>
+                    <span className="bucket-label">{b.label}</span>
+                    <span className="bucket-hint">{b.hint}</span>
                   </button>
                 ))}
               </div>

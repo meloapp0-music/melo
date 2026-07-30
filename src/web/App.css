@@ -1326,43 +1326,6 @@ h4 { font-size: 17px; }
   letter-spacing: 0.03em;
 }
 
-/* Score Circles */
-.log-scores {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-}
-
-.log-score {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2.5px solid rgba(61, 44, 30, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--brown-muted);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  -webkit-tap-highlight-color: transparent;
-  background: #fff;
-}
-
-.log-score:active { transform: scale(0.92); }
-
-.log-score.active {
-  border-color: var(--orange);
-  color: #fff;
-  background: linear-gradient(135deg, var(--amber), var(--orange));
-  box-shadow: 0 4px 16px rgba(232, 87, 58, 0.3);
-  transform: scale(1.1);
-  animation: scorePulse 1.5s ease-in-out infinite;
-}
-
 @keyframes scorePulse {
   0%, 100% { box-shadow: 0 4px 16px rgba(232, 87, 58, 0.3); }
   50% { box-shadow: 0 4px 24px rgba(232, 87, 58, 0.5); }
@@ -5659,53 +5622,6 @@ h4 { font-size: 17px; }
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.quicklog-score-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.quicklog-score-label {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--brown-muted);
-  flex-shrink: 0;
-}
-
-.quicklog-scores {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.quicklog-score-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(61, 44, 30, 0.1);
-  background: #fff;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--brown-light);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.quicklog-score-btn.active {
-  background: linear-gradient(135deg, var(--amber), var(--orange));
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(232, 87, 58, 0.25);
-}
-
-.quicklog-score-btn:active {
-  transform: scale(0.92);
 }
 
 .quicklog-full-btn {
@@ -10940,3 +10856,32 @@ h4 { font-size: 17px; }
 }
 .backlog-cta:active { transform: scale(0.985); }
 .rank-unplaced { color: var(--brown-light-muted, #9B8A7E); font-weight: 600; }
+
+/* Three buckets instead of a 1–10 row. The gut call at log time; the duel does
+   the fine ordering within whichever one you pick.
+   docs/initiatives/2026-07-28-ia-simplification.md */
+.bucket-row { display: flex; flex-direction: column; gap: 8px; }
+.bucket-btn {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 15px; border-radius: 15px; cursor: pointer; text-align: left;
+  background: #fff; border: 1.5px solid rgba(61, 44, 30, 0.09);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.13s ease, border-color 0.13s ease;
+}
+.bucket-btn:active { transform: scale(0.985); }
+.bucket-emoji { font-size: 21px; line-height: 1; flex: none; }
+.bucket-label {
+  font-family: var(--font-heading); font-weight: 750; font-size: 15.5px;
+  color: var(--brown-ink, #3D2C1E); flex: none;
+}
+.bucket-hint {
+  font-weight: 600; font-size: 12.5px; color: var(--brown-light-muted, #9B8A7E);
+  margin-left: auto; text-align: right;
+}
+.bucket-btn.active { border-color: var(--orange, #E8573A); background: rgba(232, 87, 58, 0.05); }
+.bucket-btn.active .bucket-hint { color: var(--orange, #E8573A); }
+/* The three read as a scale — warm at the top, cooling downward. */
+.bucket-btn.bucket-loved.active { border-color: #E8573A; background: rgba(232, 87, 58, 0.07); }
+.bucket-btn.bucket-fine.active  { border-color: #F4A261; background: rgba(244, 162, 97, 0.09); }
+.bucket-btn.bucket-fine.active  .bucket-hint { color: #C97B36; }
+.bucket-btn.bucket-meh.active   { border-color: #9B8A7E; background: rgba(155, 138, 126, 0.10); }
+.bucket-btn.bucket-meh.active   .bucket-hint { color: #6B5A4E; }

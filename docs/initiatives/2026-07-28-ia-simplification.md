@@ -327,6 +327,31 @@ Read those before re-deriving anything here.
     9.2**, and an unranked fourth falls back to its entered 7 — the compression
     the whole mechanic exists to fix, visibly broken open.
 
+- 2026-07-28: **The 1–10 input became three buckets** — Loved it / It was
+  fine / Not for me — which answers the open question the sweep raised.
+  - A ten-point scale asks for precision nobody has on the way home, and the
+    answers piled up at 8–10 anyway. Three options are a question people can
+    actually answer, and the duel already does the fine ordering.
+  - **The bucket does real work: the ranked list is now PARTITIONED by it.**
+    Every "Loved it" sits above every "It was fine", which sits above every
+    "Not for me". Two consequences: placement searches only within the bucket
+    (fewer questions), and you are never asked whether a night you loved beat
+    one you disliked — a comparison with no useful answer.
+  - **No migration.** The bucket is stored in the existing numeric `score`
+    column as a representative value (9 / 6.5 / 3), so every pre-existing 1–10
+    classifies itself: ≥8 loved, ≥5 fine, else not-for-me. Editing an old show
+    shows the right bucket already selected. Export is unaffected.
+  - `startPlacement(list, id, { bucket, bucketOf })` confines the window; called
+    without those options it searches the whole list, which is what a library
+    predating buckets needs.
+  - Deleted 10 now-dead CSS rule blocks (~1.7KB) for the old pickers.
+  - Verified: 12 new assertions covering classification, round-tripping,
+    in-bucket confinement, and — the important one — that the resulting list is
+    still bucket-partitioned after *every* possible landing spot. Then drove it
+    live: picking "It was fine" stored 6.5, and the duel over a partitioned
+    nine-show library asked only **two** questions, both against fine-bucket
+    shows, landing the show last in its block and above both "not for me" ones.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with
@@ -335,12 +360,10 @@ Read those before re-deriving anything here.
   or drop the year from that tile.
 - **Migration 0019 applied 2026-07-28** (dashboard SQL editor; the CLI isn't
   linked to the project — `supabase link` needs the db password).
-- **The 1–10 input now needs a decision.** The derived score is what's shown
-  everywhere, so the number the user types is a seed and a fallback they never
-  see again. Options: drop it and let the duel be the whole rating (Beli's
-  model); coarsen it to three buckets (loved / fine / not for me) that anchor
-  the initial placement; or keep it as-is and accept that entering 9 then
-  seeing 8.5 is mildly confusing. Recommend the middle one.
+- **Unranked shows still display a bucket's representative number** (9.0 / 6.5
+  / 3.0) as their fallback, which is slightly false precision. Showing the
+  bucket LABEL instead until a show is placed would be more honest — worth
+  doing if the back-catalogue ranker doesn't get used much.
 - **Export still writes the raw score** (`lib/exportShows.js`) — correct, since
   it's a data dump, but a `melo_score` column alongside it would be useful.
 - **Battle Mode still writes ELO** and is now a third ordering nothing reads.

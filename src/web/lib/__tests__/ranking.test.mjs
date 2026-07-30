@@ -12,6 +12,7 @@
 import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex,
   remaining, toPositions, rankedOrder, rankOf, meloScore, meloScores, scoreText, displayScore,
+  BUCKETS, BUCKET_IDS, bucketOf, bucketScore,
 } from '../ranking.js';
 
 let fail = 0;
@@ -137,6 +138,69 @@ console.log('\nMELO SCORE (derived from rank, not typed in)');
   const map = meloScores(shows, { a: 2, b: 1, c: 3 });
   ok('meloScores follows the stored order, not array order',
     map.b === 9.9 && map.a === 9.6 && map.c === 9.2, JSON.stringify(map));
+}
+
+console.log('\nBUCKETS — the coarse call, and the partition it enforces');
+{
+  ok('scores classify into three buckets',
+    bucketOf({ score: 10 }) === 'loved' && bucketOf({ score: 8 }) === 'loved'
+    && bucketOf({ score: 7 }) === 'fine' && bucketOf({ score: 5 }) === 'fine'
+    && bucketOf({ score: 4 }) === 'meh' && bucketOf({ score: 1 }) === 'meh');
+  ok('unrated is null, not a bucket', bucketOf({ score: 0 }) === null && bucketOf({}) === null);
+  ok('a bare number classifies too (no wrapper needed)', bucketOf(9) === 'loved');
+  ok('every bucket round-trips through its stored score',
+    BUCKET_IDS.every((id) => bucketOf({ score: bucketScore(id) }) === id));
+
+  // A library already partitioned: 3 loved, 3 fine, 2 meh.
+  const lib = ['L1','L2','L3','F1','F2','F3','M1','M2'];
+  const bOf = (id) => (id[0] === 'L' ? 'loved' : id[0] === 'F' ? 'fine' : 'meh');
+
+  // A new "fine" show can only land inside the fine block: indices 3..6.
+  const s = startPlacement(lib, 'NEW', { bucket: 'fine', bucketOf: bOf });
+  ok('search window is confined to the bucket', s.lo === 3 && s.hi === 6, `lo=${s.lo} hi=${s.hi}`);
+  ok('it never offers a cross-bucket comparison', bOf(nextOpponent(s)) === 'fine');
+
+  // Every landing spot inside the block, and nothing outside it.
+  let violations = 0;
+  for (const [bucket, expectRange] of [['loved', [0, 3]], ['fine', [3, 6]], ['meh', [6, 8]]]) {
+    for (let target = expectRange[0]; target <= expectRange[1]; target++) {
+      let st = startPlacement(lib, 'NEW', { bucket, bucketOf: bOf });
+      let guard = 0;
+      while (!isPlaced(st) && guard++ < 20) {
+        st = answer(st, lib.indexOf(nextOpponent(st)) >= target);
+      }
+      const idx = placementIndex(st);
+      if (idx < expectRange[0] || idx > expectRange[1]) violations++;
+      // And the resulting list must still be bucket-ordered.
+      const out = place(st).map((id) => (id === 'NEW' ? bucket : bOf(id)));
+      const ranks = out.map((b) => BUCKET_IDS.indexOf(b));
+      if (ranks.some((v, i) => i && v < ranks[i - 1])) violations++;
+    }
+  }
+  ok('placement stays in-bucket AND keeps the list partitioned', violations === 0, `${violations} violations`);
+
+  // A brand-new bucket with no members yet still gets a valid slot.
+  const empty = startPlacement(['L1','L2'], 'NEW', { bucket: 'meh', bucketOf: bOf });
+  ok('a bucket with no members needs no questions', isPlaced(empty));
+  ok('...and lands after every better bucket', place(empty).join() === 'L1,L2,NEW');
+  const top = startPlacement(['F1','M1'], 'NEW', { bucket: 'loved', bucketOf: bOf });
+  ok('a first "loved" show goes straight to #1', isPlaced(top) && place(top)[0] === 'NEW');
+
+  // The payoff: fewer questions.
+  const big = Array.from({ length: 60 }, (_, i) => (i < 20 ? `L${i}` : i < 40 ? `F${i}` : `M${i}`));
+  const bOf2 = (id) => (id[0] === 'L' ? 'loved' : id[0] === 'F' ? 'fine' : 'meh');
+  const count = (opts) => {
+    let st = startPlacement(big, 'NEW', opts);
+    let g = 0;
+    while (!isPlaced(st) && g++ < 40) st = answer(st, false);
+    return st.asked;
+  };
+  const withB = count({ bucket: 'fine', bucketOf: bOf2 });
+  const without = count({});
+  ok(`60 shows: ${withB} questions bucketed vs ${without} unbucketed`, withB < without);
+
+  ok('no bucket opts → searches the whole list (back-compat)',
+    startPlacement(lib, 'NEW').hi === lib.length);
 }
 
 console.log('\nDISPLAY RESOLUTION (what number a surface actually shows)');

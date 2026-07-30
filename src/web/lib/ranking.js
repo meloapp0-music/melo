@@ -21,10 +21,62 @@
 //
 // docs/initiatives/2026-07-28-ia-simplification.md
 
-/** Start placing `candidateId` into `orderedIds` (best → worst). */
-export function startPlacement(orderedIds, candidateId) {
+// ===========================================================================
+// Buckets — the coarse gut call, asked once at log time.
+// ===========================================================================
+// Replacing the 1–10 input. A ten-point scale asks for precision nobody has in
+// the taxi home, and the answers pile up at 8–10 anyway; three options are a
+// question people can actually answer.
+//
+// The bucket does real work: THE RANKED LIST IS PARTITIONED BY IT. Every
+// "Loved it" show sits above every "It was fine", which sits above every "Not
+// for me". Two consequences, both good:
+//   - placement only searches within the bucket, so it needs fewer questions
+//   - you are never asked to compare a great night against one you disliked,
+//     which is a question with no useful answer
+//
+// Stored in the existing numeric `score` column as a representative value, so
+// there's no migration and every pre-existing 1–10 classifies itself.
+export const BUCKETS = [
+  { id: 'loved', label: 'Loved it', hint: 'One of the good ones', score: 9, emoji: '🔥' },
+  { id: 'fine', label: 'It was fine', hint: 'Glad I went', score: 6.5, emoji: '👍' },
+  { id: 'meh', label: 'Not for me', hint: 'Wouldn’t go again', score: 3, emoji: '😐' },
+];
+export const BUCKET_IDS = BUCKETS.map((b) => b.id);
+
+/** Which bucket a show falls in, from whatever is in `score`. Null = unrated. */
+export function bucketOf(show) {
+  const v = typeof show === 'number' ? show : show?.score;
+  if (!(v > 0)) return null;
+  if (v >= 8) return 'loved';
+  if (v >= 5) return 'fine';
+  return 'meh';
+}
+
+/** The number stored for a bucket. */
+export const bucketScore = (id) => BUCKETS.find((b) => b.id === id)?.score ?? 0;
+
+/**
+ * Start placing `candidateId` into `orderedIds` (best → worst).
+ *
+ * Pass `opts.bucket` and `opts.bucketOf` to confine the search to the
+ * candidate's own bucket. Without them it searches the whole list, which is
+ * what a library predating buckets needs.
+ */
+export function startPlacement(orderedIds, candidateId, opts = {}) {
   const list = (orderedIds || []).filter((id) => id && id !== candidateId);
-  return { list, candidateId, lo: 0, hi: list.length, asked: 0 };
+  const { bucket, bucketOf: bucketFor } = opts;
+
+  if (!bucket || !bucketFor) return { list, candidateId, lo: 0, hi: list.length, asked: 0 };
+
+  // The block this bucket occupies. Ranks above it are better buckets, below
+  // are worse, and neither is worth a question.
+  const rank = BUCKET_IDS.indexOf(bucket);
+  let lo = 0;
+  while (lo < list.length && BUCKET_IDS.indexOf(bucketFor(list[lo])) < rank) lo += 1;
+  let hi = lo;
+  while (hi < list.length && BUCKET_IDS.indexOf(bucketFor(list[hi])) === rank) hi += 1;
+  return { list, candidateId, lo, hi, asked: 0, bucket };
 }
 
 /** True once the window has collapsed and the position is known. */

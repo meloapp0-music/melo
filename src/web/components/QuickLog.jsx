@@ -17,6 +17,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { generateId, SHOW_STATUS } from '../store';
+import { BUCKETS, bucketScore } from '../lib/ranking';
 import { track } from '../lib/analytics';
 import ArtistShowPicker from './ArtistShowPicker';
 
@@ -38,7 +39,8 @@ export default function QuickLog({ onClose, onOpenFull }) {
   const [venue, setVenue] = useState('');
   const [city, setCity] = useState('');
   const [date, setDate] = useState(yesterday);
-  const [score, setScore] = useState(0);
+  // The coarse gut call. Stored as a representative number in `score`.
+  const [bucket, setBucket] = useState(null);
   const [setlist, setSetlist] = useState([]);
   const [festival, setFestival] = useState('');
   // True once a real upstream row filled the details in — drives whether we
@@ -77,7 +79,7 @@ export default function QuickLog({ onClose, onOpenFull }) {
     venue: venue.trim(),
     city: city.trim(),
     festival,
-    score,
+    score: bucketScore(bucket),
     setlist,
   });
 
@@ -94,7 +96,8 @@ export default function QuickLog({ onClose, onOpenFull }) {
       has_setlist: setlist.length > 0,
       has_photos: false,
       has_videos: false,
-      score_set: score > 0,
+      score_set: !!bucket,
+      bucket: bucket || 'none',
     });
     // Close first so the toast doesn't land behind the dimmed backdrop.
     onClose();
@@ -109,7 +112,7 @@ export default function QuickLog({ onClose, onOpenFull }) {
       venueUrl: '',
       festival,
       genre: '',
-      score,
+      score: bucketScore(bucket),
       vibes: [],
       notes: '',
       setlist,
@@ -181,20 +184,23 @@ export default function QuickLog({ onClose, onOpenFull }) {
 
           <input className="log-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
 
-          <div className="quicklog-score-row">
-            <span className="quicklog-score-label">Score</span>
-            <div className="quicklog-scores">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  className={`quicklog-score-btn ${score === n ? 'active' : ''}`}
-                  onClick={() => setScore(n)}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+          {/* Three options, not ten. A ten-point scale asks for precision
+              nobody has on the way home, and the answers pile up at 8–10
+              anyway. This is the gut call; the duel does the fine ordering,
+              and it only ever compares within the bucket you picked. */}
+          <div className="bucket-row">
+            {BUCKETS.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                className={`bucket-btn${bucket === b.id ? ' active' : ''} bucket-${b.id}`}
+                onClick={() => setBucket(bucket === b.id ? null : b.id)}
+              >
+                <span className="bucket-emoji" aria-hidden="true">{b.emoji}</span>
+                <span className="bucket-label">{b.label}</span>
+                <span className="bucket-hint">{b.hint}</span>
+              </button>
+            ))}
           </div>
 
           <button className="log-submit" onClick={handleSave} disabled={saving}>
