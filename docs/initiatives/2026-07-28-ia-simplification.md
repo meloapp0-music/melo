@@ -1,7 +1,7 @@
 # IA Simplification — four tabs, one overlay stack, four-tap logging
 
 - Started: 2026-07-28
-- Status: in-progress
+- Status: shipped (main plan) — the three editions remain
 - Last updated: 2026-07-28
 
 ## Context
@@ -180,6 +180,44 @@ Read those before re-deriving anything here.
     shape, `titleCase` applied, input updated, dropdown closed. Then rendered
     the whole of `LogShow` against a mock context and confirmed all thirteen
     sections still render with the picker in place.
+
+- 2026-07-28: Phase 6 (four-tap logging). The `+` button opens `QuickLog`, and
+  `navigate('log')` now means the fast path — the full sheet is one tap further
+  in, and callers that specifically need it (the post-show rate prompt,
+  tour-alert deep links) open it directly with `openOverlay('log', …)`.
+  - **The four taps:** `+` → type a few letters → tap the show row → tap a
+    score → Save. Venue, city, date, festival and the whole setlist come from
+    the picked row. That autofill is the speed.
+  - Picking a row now shows a **confirmation** ("📍 Rose Bowl · Pasadena",
+    "🎵 22 songs from the setlist") instead of four more inputs. The venue field
+    only appears when nothing filled it in.
+  - **The handoff no longer loses work.** "Add photos, vibes & more →" used to
+    call `onClose()` then open a *blank* LogShow. `prefill` is widened to seed
+    artist/date/city/venue/festival/genre/score/setlist, guarded so
+    `editingShow` always wins.
+  - **Payload drift fixed.** QuickLog wrote the string literal `'attended'`
+    instead of `SHOW_STATUS.ATTENDED` and omitted `festival`, `openers`,
+    `venueUrl` and `videos` — a quick-logged show was a subtly different row.
+  - **Funnel parity.** `show_log_started` / `show_log_abandoned` /
+    `show_logged` now fire from both sheets with `surface: 'quick' | 'full'`.
+    Without this, moving the `+` button would have dropped `show_logged` to
+    near-zero and the dashboards would have lied.
+  - **Bug found and fixed while verifying:** the "yesterday" default used
+    `new Date(Date.now() - 86400000).toISOString()`. `toISOString()` is UTC, so
+    west of Greenwich it serialises back to *today* for most of the evening —
+    proven live (old code returned 2026-07-29 on 2026-07-29). Now built from
+    local date parts, the same reason `App.jsx` has `localDayKey()`.
+  - Going/Wishlist deliberately stays out of the fast path; it gets one quiet
+    link to the full sheet. The 10-second case is "I just saw this".
+  - Added `src/web/lib/__tests__/log-parity.test.mjs` — asserts both sheets
+    write the same 17 payload keys, that neither uses a literal status, that
+    all three funnel events fire from both with a `surface` tag, and that the
+    date default doesn't go through `toISOString`.
+  - Verified end-to-end in a harness: drove the four taps and inspected the
+    saved row (artist title-cased, date 2026-07-28, score 9, status attended,
+    all 17 fields present, toast fired); then drove the handoff and confirmed
+    the draft — including a hand-typed venue — arrives in LogShow with every
+    field seeded.
 
 ## Open questions / follow-ups
 

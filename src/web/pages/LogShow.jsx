@@ -95,10 +95,15 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
         : getShowStatus(editingShow))
     : (prefill?.status || SHOW_STATUS.ATTENDED);
 
-  const [artist, setArtist] = useState(editingShow?.artist || '');
-  const [date, setDate] = useState(editingShow?.date || '');
-  const [city, setCity] = useState(editingShow?.city || '');
-  const [venue, setVenue] = useState(editingShow?.venue || '');
+  // `prefill` seeds a NEW sheet; `editingShow` always wins when both exist.
+  // It's how QuickLog hands off — "Add photos, vibes & more" carries everything
+  // already typed instead of opening a blank form on top of the user's work.
+  const seed = editingShow ? null : prefill;
+
+  const [artist, setArtist] = useState(editingShow?.artist || seed?.artist || '');
+  const [date, setDate] = useState(editingShow?.date || seed?.date || '');
+  const [city, setCity] = useState(editingShow?.city || seed?.city || '');
+  const [venue, setVenue] = useState(editingShow?.venue || seed?.venue || '');
   // We don't capture `venueUrl` from autofill — both Ticketmaster and
   // Setlist.fm return their own internal venue pages, not the official
   // venue website. ShowDetail auto-resolves the official URL via
@@ -107,13 +112,15 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   // user changes the venue field (in which case the stored URL no
   // longer matches and gets cleared so ShowDetail re-resolves).
   const [venueUrl, setVenueUrl] = useState(editingShow?.venueUrl || '');
-  const [festival, setFestival] = useState(editingShow?.festival || '');
-  const [genre, setGenre] = useState(editingShow?.genre || '');
-  const [score, setScore] = useState(editingShow?.score || 0);
+  const [festival, setFestival] = useState(editingShow?.festival || seed?.festival || '');
+  const [genre, setGenre] = useState(editingShow?.genre || seed?.genre || '');
+  const [score, setScore] = useState(editingShow?.score || seed?.score || 0);
   const [vibes, setVibes] = useState(editingShow?.vibes || []);
   const [notes, setNotes] = useState(editingShow?.notes || '');
   const [setlist, setSetlist] = useState(
-    editingShow?.setlist?.length ? editingShow.setlist : ['']
+    editingShow?.setlist?.length ? editingShow.setlist
+      : seed?.setlist?.length ? seed.setlist
+        : ['']
   );
   const [selBuddies, setSelBuddies] = useState(editingShow?.buddies || []);
 
@@ -205,10 +212,10 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   // handleSubmit. See docs/initiatives/2026-05-15-product-analytics.md.
   const submittedRef = useRef(false);
   useEffect(() => {
-    track('show_log_started', { is_edit: !!editingShow });
+    track('show_log_started', { is_edit: !!editingShow, surface: 'full' });
     return () => {
       if (!submittedRef.current) {
-        track('show_log_abandoned', { is_edit: !!editingShow });
+        track('show_log_abandoned', { is_edit: !!editingShow, surface: 'full' });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,6 +349,9 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
     track('show_logged', {
       status: payload.status,
       is_edit: !!editingShow,
+      // Tagged so the funnel survives the `+` button pointing at QuickLog —
+      // without this, show_logged drops to near-zero and the dashboards lie.
+      surface: 'full',
       has_setlist: payload.setlist.length > 0,
       has_photos: payload.photos.length > 0,
       has_videos: payload.videos.length > 0,

@@ -5725,6 +5725,40 @@ h4 { font-size: 17px; }
   color: var(--orange);
 }
 
+/* Planning ahead is a different job from "I just saw this". One quiet door to
+   the full sheet, rather than a third segmented control on the fast path. */
+.quicklog-going-btn {
+  width: 100%;
+  padding: 4px 12px 2px;
+  border: none;
+  background: none;
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--brown-light-muted, #9B8A7E);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.quicklog-going-btn:active { color: var(--orange); }
+
+/* What the picked show already filled in. This is a RECEIPT, not a form — the
+   whole point of the fast path is that the user never types these. */
+.quicklog-filled {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 168, 140, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.quicklog-filled-line {
+  font-family: var(--font-body, inherit);
+  font-weight: 600;
+  font-size: 13px;
+  color: #00806B;
+  line-height: 1.35;
+}
+
 /* ============================================
    COMPARE BUTTON (Show Detail)
    ============================================ */

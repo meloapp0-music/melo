@@ -598,7 +598,11 @@ export default function App() {
     // restructure didn't have to be a mechanical rename across eight files.
     const p = PAGE_ALIAS[page] || page;
     if (p === 'log') {
-      openOverlay('log', {});
+      // "Log a show" means the fast path now. The full sheet is still one tap
+      // further in, and anything that specifically needs it — the post-show
+      // rate prompt, tour-alert deep links — opens it directly via
+      // openOverlay('log', …) rather than coming through here.
+      openOverlay('quicklog', {});
     } else if (TABS.includes(p)) {
       setSubPage(null);
       setTab(p);
