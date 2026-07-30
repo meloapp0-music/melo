@@ -109,13 +109,17 @@ export const festivalKey = (s) => {
 // instead of all 60, and a freshly-logged, unrated festival contributes nothing
 // to your average (fixes the "60 zeros tanked my avg" problem). Non-festival
 // shows pass through as their own single-show outing.
-export function groupIntoOutings(shows) {
+// `scoreOf(show)` lets callers supply the DERIVED score (lib/ranking.js) instead
+// of the hand-entered one, so an outing's average agrees with the number shown
+// on the shows inside it. Defaults to the entered score — existing callers that
+// don't pass it behave exactly as before.
+export function groupIntoOutings(shows, scoreOf = (s) => s.score || 0) {
   const fests = new Map();
   const outings = [];
   for (const s of shows) {
     const k = festivalKey(s);
     if (!k) {
-      outings.push({ isFestival: false, key: s.id, show: s, score: s.score || 0, date: s.date });
+      outings.push({ isFestival: false, key: s.id, show: s, score: scoreOf(s) || 0, date: s.date });
       continue;
     }
     if (!fests.has(k)) {
@@ -132,9 +136,9 @@ export function groupIntoOutings(shows) {
   }
   for (const o of fests.values()) {
     o.artistCount = o.shows.length;
-    const rated = o.shows.filter((s) => s.score > 0);
+    const rated = o.shows.map((s) => scoreOf(s)).filter((v) => v > 0);
     o.ratedCount = rated.length;
-    o.score = rated.length ? rated.reduce((a, s) => a + s.score, 0) / rated.length : 0;
+    o.score = rated.length ? rated.reduce((a, v) => a + v, 0) / rated.length : 0;
     const dates = o.shows.map((s) => s.date).filter(Boolean).sort();
     o.dateStart = dates[0] || o.date;
     o.dateEnd = dates[dates.length - 1] || o.date;

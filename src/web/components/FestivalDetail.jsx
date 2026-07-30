@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import { getArtistGradient, formatDate, vibeStyle, festivalKey, isAttended } from '../store';
 import PhotoGallery from './PhotoGallery';
 import PhotoPicker from './PhotoPicker';
@@ -13,7 +14,7 @@ import { getProfilesByIds } from '../lib/db/profiles';
 // Opened from the festival card in My Shows. Members are derived from the LIVE
 // shows so deleting an act (or the festival) updates in place.
 export default function FestivalDetail({ outing, onClose, onOpenShow }) {
-  const { shows, deleteShow, getArtistImage, showToast, session, setSelectedUserId } = useApp();
+  const { shows, deleteShow, getArtistImage, showToast, session, setSelectedUserId, showScore } = useApp();
   const [confirmFest, setConfirmFest] = useState(false);
   const [pendingAct, setPendingAct] = useState(null);
   // General festival-level media (crowd/grounds shots, not tied to one act).
@@ -81,8 +82,8 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
 
   if (members.length === 0) return null;
 
-  const rated = members.filter((s) => s.score > 0);
-  const score = rated.length ? rated.reduce((a, s) => a + s.score, 0) / rated.length : 0;
+  const rated = members.map((s) => showScore(s)).filter((v) => v != null);
+  const score = rated.length ? rated.reduce((a, v) => a + v, 0) / rated.length : 0;
   const actPhotos = members.flatMap((s) => s.photos || []); // aggregated per-act
   const vibes = [...new Set(members.flatMap((s) => s.vibes || []))];
   const buddies = [...new Set(members.flatMap((s) => s.buddies || []))];
@@ -168,7 +169,7 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
           </div>
           {score > 0 && (
             <div className="detail-hero-score">
-              {Number.isInteger(score) ? score : score.toFixed(1)}
+              {scoreText(score)}
             </div>
           )}
           <button className="detail-del-top" onClick={() => setConfirmFest(true)} aria-label="Delete festival">
@@ -223,9 +224,9 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
                     <div className="show-list-artist">{s.artist}</div>
                     <div className="show-list-meta">{formatDate(s.date)}</div>
                   </div>
-                  {s.score > 0 && (
+                  {showScore(s) != null && (
                     <div className="show-list-score">
-                      {Number.isInteger(s.score) ? s.score : s.score.toFixed(1)}
+                      {scoreText(showScore(s))}
                     </div>
                   )}
                   <button

@@ -294,6 +294,39 @@ Read those before re-deriving anything here.
     shows with a deterministic comparator — it fully ordered them in **six
     questions** and the final order matched the oracle exactly.
 
+- 2026-07-28: **The derived score became the primary one** — swept across every
+  surface that shows a rating.
+  - `showScore(show)` on the app context is now the single place anything asks
+    "what number goes here?": the derived score when the show has been ranked,
+    the entered 1–10 when it hasn't, null when neither. One resolver, one answer.
+  - Swept: `ShowDetail` (hero + "your rating that night"), `MyShows` (all four
+    card variants), `ArtistDetail` / `VenueDetail` / `FestivalDetail` (per-row
+    AND their averages), `ShowComparison`, `Artists` averages, the `You` Avg
+    Score tile, `Wrapped` (best show + year average), the recap `receipt` and
+    `setlist` cuts, and all seven share-card renderers.
+  - **Share cards took one substitution, not seven.** Five React styles and two
+    canvas paths all read `show.score`, so `ShareCardView` hands them a shallow
+    copy with the derived score already in place. Same trick for the MP4
+    exporter, which rebuilds scenes from the show alone.
+  - `groupIntoOutings(shows, scoreOf)` grew an optional resolver so a festival's
+    averaged score agrees with the shows inside it. Defaults to the entered
+    score, so any caller that doesn't opt in is unchanged.
+  - **Friends' shows deliberately keep the RAW score.** `rankings` is RLS
+    self-only: another user's order is invisible by design, and applying our own
+    scale to their show would be wrong even if we could. `FriendsFeed` and
+    `UserProfileView` are commented so this doesn't get "fixed" later.
+  - **"Perfect 10" could never unlock again** once scores cap at 9.9, so that
+    milestone became "Number One — ranked a show as your all-time best", which
+    is the thing it was really trying to celebrate.
+  - Three real breaks caught before commit, none of which the build flagged
+    (Vite doesn't type-check): `ShareCardView` renamed its prop without the
+    replacement landing, leaving `show` undefined; `You` and `Artists` used
+    `showScore`/`rankPositions` without destructuring them. Added a
+    multiline-aware scan for context identifiers used but not destructured.
+  - Verified live: three shows all entered as **9** now render **9.9 / 9.6 /
+    9.2**, and an unranked fourth falls back to its entered 7 — the compression
+    the whole mechanic exists to fix, visibly broken open.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with
@@ -302,11 +335,14 @@ Read those before re-deriving anything here.
   or drop the year from that tile.
 - **Migration 0019 applied 2026-07-28** (dashboard SQL editor; the CLI isn't
   linked to the project — `supabase link` needs the db password).
-- **Two score systems now coexist.** The derived `meloScore` shows on the
-  leaderboard and the duel result; the hand-entered 1–10 still drives the
-  receipt cut, the Avg Score tile and ShowDetail. Decide deliberately whether
-  the derived score becomes the app-wide display value — it's the Beli model
-  and it's more honest, but it changes every surface that shows a rating.
+- **The 1–10 input now needs a decision.** The derived score is what's shown
+  everywhere, so the number the user types is a seed and a fallback they never
+  see again. Options: drop it and let the duel be the whole rating (Beli's
+  model); coarsen it to three buckets (loved / fine / not for me) that anchor
+  the initial placement; or keep it as-is and accept that entering 9 then
+  seeing 8.5 is mildly confusing. Recommend the middle one.
+- **Export still writes the raw score** (`lib/exportShows.js`) — correct, since
+  it's a data dump, but a `melo_score` column alongside it would be useful.
 - **Battle Mode still writes ELO** and is now a third ordering nothing reads.
   Strongest option: rebrand it as "settle some ties" and have it write
   `position` (swap two adjacent shows) instead of `elo`.

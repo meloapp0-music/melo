@@ -11,7 +11,7 @@
 // docs/initiatives/2026-07-28-ia-simplification.md
 import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex,
-  remaining, toPositions, rankedOrder, rankOf, meloScore, meloScores, scoreText,
+  remaining, toPositions, rankedOrder, rankOf, meloScore, meloScores, scoreText, displayScore,
 } from '../ranking.js';
 
 let fail = 0;
@@ -137,6 +137,23 @@ console.log('\nMELO SCORE (derived from rank, not typed in)');
   const map = meloScores(shows, { a: 2, b: 1, c: 3 });
   ok('meloScores follows the stored order, not array order',
     map.b === 9.9 && map.a === 9.6 && map.c === 9.2, JSON.stringify(map));
+}
+
+console.log('\nDISPLAY RESOLUTION (what number a surface actually shows)');
+{
+  const shows = [{ id: 'a', score: 9 }, { id: 'b', score: 7 }, { id: 'c', score: 8 }];
+  const map = meloScores(shows, { a: 1, b: 2 });
+  ok('a ranked show shows the DERIVED score', displayScore(shows[0], map) === 9.9);
+  ok('an unranked show falls back to what was typed', displayScore(shows[2], map) === 8);
+  ok('unranked with no score shows nothing', displayScore({ id: 'z' }, map) === null);
+  ok('a zero score is treated as unrated, not as 0.0', displayScore({ id: 'z', score: 0 }, map) === null);
+  // A friend's show: their positions are RLS-private, so the map is empty and
+  // the number must be the one THEY typed.
+  ok('with no map at all, everything falls back', displayScore({ id: 'q', score: 8.5 }, {}) === 8.5);
+  ok('null show does not throw', displayScore(null, map) === null);
+
+  ok('only PLACED shows count toward the denominator',
+    Object.keys(map).length === 2 && map.b === 9.6, JSON.stringify(map));
 }
 
 console.log('\nEDGE CASES');

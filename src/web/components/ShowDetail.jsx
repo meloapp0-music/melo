@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil, festivalKey } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
 import ShowDayInfo from './ShowDayInfo';
@@ -28,7 +29,7 @@ function timeAgoLabel(dateStr) {
 }
 
 export default function ShowDetail({ show, onClose }) {
-  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile, setSelectedUserId , setRecapShow } = useApp();
+  const { deleteShow, buddies, getArtistImage, setCompareShow, setLogEditTarget, updateShow, shows, showToast, profile, setSelectedUserId , setRecapShow, showScore } = useApp();
 
   // Whose show is this? fromRow always populates userId now, so this is
   // a straight match. Non-owners get a view-only detail (no edit /
@@ -304,10 +305,10 @@ export default function ShowDetail({ show, onClose }) {
               </div>
             )}
           </div>
-          {show.score > 0 && (
-            <div className="detail-hero-score">
-              {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
-            </div>
+          {/* The DERIVED score when this show has been ranked, the entered
+              1–10 when it hasn't. See lib/ranking.js meloScore. */}
+          {showScore(show) != null && (
+            <div className="detail-hero-score">{scoreText(showScore(show))}</div>
           )}
           {isOwner && (
             <button
@@ -502,13 +503,9 @@ export default function ShowDetail({ show, onClose }) {
                       formatDate(lastSeen.date),
                     ].filter(Boolean).join(' · ')}
                   </div>
-                  {lastSeen.score > 0 && (
+                  {showScore(lastSeen) != null && (
                     <div className="preshow-score-row">
-                      <span className="preshow-score">
-                        {Number.isInteger(lastSeen.score)
-                          ? lastSeen.score
-                          : lastSeen.score.toFixed(1)}
-                      </span>
+                      <span className="preshow-score">{scoreText(showScore(lastSeen))}</span>
                       <span className="preshow-score-label">
                         your rating that night
                       </span>

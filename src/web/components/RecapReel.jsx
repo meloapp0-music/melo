@@ -21,10 +21,11 @@ import { shareBlob } from '../lib/shareCard';
 const PACE = 1; // scene-duration multiplier; the design exposes 12–26s total
 
 export default function RecapReel({ show, onClose, cutId: initialCut }) {
-  const { getArtistImage, shows, rankPositions } = useApp();
+  const { getArtistImage, shows, rankPositions, meloScoreMap } = useApp();
   // The ranking, receipt and stub-drawer cuts are ABOUT the collection, so the
   // whole library travels with the show into every builder.
-  const ctx = useMemo(() => ({ shows, positions: rankPositions }), [shows, rankPositions]);
+  const ctx = useMemo(() => ({ shows, positions: rankPositions, scoreMap: meloScoreMap }),
+    [shows, rankPositions, meloScoreMap]);
   // No cut passed in means this is the one-tap arrival: melo picks the richest
   // cut this show can actually fill (handoff §3c), rather than defaulting to a
   // media cut that would render half-empty for someone who didn't film.
@@ -112,7 +113,13 @@ export default function RecapReel({ show, onClose, cutId: initialCut }) {
     setPaused(true);
     setExporting(0);
     try {
-      const blob = await exportRecap(show, { onProgress: setExporting });
+      // The exporter rebuilds scenes from the show alone, so hand it one whose
+      // `score` is already the derived number — otherwise the MP4 prints a
+      // rating that appears nowhere else in the app.
+      const blob = await exportRecap(
+        { ...show, score: meloScoreMap?.[show.id] ?? show.score },
+        { onProgress: setExporting },
+      );
       const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
       await shareBlob(blob, `melo-recap-${slug}.mp4`, `${show.artist} — melo recap`, undefined, 'video/mp4');
     } catch (err) {

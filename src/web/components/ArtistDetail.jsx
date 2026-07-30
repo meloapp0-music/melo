@@ -1,11 +1,12 @@
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import { isAttended, formatDate, getArtistGradient } from '../store';
 
 // A page for one artist — every time you saw them live. Opened by tapping an
 // artist on the "Your Lineup" page. Modal like VenueDetail / FestivalDetail;
 // derives its shows live so it reflects deletes/edits.
 export default function ArtistDetail({ artist, onClose, onOpenShow }) {
-  const { shows, getArtistImage } = useApp();
+  const { shows, getArtistImage, showScore } = useApp();
   const name = artist?.name || '';
 
   const members = shows
@@ -16,8 +17,10 @@ export default function ArtistDetail({ artist, onClose, onOpenShow }) {
 
   const dates = members.map((s) => s.date).filter(Boolean).sort();
   const firstYear = dates[0]?.slice(0, 4) || '';
-  const rated = members.filter((s) => s.score > 0);
-  const avg = rated.length ? rated.reduce((a, s) => a + s.score, 0) / rated.length : 0;
+  // Averaged over the DERIVED scores where they exist, so this agrees with the
+  // number on each row below it.
+  const rated = members.map((s) => showScore(s)).filter((v) => v != null);
+  const avg = rated.length ? rated.reduce((a, v) => a + v, 0) / rated.length : 0;
   const cities = new Set(members.map((s) => s.city).filter(Boolean)).size;
 
   const img = getArtistImage(name);
@@ -67,9 +70,9 @@ export default function ArtistDetail({ artist, onClose, onOpenShow }) {
                       {formatDate(s.date)}{s.city ? ` · ${s.city}` : ''}
                     </div>
                   </div>
-                  {s.score > 0 && (
+                  {showScore(s) != null && (
                     <div className="show-list-score">
-                      {Number.isInteger(s.score) ? s.score : s.score.toFixed(1)}
+                      {scoreText(showScore(s))}
                     </div>
                   )}
                 </div>

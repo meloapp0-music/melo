@@ -464,6 +464,10 @@ export default function FriendsFeed() {
                 <div className="feedv2-hero-overlay" />
                 {attended && show.score > 0 && (
                   <div className="feedv2-score">
+                    {/* Deliberately the RAW entered score, not the derived one. `rankings`
+                    is RLS self-only, so a friend's order is invisible to us by
+                    design — showing our own scale on their show would be wrong,
+                    and we couldn't compute theirs anyway. */}
                     {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
                   </div>
                 )}

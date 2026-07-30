@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import {
   getArtistGradient, formatDate, daysUntil,
@@ -22,7 +23,7 @@ function upcomingLabel(dateStr) {
 }
 
 export default function MyShows() {
-  const { shows: allShows, setSelectedShow, getArtistImage, setSelectedFestival } = useApp();
+  const { shows: allShows, setSelectedShow, getArtistImage, setSelectedFestival, showScore } = useApp();
   // Scoped when arriving from a Stats year tile. Named `shows` so the rest of
   // the page (tab counts, filters, grouping) needs no changes.
   const { scoped: shows } = useYearScope(allShows);
@@ -103,7 +104,7 @@ export default function MyShows() {
     if (activeTab !== SHOW_STATUS.ATTENDED) {
       return filtered.map((s) => ({ isFestival: false, key: s.id, show: s, date: s.date }));
     }
-    let items = groupIntoOutings(filtered).sort((a, b) => new Date(b.date) - new Date(a.date));
+    let items = groupIntoOutings(filtered, showScore).sort((a, b) => new Date(b.date) - new Date(a.date));
     if (festivalsOnly) items = items.filter((o) => o.isFestival);
     return items;
   }, [filtered, activeTab, festivalsOnly]);
@@ -259,9 +260,7 @@ export default function MyShows() {
                   🎪 {item.artistCount} acts
                 </div>
                 {item.score > 0 && (
-                  <div className="show-poster-score">
-                    {Number.isInteger(item.score) ? item.score : item.score.toFixed(1)}
-                  </div>
+                  <div className="show-poster-score">{scoreText(item.score)}</div>
                 )}
                 <div className="show-poster-info">
                   <div className="show-poster-artist">{item.festival}</div>
@@ -285,10 +284,8 @@ export default function MyShows() {
                 {item.show.isFavorite && (
                   <div className="show-poster-fav" aria-hidden="true">★</div>
                 )}
-                {isAttended(item.show) && item.show.score > 0 && (
-                  <div className="show-poster-score">
-                    {Number.isInteger(item.show.score) ? item.show.score : item.show.score.toFixed(1)}
-                  </div>
+                {isAttended(item.show) && showScore(item.show) != null && (
+                  <div className="show-poster-score">{scoreText(showScore(item.show))}</div>
                 )}
                 <div className="show-poster-info">
                   <div className="show-poster-artist">{item.show.artist}</div>
@@ -315,9 +312,7 @@ export default function MyShows() {
                   </div>
                 </div>
                 {item.score > 0 && (
-                  <div className="show-list-score">
-                    {Number.isInteger(item.score) ? item.score : item.score.toFixed(1)}
-                  </div>
+                  <div className="show-list-score">{scoreText(item.score)}</div>
                 )}
               </div>
             ) : (
@@ -341,10 +336,8 @@ export default function MyShows() {
                     )}
                   </div>
                 </div>
-                {isAttended(item.show) && item.show.score > 0 && (
-                  <div className="show-list-score">
-                    {Number.isInteger(item.show.score) ? item.show.score : item.show.score.toFixed(1)}
-                  </div>
+                {isAttended(item.show) && showScore(item.show) != null && (
+                  <div className="show-list-score">{scoreText(showScore(item.show))}</div>
                 )}
                 {/* Tickets shortcut for Wishlist + Going — opens TM search
                     in a new tab. stopPropagation so the row tap (open detail)

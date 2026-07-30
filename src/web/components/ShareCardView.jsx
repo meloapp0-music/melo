@@ -1,7 +1,8 @@
 // Share-view shell — the full-screen "share your show" experience.
 // Auto-picks a style, scales the fixed 1080 canvas to fit, floats a dock clear of
 // the card's QR, and exports the real card to a PNG for share-to-story.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useApp } from '../App';
 import { shareBlob, renderShowCard } from '../lib/shareCard';
 import { renderStyledCard } from '../lib/shareCardCanvas';
 import { ensureShareToken } from '../lib/db/shows';
@@ -43,7 +44,16 @@ function autoPick(show) {
     : { style: 'vibe', photos: false, theme: 'vibe' };
 }
 
-export default function ShareCardView({ show, handle, onShared, onClose, firstRun = false }) {
+export default function ShareCardView({ show: rawShow, handle, onShared, onClose, firstRun = false }) {
+  // Substitute the DERIVED score once, here. Every renderer — five React styles
+  // plus the two canvas paths — reads `show.score`, so doing it at the top of
+  // the pipeline covers all seven without touching any of them.
+  const { showScore } = useApp();
+  const show = useMemo(
+    () => ({ ...rawShow, score: showScore?.(rawShow) ?? rawShow?.score }),
+    [rawShow, showScore]
+  );
+
   const pick = autoPick(show);
   const [style, setStyle] = useState(pick.style);
   const [format, setFormat] = useState('9x16');

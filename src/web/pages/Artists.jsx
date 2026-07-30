@@ -13,7 +13,7 @@ const FEST_CARD_MIN = 4;
 // "Your Rooms". Artist photos (Deezer) make it a trophy wall; repeats become a
 // loyalty badge. A big festival log consolidates into one tappable festival tile.
 export default function Artists() {
-  const { shows, navigate, getArtistImage, prefetchImages, setSelectedArtist, setSelectedFestival } = useApp();
+  const { shows, navigate, getArtistImage, prefetchImages, setSelectedArtist, setSelectedFestival, showScore } = useApp();
   const [groupBy, setGroupBy] = useState('seen'); // 'seen' | 'genre' | 'recent'
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
@@ -34,7 +34,7 @@ export default function Artists() {
     });
     return [...map.values()].map((a) => {
       const dates = a.shows.map((s) => s.date).filter(Boolean).sort();
-      const scored = a.shows.filter((s) => s.score > 0);
+      const scored = a.shows.map((s) => showScore(s)).filter((v) => v > 0);
       return {
         name: a.name,
         shows: a.shows,
@@ -42,7 +42,7 @@ export default function Artists() {
         genre: Object.entries(a.genres).sort((x, y) => y[1] - x[1])[0]?.[0] || '',
         firstYear: dates[0]?.slice(0, 4) || '',
         lastDate: dates[dates.length - 1] || '',
-        avg: scored.length ? scored.reduce((t, s) => t + s.score, 0) / scored.length : 0,
+        avg: scored.length ? scored.reduce((t, v) => t + v, 0) / scored.length : 0,
       };
     }).sort((x, y) =>
       y.count - x.count ||
@@ -56,7 +56,7 @@ export default function Artists() {
   // artist stays an individual card only if they were seen somewhere OTHER than
   // a big festival (a standalone show, or a small festival) — so a headliner you
   // also caught on their own tour never disappears into a festival tile.
-  const outings = useMemo(() => groupIntoOutings(attended), [attended]);
+  const outings = useMemo(() => groupIntoOutings(attended, showScore), [attended, showScore]);
   const bigFests = useMemo(
     () => outings.filter((o) => o.isFestival && new Set(o.shows.map((s) => s.artist)).size >= FEST_CARD_MIN),
     [outings]

@@ -128,12 +128,30 @@ export function meloScore(r, n) {
   return Math.round((TOP - spread * t) * 10) / 10;
 }
 
-/** `{ showId: score }` for a whole library. */
+/**
+ * `{ showId: score }` for every PLACED show.
+ *
+ * Only placed shows count toward the denominator — an unranked back catalogue
+ * shouldn't drag the scale of the shows you have ranked. Unplaced shows are
+ * simply absent from the map; callers fall back to the entered score.
+ */
 export function meloScores(shows, positions = {}) {
-  const order = rankedOrder(shows, positions);
-  const n = order.length;
-  return Object.fromEntries(order.map((s, i) => [s.id, meloScore(i + 1, n)]));
+  const placed = (shows || []).filter((s) => positions[s.id]);
+  placed.sort((a, b) => positions[a.id] - positions[b.id]);
+  const n = placed.length;
+  return Object.fromEntries(placed.map((s, i) => [s.id, meloScore(i + 1, n)]));
 }
+
+/**
+ * The number to SHOW for a show: the derived score when it's been ranked, the
+ * hand-entered one when it hasn't, null when there's neither.
+ *
+ * Only ever valid for the signed-in user's own shows. The `rankings` table is
+ * RLS self-only, so a friend's positions are — correctly — invisible, and their
+ * shows must keep rendering the score they typed.
+ */
+export const displayScore = (show, scoreMap = {}) =>
+  scoreMap[show?.id] ?? (show?.score > 0 ? show.score : null);
 
 /** Display helper: always one decimal place ("9.0", not "9"). */
 export const scoreText = (v) => (v == null ? '—' : Number(v).toFixed(1));

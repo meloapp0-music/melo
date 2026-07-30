@@ -5,6 +5,7 @@ import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
 import { getPositions } from './lib/db/rankings';
+import { meloScores, displayScore } from './lib/ranking';
 import { registerForPush, onPushTap } from './lib/push';
 import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
@@ -651,6 +652,15 @@ export default function App() {
   const recapShow = findOverlay(overlays, 'recap')?.props.show || null;
   const selectedUserId = findOverlay(overlays, 'user')?.props.userId || null;
 
+  // The derived score for every ranked show, recomputed whenever the order
+  // changes. `showScore(show)` is the ONE place the rest of the app asks "what
+  // number do I put on this?" — derived when ranked, the entered 1–10 when not.
+  //
+  // Own shows only. `rankings` is RLS self-only, so a friend's order is
+  // invisible by design and their shows must keep showing what they typed.
+  const meloScoreMap = useMemo(() => meloScores(shows, rankPositions), [shows, rankPositions]);
+  const showScore = useCallback((sh) => displayScore(sh, meloScoreMap), [meloScoreMap]);
+
   // Is the screen free for an unprompted moment card?
   const quiet = overlays.length === 0 && !pushNav;
 
@@ -696,6 +706,8 @@ export default function App() {
 
     rankPositions,
     setRankPositions,
+    showScore,
+    meloScoreMap,
     subPage,
     navigate,
     statsYear,

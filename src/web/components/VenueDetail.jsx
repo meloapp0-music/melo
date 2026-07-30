@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import { isAttended, formatDate, getArtistGradient, latestShowPhoto, festivalKey } from '../store';
 
 // A page for one venue — every show you've seen there. Opened by tapping a
 // venue anywhere (Stats' Top Venues, the Venues list). Modal like ShowDetail /
 // FestivalDetail; derives its shows live so it reflects deletes/edits.
 export default function VenueDetail({ venue, onClose, onOpenShow }) {
-  const { shows, getArtistImage, getVenueImage, prefetchVenueImages } = useApp();
+  const { shows, getArtistImage, getVenueImage, prefetchVenueImages, showScore } = useApp();
   const name = venue?.name || '';
 
   // A venue is (name, city) — NOT name alone. Venues.jsx keys its cards by
@@ -32,8 +33,8 @@ export default function VenueDetail({ venue, onClose, onOpenShow }) {
   }, [name, city, prefetchVenueImages]);
 
   if (!name || members.length === 0) return null;
-  const rated = members.filter((s) => s.score > 0);
-  const avg = rated.length ? rated.reduce((a, s) => a + s.score, 0) / rated.length : 0;
+  const rated = members.map((s) => showScore(s)).filter((v) => v != null);
+  const avg = rated.length ? rated.reduce((a, v) => a + v, 0) / rated.length : 0;
   const artistCount = new Set(members.map((s) => s.artist)).size;
 
   const thumbStyle = (artist) => {
@@ -90,9 +91,9 @@ export default function VenueDetail({ venue, onClose, onOpenShow }) {
                     <div className="show-list-artist">{s.artist}</div>
                     <div className="show-list-meta">{formatDate(s.date)}</div>
                   </div>
-                  {s.score > 0 && (
+                  {showScore(s) != null && (
                     <div className="show-list-score">
-                      {Number.isInteger(s.score) ? s.score : s.score.toFixed(1)}
+                      {scoreText(showScore(s))}
                     </div>
                   )}
                 </div>

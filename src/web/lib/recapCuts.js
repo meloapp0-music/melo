@@ -22,7 +22,7 @@
 
 import { formatDate, getArtistGradient, getYear, isAttended } from '../store';
 import { buildScenes as buildBeatDrop, scoreVerdict } from './recap';
-import { rankedOrder } from './ranking';
+import { rankedOrder, displayScore } from './ranking';
 
 const scoreLabel = (s) => (Number.isInteger(s) ? String(s) : Number(s).toFixed(1));
 const ORDINAL = ['', '1ST', '2ND', '3RD'];
@@ -48,8 +48,10 @@ function bits(show, ctx = {}) {
     venue: show.venue || '',
     city: show.city || '',
     where: [show.venue, show.city].filter(Boolean).join(' · '),
-    verdict: scoreVerdict(show.score),
-    score: show.score,
+    verdict: scoreVerdict(displayScore(show, ctx.scoreMap || {})),
+    // The DERIVED score where the show has been ranked. The receipt printing a
+    // number the app no longer shows anywhere else would be its own small lie.
+    score: displayScore(show, ctx.scoreMap || {}),
     all: (ctx.shows || []).filter(isAttended),
   };
 }

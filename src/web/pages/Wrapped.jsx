@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import { getArtistGradient, formatDate, VIBES, isAttended, wrappedLabel } from '../store';
 import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
 import KineticVibe from '../components/KineticVibe';
@@ -101,7 +102,7 @@ function SlideBg({ image, overlay, fallbackArtist, key }) {
 }
 
 export default function Wrapped({ year, onClose }) {
-  const { shows, getArtistImage, profile } = useApp();
+  const { shows, getArtistImage, profile, showScore } = useApp();
   const [slide, setSlide] = useState(0);
   const [entered, setEntered] = useState(false);
   const touchRef = useRef({ startX: 0, startY: 0 });
@@ -193,16 +194,18 @@ export default function Wrapped({ year, onClose }) {
     // user has actually picked-as-better in Compare wins), then date
     // descending so a more recent 10/10 wins over an older 10/10
     // when neither has been battled.
+    // Ranked order first — that's the ordering the user actually built.
+    const sc = (x) => showScore(x) ?? (x.score ?? 0);
     const highestRated = [...yearShows]
-      .filter((s) => s.score != null)
+      .filter((s) => sc(s) != null)
       .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
+        if (sc(b) !== sc(a)) return sc(b) - sc(a);
         if ((b.battleWins || 0) !== (a.battleWins || 0)) {
           return (b.battleWins || 0) - (a.battleWins || 0);
         }
         return new Date(b.date) - new Date(a.date);
       })[0];
-    const avgScore = yearShows.reduce((s, x) => s + (x.score || 0), 0) / yearShows.length;
+    const avgScore = yearShows.reduce((s, x) => s + (sc(x) || 0), 0) / yearShows.length;
     const totalSongs = yearShows.reduce((s, x) => s + (x.setlist?.length || 0), 0);
 
     // Pick a few artist photos for the personality collage.
@@ -408,9 +411,9 @@ export default function Wrapped({ year, onClose }) {
                 <div className="wrapped-score-huge wrapped-score-shimmer wrapped-stagger" style={{ animationDelay: '0.25s' }}>
                   {slide === 3 && (
                     <CountUp
-                      end={data.highestRated.score}
+                      end={showScore(data.highestRated) ?? data.highestRated.score}
                       duration={1300}
-                      decimals={Number.isInteger(data.highestRated.score) ? 0 : 1}
+                      decimals={1}
                     />
                   )}
                 </div>
@@ -709,7 +712,7 @@ export default function Wrapped({ year, onClose }) {
               <p>Top Artist: <strong>{data.topArtist}</strong></p>
               <p>Top Venue: <strong>{data.topVenue}</strong></p>
               {data.highestRated && (
-                <p>Best Show: <strong>{data.highestRated.artist}</strong> ({data.highestRated.score})</p>
+                <p>Best Show: <strong>{data.highestRated.artist}</strong> ({scoreText(showScore(data.highestRated) ?? data.highestRated.score)})</p>
               )}
             </div>
             <p className="wrapped-summary-personality wrapped-stagger" style={{ animationDelay: '0.85s' }}>

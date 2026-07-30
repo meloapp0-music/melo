@@ -42,8 +42,8 @@ const WRAPPED_CARD_GRADIENTS = [
 
 export default function You() {
   const {
-    shows, navigate, getArtistImage, setSelectedVenue, setSelectedArtist, setSelectedShow,
-    profile, session, updateProfile, setWrappedYear,
+    shows, navigate, getArtistImage, setSelectedVenue, setSelectedArtist, setSelectedShow, showScore,
+    rankPositions, profile, session, updateProfile, setWrappedYear,
   } = useApp();
 
   // ---- Avatar (from Profile) ----
@@ -87,7 +87,7 @@ export default function You() {
     () => (activeYear === 'all' ? attended : attended.filter((sh) => getYear(sh.date) === activeYear)),
     [attended, activeYear]
   );
-  const outings = useMemo(() => groupIntoOutings(scoped), [scoped]);
+  const outings = useMemo(() => groupIntoOutings(scoped, showScore), [scoped, showScore]);
 
   // Streak: all-time uses the full history (current + longest); a year shows
   // only the longest consecutive-month run WITHIN that year. calculateStreak's
@@ -116,7 +116,7 @@ export default function You() {
     let sum = 0;
     let n = 0;
     outings.forEach((o) => {
-      const sc = o.isFestival ? o.score : (o.show?.score || 0);
+      const sc = o.score || 0; // derived for both branches now (see groupIntoOutings)
       if (sc > 0) { sum += sc; n += 1; }
     });
     return {
@@ -144,11 +144,11 @@ export default function You() {
   const milestones = useMemo(() => [
     { icon: '🎤', title: 'First Show', desc: 'Attended your first concert', unlocked: attended.length >= 1 },
     { icon: '🔥', title: 'On Fire', desc: '5 shows attended', unlocked: attended.length >= 5 },
-    { icon: '⭐', title: 'Perfect 10', desc: 'Gave a show a perfect score', unlocked: attended.some((sh) => sh.score >= 10) },
+    { icon: '⭐', title: 'Number One', desc: 'Ranked a show as your all-time best', unlocked: Object.values(rankPositions || {}).includes(1) },
     { icon: '🌍', title: 'Explorer', desc: 'Visited 3+ cities', unlocked: new Set(attended.map((sh) => sh.city)).size >= 3 },
     { icon: '👯', title: 'Social Butterfly', desc: 'Went with 3+ different buddies', unlocked: new Set(attended.flatMap((sh) => sh.buddies || [])).size >= 3 },
     { icon: '📝', title: 'Setlist Nerd', desc: 'Logged 50+ songs', unlocked: attended.reduce((sum, sh) => sum + (sh.setlist?.length || 0), 0) >= 50 },
-  ], [attended]);
+  ], [attended, rankPositions]);
 
   // Scoped — the timeline is already year-grouped, so a year filter reads as
   // "that chapter" rather than as a truncation.

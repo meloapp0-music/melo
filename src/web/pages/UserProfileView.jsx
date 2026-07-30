@@ -183,6 +183,8 @@ export default function UserProfileView({ userId, onClose }) {
                       </div>
                       {isAttended(s) && s.score > 0 && (
                         <div className="show-list-score">
+                          {/* RAW score on purpose — another user's ranking is
+                              RLS-private, so the derived scale isn't ours to apply. */}
                           {Number.isInteger(s.score) ? s.score : s.score.toFixed(1)}
                         </div>
                       )}

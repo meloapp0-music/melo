@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../App';
+import { scoreText } from '../lib/ranking';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 
 export default function ShowComparison({ showA, onClose }) {
-  const { shows, getArtistImage, updateShow } = useApp();
+  const { shows, getArtistImage, updateShow, showScore } = useApp();
   const [showB, setShowB] = useState(null);
   const [picking, setPicking] = useState(true);
   // One battle increment per (showA, showB) pair, ever — opening
@@ -22,7 +23,7 @@ export default function ShowComparison({ showA, onClose }) {
   };
 
   const categories = showB ? [
-    { label: 'Score', a: showA.score || 0, b: showB.score || 0, fmt: (v) => Number.isInteger(v) ? v : v.toFixed(1) },
+    { label: 'Score', a: showScore(showA) || 0, b: showScore(showB) || 0, fmt: (v) => scoreText(v) },
     { label: 'Setlist Length', a: showA.setlist?.length || 0, b: showB.setlist?.length || 0, fmt: (v) => `${v} songs` },
     { label: 'Friends', a: showA.buddies?.length || 0, b: showB.buddies?.length || 0, fmt: (v) => v },
     { label: 'Vibes', a: showA.vibes?.length || 0, b: showB.vibes?.length || 0, fmt: (v) => v },
@@ -82,7 +83,7 @@ export default function ShowComparison({ showA, onClose }) {
                     <div className="compare-picker-meta">{s.venue} · {formatDate(s.date)}</div>
                   </div>
                   <div className="compare-picker-score">
-                    {s.score > 0 ? (Number.isInteger(s.score) ? s.score : s.score.toFixed(1)) : '—'}
+                    {scoreText(showScore(s))}
                   </div>
                 </div>
               ))}
