@@ -828,7 +828,7 @@ export default function App() {
               {o.type === 'user' && <UserProfileView userId={p.userId} onClose={close} />}
               {o.type === 'wrapped' && <Wrapped year={p.year} onClose={close} />}
               {o.type === 'compare' && <ShowComparison showA={p.showA} onClose={close} />}
-              {o.type === 'rank' && <RankDuel show={p.show} onClose={close} />}
+              {o.type === 'rank' && <RankDuel show={p.show} queue={p.queue} onClose={close} />}
             </Fragment>
           );
         })}

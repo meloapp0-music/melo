@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 import { getRankings, saveRankings, getPositions } from '../lib/db/rankings';
-import { rankedOrder } from '../lib/ranking';
+import { rankedOrder, meloScore, scoreText } from '../lib/ranking';
 
 function getRandomPair(shows, seen) {
   if (shows.length < 2) return null;
@@ -17,7 +17,7 @@ function getRandomPair(shows, seen) {
 }
 
 export default function Rankings() {
-  const { shows, navigate, setSelectedShow, getArtistImage, session } = useApp();
+  const { shows, navigate, setSelectedShow, getArtistImage, session, openOverlay } = useApp();
   const userId = session?.user?.id;
   const attended = shows.filter(isAttended);
   const [elo, setElo] = useState({});
@@ -98,8 +98,31 @@ export default function Rankings() {
       : { background: getArtistGradient(artist) };
   };
 
+  // Shows that have never been placed. The log-time duel only ever sees NEW
+  // shows, so without this a library logged before ranking existed stays
+  // ordered by the compressed 1–10 score this was meant to replace.
+  const unplaced = attended.filter((s) => !positions[s.id]);
+
   return (
     <div className="page page-top">
+      {unplaced.length > 0 && (
+        <div className="backlog-card">
+          <div className="backlog-head">
+            {hasPlacements ? 'Finish your ranking' : 'Rank your shows'}
+          </div>
+          <div className="backlog-sub">
+            {unplaced.length} {unplaced.length === 1 ? 'show has' : 'shows have'} never been
+            placed. A few taps each and every one gets a real score.
+          </div>
+          <button
+            className="backlog-cta"
+            onClick={() => openOverlay('rank', { queue: unplaced.slice(0, 10) })}
+          >
+            {unplaced.length > 10 ? 'Rank the next 10' : `Rank ${unplaced.length === 1 ? 'it' : 'them'}`} →
+          </button>
+        </div>
+      )}
+
       {/* Battle Section */}
       {attended.length >= 2 && pair && (
         <div className="rank-battle">
@@ -165,7 +188,9 @@ export default function Rankings() {
                 </div>
               </div>
               <div className="rank-elo">
-                {hasPlacements && positions[show.id] ? `#${positions[show.id]}` : show.elo}
+                {positions[show.id]
+                  ? scoreText(meloScore(positions[show.id], Object.keys(positions).length))
+                  : <span className="rank-unplaced">–</span>}
               </div>
             </div>
           ))}

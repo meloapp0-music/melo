@@ -258,18 +258,61 @@ Read those before re-deriving anything here.
     four result-copy paths checked — #1, mid, last, and the "Better than Big
     Thief" displaced-show line.
 
+- 2026-07-28: **Edition A, part 2 — the back-catalogue ranker and the derived
+  score.**
+  - **The back catalogue.** The log-time duel only ever places NEW shows, so a
+    library logged before ranking existed stayed ordered by the compressed 1–10
+    score this was meant to replace. `RankDuel` now takes an optional `queue`
+    and places shows back to back, re-reading positions between rounds so each
+    one searches against the updated order. Entry point is a card on
+    `Rankings.jsx` — "N shows have never been placed" — batching ten at a time.
+  - **Correctness fix found while building it.** The duel was searching against
+    `rankedOrder(all shows)`, which interleaves *unplaced* shows by score.
+    Binary search requires a genuinely sorted list; feeding it a score-sorted
+    tail meant it could confidently return the wrong slot. Now only shows that
+    already hold a position are comparison candidates, so the ranked set builds
+    up from nothing: first show is #1 unopposed, second takes one question.
+  - **The melo score** (`meloScore` in lib/ranking.js) — a decimal DERIVED from
+    rank rather than typed in, which is the actual Beli idea. The scale is
+    relative to your own library: 9.4 means "near the top of what I've seen",
+    not a claim about the show in the abstract, so two users' numbers aren't
+    comparable by design.
+    - The spread GROWS with the library — 3 shows → 9.9 / 9.6 / 9.2, not
+      9.9 / 8.2 / 6.5. Calling your third-best night a 6.5 would be a lie: you
+      know it's third, you don't know it's bad. The range opens to 9.9–6.5 once
+      the collection has ~11 shows and earns the resolution.
+    - The leaderboard shows it; unplaced shows show "–" rather than a fake
+      number.
+  - **NOT done, deliberately:** the hand-entered 1–10 still exists and still
+    drives the receipt cut, the Avg Score tile and `ShowDetail`. Two numbers now
+    coexist. Making the derived score the app-wide display value is a real
+    product decision with a wide blast radius — it should be taken on purpose,
+    not smuggled in with a mechanic change.
+  - Verified: `ranking.test.mjs` grew 9 score assertions (monotonic descent,
+    range bounds, small-library tightness, one-decimal formatting, order
+    independence). Then drove the queue in a browser against five unplaced
+    shows with a deterministic comparator — it fully ordered them in **six
+    questions** and the final order matched the oracle exactly.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with
   `{ year: navYear }` but `Rankings.jsx` never calls `useYearScope`, so a
   year-scoped Avg Score tile opens an all-time leaderboard. Fix during Phase 3
   or drop the year from that tile.
-- **Migration 0019 is not applied yet** — run it in the Supabase SQL editor
-  before this ships, or `savePositions` will fail on the missing column (the
-  duel catches it and toasts, so nothing breaks, but no ranking persists).
-- **Battle Mode still writes ELO** and is now a second, weaker ordering. Once
-  enough libraries have positions, consider retiring it or rebranding it as a
-  "settle some ties" mode that writes positions instead.
+- **Migration 0019 applied 2026-07-28** (dashboard SQL editor; the CLI isn't
+  linked to the project — `supabase link` needs the db password).
+- **Two score systems now coexist.** The derived `meloScore` shows on the
+  leaderboard and the duel result; the hand-entered 1–10 still drives the
+  receipt cut, the Avg Score tile and ShowDetail. Decide deliberately whether
+  the derived score becomes the app-wide display value — it's the Beli model
+  and it's more honest, but it changes every surface that shows a rating.
+- **Battle Mode still writes ELO** and is now a third ordering nothing reads.
+  Strongest option: rebrand it as "settle some ties" and have it write
+  `position` (swap two adjacent shows) instead of `elo`.
+- **Re-ranking isn't possible yet.** A show placed once can never be moved
+  without re-logging it. A "move this up/down" affordance on ShowDetail, or the
+  Battle Mode rebrand above, would close that.
 - **No hardware-back / `popstate` handling exists anywhere in `src/web`.** The
   Phase 2 overlay stack makes a real back handler trivial
   (`dispatch({type:'pop'})`) — worth doing as a follow-up.

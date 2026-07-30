@@ -11,7 +11,7 @@
 // docs/initiatives/2026-07-28-ia-simplification.md
 import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex,
-  remaining, toPositions, rankedOrder, rankOf,
+  remaining, toPositions, rankedOrder, rankOf, meloScore, meloScores, scoreText,
 } from '../ranking.js';
 
 let fail = 0;
@@ -100,6 +100,43 @@ console.log('\nPOSITIONS + ORDER');
   ok('rankOf returns 0 for a stranger', rankOf(shows, pos, 'zz') === 0);
   ok('no positions at all → pure score order',
     rankedOrder(shows, {}).map((s) => s.id).join() === 'b,c,a,d');
+}
+
+console.log('\nMELO SCORE (derived from rank, not typed in)');
+{
+  ok('#1 of many is the top of the scale', meloScore(1, 40) === 9.9);
+  ok('a lone show sits high but not at the top', meloScore(1, 1) === 9.5);
+  ok('score falls monotonically down the list', (() => {
+    for (const n of [2, 3, 7, 20, 60, 200]) {
+      let prev = Infinity;
+      for (let r = 1; r <= n; r++) {
+        const v = meloScore(r, n);
+        if (v > prev) return false;
+        prev = v;
+      }
+    }
+    return true;
+  })());
+  ok('never exceeds 9.9 or drops below 6.5', (() => {
+    for (const n of [1, 2, 5, 40, 500]) {
+      for (let r = 1; r <= n; r++) {
+        const v = meloScore(r, n);
+        if (v > 9.9 || v < 6.5) return false;
+      }
+    }
+    return true;
+  })());
+  // The point of the growing spread: three shows in, you know your third-best
+  // is third — you do NOT know it was a bad night.
+  ok('a small library stays tight (3 shows → worst is 9.2, not 6.5)', meloScore(3, 3) === 9.2);
+  ok('a big library uses the full range', meloScore(50, 50) === 6.5);
+  ok('always one decimal place', scoreText(9) === '9.0' && scoreText(8.44) === '8.4');
+  ok('null in, null out', meloScore(0, 10) === null && meloScore(3, 0) === null && scoreText(null) === '—');
+
+  const shows = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  const map = meloScores(shows, { a: 2, b: 1, c: 3 });
+  ok('meloScores follows the stored order, not array order',
+    map.b === 9.9 && map.a === 9.6 && map.c === 9.2, JSON.stringify(map));
 }
 
 console.log('\nEDGE CASES');

@@ -9,42 +9,59 @@
 // them place a show exactly. The algorithm is in lib/ranking.js; this is only
 // the surface. docs/initiatives/2026-07-28-ia-simplification.md
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 import { savePositions } from '../lib/db/rankings';
 import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex, remaining,
-  rankedOrder, toPositions,
+  rankedOrder, toPositions, meloScore, scoreText,
 } from '../lib/ranking';
 import { track } from '../lib/analytics';
 
-export default function RankDuel({ show, onClose }) {
+/**
+ * `queue` places several shows back to back — that's the back-catalogue ranker.
+ * `show` is the single-show case (straight after a log). Either works.
+ */
+export default function RankDuel({ show, queue, onClose }) {
   const { shows, getArtistImage, session, showToast, rankPositions, setRankPositions } = useApp();
   const userId = session?.user?.id || null;
 
+  const line = useMemo(() => (queue?.length ? queue : [show]).filter(Boolean), [queue, show]);
+  const [round, setRound] = useState(0);
+  const current = line[round] || null;
+
   const [state, setState] = useState(null);
-  const [done, setDone] = useState(null); // { rank, total } once placed
+  const [done, setDone] = useState(null); // { rank, total, displaced } once placed
   const [saving, setSaving] = useState(false);
 
-  // The library this show is being placed into — everything else attended.
-  const others = useMemo(
-    () => (shows || []).filter((s) => isAttended(s) && s.id !== show?.id),
-    [shows, show?.id]
-  );
+  // Live positions. Placing show #2 of a queue has to see where show #1 landed,
+  // so this is re-read each round rather than captured once.
+  const posRef = useRef(rankPositions || {});
 
-  // Positions are already in app state (loaded with everything else), so the
-  // duel opens instantly instead of showing a spinner at the exact moment the
-  // user is being asked to make a snap judgement.
+  // ONLY shows that already have a position are comparison candidates.
+  //
+  // This matters for correctness, not tidiness: binary search requires a sorted
+  // list. Unplaced shows have no true order — interleaving them by score would
+  // hand the search an unsorted array and it would confidently return the wrong
+  // slot. So the ranked set builds up from nothing: the first show placed is #1
+  // unopposed, the second takes one question, and so on.
+  const byId = useMemo(() => Object.fromEntries((shows || []).map((s) => [s.id, s])), [shows]);
+
   useEffect(() => {
-    const ordered = rankedOrder(others, rankPositions || {}).map((s) => s.id);
-    setState(startPlacement(ordered, show.id));
-    track('rank_duel_started', { library_size: ordered.length });
-    // Deliberately once per mount: re-running mid-placement would restart it.
+    if (!current) return;
+    const placedOnly = (shows || []).filter(
+      (s) => isAttended(s) && s.id !== current.id && posRef.current[s.id]
+    );
+    const ordered = rankedOrder(placedOnly, posRef.current).map((s) => s.id);
+    setState(startPlacement(ordered, current.id));
+    setDone(null);
+    track('rank_duel_started', { library_size: ordered.length, queued: line.length });
+    // Keyed on `round` only — re-running mid-placement would restart the search
+    // under the user's fingers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [round]);
 
-  const byId = useMemo(() => Object.fromEntries(others.map((s) => [s.id, s])), [others]);
   const opponentId = state ? nextOpponent(state) : null;
   const opponent = opponentId ? byId[opponentId] : null;
 
@@ -57,11 +74,19 @@ export default function RankDuel({ show, onClose }) {
     const rank = placementIndex(s) + 1;
     // The show this one just pushed down — i.e. the best night it beat.
     const displacedId = ordered[rank]; // rank is 1-based, so this is the next one down
-    setDone({ rank, total: ordered.length, displaced: byId[displacedId]?.artist || '' });
+    setDone({
+      rank,
+      total: ordered.length,
+      displaced: byId[displacedId]?.artist || '',
+      score: meloScore(rank, ordered.length),
+    });
     track('rank_duel_finished', { questions: s.asked, rank, total: ordered.length, early: !isPlaced(s) });
     // Update app state immediately so the leaderboard, the receipt and the
-    // "Where it ranks" recap cut are correct before the round-trip lands.
-    setRankPositions?.(toPositions(ordered));
+    // "Where it ranks" recap cut are correct before the round-trip lands — and
+    // so the NEXT show in the queue searches against the updated order.
+    const nextPositions = toPositions(ordered);
+    posRef.current = nextPositions;
+    setRankPositions?.(nextPositions);
     try {
       await savePositions(ordered, userId);
     } catch (err) {
@@ -86,15 +111,17 @@ export default function RankDuel({ show, onClose }) {
       : { background: getArtistGradient(s?.artist || '') };
   };
 
-  if (!show) return null;
+  if (!current) return null;
+
+  const more = line.length - 1 - round; // shows still queued behind this one
 
   // ---- Result ----
   if (done) {
-    // The line has to earn its place under a 108px numeral — repeating "#4 of
-    // 8" underneath it says nothing. Name the show it just displaced instead:
-    // that's the concrete fact the user doesn't already have on screen.
+    // The line has to earn its place under a huge numeral — repeating "#4 of 8"
+    // underneath says nothing. Name the show it just displaced instead: that's
+    // the concrete fact the user doesn't already have on screen.
     const beat = done.displaced;
-    const line = done.rank === 1
+    const blurb = done.rank === 1
       ? 'A new number one. Nothing you’ve seen beats it.'
       : beat
         ? `Better than ${beat}${done.rank <= 3 ? ' — top three material.' : '.'}`
@@ -104,10 +131,23 @@ export default function RankDuel({ show, onClose }) {
     return (
       <div className="duel-overlay">
         <div className="duel-result">
-          <div className="duel-result-rank">#{done.rank}</div>
-          <div className="duel-result-of">of {done.total} shows</div>
-          <div className="duel-result-line">{line}</div>
-          <button className="duel-done" onClick={onClose}>Done</button>
+          {/* The score is the headline now — it's the number that shows up
+              everywhere else — with the rank as its provenance underneath. */}
+          <div className="duel-result-score">{scoreText(done.score)}</div>
+          <div className="duel-result-of">#{done.rank} of {done.total} shows</div>
+          <div className="duel-result-line">{blurb}</div>
+          {more > 0 ? (
+            <>
+              <button className="duel-done" onClick={() => setRound((r) => r + 1)}>
+                Next show →
+              </button>
+              <button className="duel-enough" onClick={onClose}>
+                {more} left — finish later
+              </button>
+            </>
+          ) : (
+            <button className="duel-done" onClick={onClose}>Done</button>
+          )}
         </div>
       </div>
     );
@@ -131,19 +171,20 @@ export default function RankDuel({ show, onClose }) {
       <div className="duel-head">
         <div className="duel-title">Which was better?</div>
         <div className="duel-sub">
-          {left <= 1 ? 'Last one' : `About ${left} more`} · placing {show.artist}
+          {left <= 1 ? 'Last one' : `About ${left} more`} · placing {current.artist}
+          {more > 0 && <span className="duel-queue"> · {more} to go</span>}
         </div>
       </div>
 
       <div className="duel-cards">
         <button className="duel-card" onClick={() => vote(true)} disabled={saving}>
-          <span className="duel-card-bg" style={bg(show)} />
+          <span className="duel-card-bg" style={bg(current)} />
           <span className="duel-card-scrim" />
-          <span className="duel-card-tag">just logged</span>
+          {line.length === 1 && <span className="duel-card-tag">just logged</span>}
           <span className="duel-card-info">
-            <span className="duel-card-artist">{show.artist}</span>
+            <span className="duel-card-artist">{current.artist}</span>
             <span className="duel-card-meta">
-              {[show.venue, show.date ? formatDate(show.date) : ''].filter(Boolean).join(' · ')}
+              {[current.venue, current.date ? formatDate(current.date) : ''].filter(Boolean).join(' · ')}
             </span>
           </span>
         </button>

@@ -10902,3 +10902,41 @@ h4 { font-size: 17px; }
   box-shadow: 0 8px 22px rgba(232, 87, 58, 0.42);
   -webkit-tap-highlight-color: transparent;
 }
+
+/* The derived score — the headline on the duel's result screen. It's the
+   number that shows up everywhere else, so it gets the size; the rank sits
+   underneath as its provenance. */
+.duel-result-score {
+  font-family: var(--font-heading); font-weight: 800; font-size: 104px; line-height: 1;
+  letter-spacing: -0.045em;
+  background: linear-gradient(135deg, #FFC75F, #E8573A);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.duel-queue { color: rgba(251, 246, 238, 0.38); }
+
+/* Back-catalogue ranker — the entry point on Rankings. The log-time duel only
+   ever places NEW shows, so everything logged before ranking existed needs a
+   way in. */
+.backlog-card {
+  background: linear-gradient(150deg, #2A1D13, #43271A 60%, #7A3320);
+  border-radius: 20px; padding: 18px 18px 16px; margin-bottom: 22px;
+  box-shadow: 0 12px 30px rgba(61, 44, 30, 0.3);
+}
+.backlog-head {
+  font-family: var(--font-heading); font-weight: 800; font-size: 20px;
+  letter-spacing: -0.02em; color: #FBF6EE;
+}
+.backlog-sub {
+  font-weight: 500; font-size: 13.5px; line-height: 1.45;
+  color: rgba(251, 246, 238, 0.68); margin-top: 5px;
+}
+.backlog-cta {
+  margin-top: 14px; border: none; cursor: pointer; width: 100%;
+  background: linear-gradient(135deg, #F4A261, #E8573A); color: #fff;
+  font-family: var(--font-heading); font-weight: 750; font-size: 15px;
+  border-radius: 14px; padding: 12px 20px;
+  box-shadow: 0 6px 18px rgba(232, 87, 58, 0.36);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.13s ease;
+}
+.backlog-cta:active { transform: scale(0.985); }
+.rank-unplaced { color: var(--brown-light-muted, #9B8A7E); font-weight: 600; }

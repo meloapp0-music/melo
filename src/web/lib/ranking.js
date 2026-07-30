@@ -94,3 +94,46 @@ export function rankedOrder(shows, positions = {}) {
 /** 1-based rank of one show within `rankedOrder`, or 0 if absent. */
 export const rankOf = (shows, positions, showId) =>
   rankedOrder(shows, positions).findIndex((s) => s.id === showId) + 1;
+
+// ===========================================================================
+// The melo score — a number DERIVED from where a show sits, not typed in.
+// ===========================================================================
+// A hand-entered 1–10 is an absolute judgement, and absolute judgements
+// compress: nobody buys a ticket expecting to hate the night, so real libraries
+// pile up at 8–10 and the number stops discriminating. The ranked order doesn't
+// have that problem — it came from comparisons — so the honest score is one
+// read off the order.
+//
+// The scale is RELATIVE TO YOUR OWN LIBRARY. A 9.4 means "near the top of what
+// I've seen", not a claim about the show in the abstract. That's the whole
+// point, and it's why two users' numbers aren't comparable.
+
+const TOP = 9.9;          // your #1. Not 10.0 — leave somewhere to go.
+const MAX_SPREAD = 3.4;   // so a big library bottoms out at 6.5
+const PER_SHOW = 0.35;    // how fast the range opens up early on
+
+/**
+ * Score for rank `r` (1-based) in a library of `n` ranked shows.
+ *
+ * The spread GROWS with the library. With three shows, calling your third-best
+ * night a 6.5 would be a lie — you haven't seen enough to know it's bad, only
+ * that it's third. So early on the range is tight (9.9, 9.55, 9.2) and it opens
+ * out as the collection earns the resolution.
+ */
+export function meloScore(r, n) {
+  if (!r || r < 1 || !n || n < 1) return null;
+  if (n === 1) return 9.5; // one show, nothing to compare it to
+  const spread = Math.min(MAX_SPREAD, PER_SHOW * (n - 1));
+  const t = (r - 1) / (n - 1); // 0 at the top, 1 at the bottom
+  return Math.round((TOP - spread * t) * 10) / 10;
+}
+
+/** `{ showId: score }` for a whole library. */
+export function meloScores(shows, positions = {}) {
+  const order = rankedOrder(shows, positions);
+  const n = order.length;
+  return Object.fromEntries(order.map((s, i) => [s.id, meloScore(i + 1, n)]));
+}
+
+/** Display helper: always one decimal place ("9.0", not "9"). */
+export const scoreText = (v) => (v == null ? '—' : Number(v).toFixed(1));
