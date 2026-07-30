@@ -4,21 +4,13 @@ import {
   VIBES, CITIES, VENUES_BY_CITY, GENRES, generateId, formatDate,
   SHOW_STATUS, getShowStatus,
 } from '../store';
-import { fetchSetlists, fetchUpcomingEventsMulti, getCachedImage, fetchArtistImage, searchArtists, fetchCoActs, searchPastShows, searchFestivalByName, searchFestivalNames, FESTIVAL_NAMES } from '../api';
+import { fetchUpcomingEventsMulti, fetchCoActs, searchPastShows, searchFestivalByName, searchFestivalNames, FESTIVAL_NAMES } from '../api';
 import { listFriends } from '../lib/db/friendships';
 import { tagAttendee, untagAttendee, listAttendees } from '../lib/db/shows';
 import { track } from '../lib/analytics';
+import ArtistShowPicker, { titleCase } from '../components/ArtistShowPicker';
 import PhotoPicker from '../components/PhotoPicker';
 import VideoPicker from '../components/VideoPicker';
-
-// Title-case an arbitrary user input ("luke combs" → "Luke Combs"). Used as a
-// fallback when an external API doesn't echo back a canonical artist name.
-const titleCase = (s) =>
-  s
-    .toLowerCase()
-    .split(/\s+/)
-    .map((w) => (w.length ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
 
 // Festival name field with a suggestion dropdown (mirrors the city/venue
 // autocomplete). Suggests known festivals as you type; onSelect fires when the
@@ -226,122 +218,10 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   const isAttendedTab = status === SHOW_STATUS.ATTENDED;
   const isFutureTab = status === SHOW_STATUS.GOING || status === SHOW_STATUS.WISHLIST;
 
-  // ----- Artist autocomplete (real shows from Setlist.fm / Ticketmaster) -----
-  const [artistOpen, setArtistOpen] = useState(false);
-  const [artistImage, setArtistImage] = useState(null);
-  const [showResults, setShowResults] = useState([]);       // event rows
-  const [artistMatches, setArtistMatches] = useState([]);   // Deezer artist suggestions (future-show fallback)
-  const [showsLoading, setShowsLoading] = useState(false);
-  const [showsSearched, setShowsSearched] = useState(false); // true after first finished fetch
-  // Track whether the user just picked a result so we don't immediately
-  // re-search and re-open the dropdown.
-  const justPickedRef = useRef(false);
-  const debounceRef = useRef(null);
-
-  const apiKey = settings?.setlistFmKey || '';
-
-  // Fetch real shows when artist or mode changes.
-  // Future tabs (Going / Wishlist) → Deezer canonical match → Ticketmaster
-  //   lookup. The Deezer step lets users type "luke c" and still match
-  //   "Luke Combs" upstream.
-  // Attended tab → Setlist.fm (needs API key).
-  useEffect(() => {
-    if (justPickedRef.current) {
-      justPickedRef.current = false;
-      return;
-    }
-    // This autocomplete's results only render inside the quick-log form
-    // (showQuick = Attended, or any edit). On a NEW Going/Wishlist show the
-    // only artist field is Search mode's manual fallback, which shares this
-    // `artist` state — so skip the fetch there to avoid wasted Deezer/TM
-    // calls and a stale-results flash when switching back to Attended.
-    if (!isAttendedTab && !editingShow) {
-      setShowResults([]);
-      setArtistMatches([]);
-      setShowsLoading(false);
-      return;
-    }
-    const q = artist.trim();
-    setShowsSearched(false);
-    if (q.length < 2) {
-      setShowResults([]);
-      setArtistMatches([]);
-      setShowsLoading(false);
-      return;
-    }
-    if (isAttendedTab && q.length < 3) {
-      // Setlist.fm queries are expensive; require 3+ chars there.
-      setShowResults([]);
-      return;
-    }
-    // (No early bail when the user has no personal apiKey — the
-    // setlistfm-proxy Edge Function falls back to a shared key so
-    // searches work out-of-the-box for everyone.)
-
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setShowsLoading(true);
-      try {
-        if (isFutureTab) {
-          // 1. Ask Deezer for canonical artist matches (forgives "luke c").
-          const matches = await searchArtists(q, 5);
-          setArtistMatches(matches);
-
-          // 2. For the top match (or the raw query as a fallback), look
-          //    up upcoming events on Ticketmaster. Pass city through so
-          //    a heavy-touring artist's later-dated shows in a specific
-          //    city (e.g. Mt Joy at Red Rocks in August) surface even
-          //    when there are dozens of nearer-dated shows elsewhere.
-          const probe = matches[0]?.name || q;
-          // Multi-source: Ticketmaster (big rooms) + JamBase (small venues like
-          // Schubas Tavern). JamBase is a no-op until enabled, so this stays
-          // Ticketmaster-only until you wire up the key.
-          const events = await fetchUpcomingEventsMulti(probe, {
-            city: city.trim() || undefined,
-          });
-          setShowResults(events.slice(0, 8));
-        } else {
-          // Past-show lookup. Pass whatever the user has already typed
-          // into the City / Date fields as filters so we can find
-          // historical shows, not just the most recent 10.
-          const year = date ? date.split('-')[0] : undefined;
-          const events = await fetchSetlists(q, apiKey, {
-            city: city.trim() || undefined,
-            year,
-          });
-          setShowResults(Array.isArray(events) ? events.slice(0, 8) : []);
-          setArtistMatches([]);
-        }
-        setArtistOpen(true);
-      } catch {
-        setShowResults([]);
-      } finally {
-        setShowsLoading(false);
-        setShowsSearched(true);
-      }
-    }, 500);
-
-    return () => clearTimeout(debounceRef.current);
-    // city + date included so the Setlist.fm filter refines live as the
-    // user fills in the other fields — enables retroactive logging of
-    // historical shows (e.g. Goose at Salt Shed, Chicago, 2022).
-  }, [artist, status, apiKey, city, date, isAttendedTab, isFutureTab, editingShow]);
-
-  // Keep artist artwork in sync as the user types (uses cached Deezer image).
-  // The avatar only shows in the quick-log form, so skip on a new future show
-  // (Search-mode manual entry shares `artist` but renders no avatar).
-  useEffect(() => {
-    if (!isAttendedTab && !editingShow) { setArtistImage(null); return; }
-    const q = artist.trim();
-    if (q.length < 3) { setArtistImage(null); return; }
-    const cached = getCachedImage(q);
-    if (cached) { setArtistImage(cached); return; }
-    let cancelled = false;
-    const t = setTimeout(() => {
-      fetchArtistImage(q).then((url) => { if (!cancelled && url) setArtistImage(url); });
-    }, 700);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [artist, isAttendedTab, editingShow]);
+  // The artist field, its two upstream searches, the dropdown and the avatar
+  // all live in components/ArtistShowPicker now — QuickLog needs the same
+  // behaviour, and it's where logging speed comes from. Only `pickResult`
+  // (below) stayed here, because what a pick DOES to the form is form-specific.
 
   const filteredCities = city
     ? CITIES.filter((c) => c.toLowerCase().includes(city.toLowerCase()))
@@ -380,39 +260,32 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
   const addSetlistItem = () => setSetlist([...setlist, '']);
   const removeSetlistItem = (i) => setSetlist(setlist.filter((_, idx) => idx !== i));
 
-  // User picked a real show from the dropdown — autofill the whole form.
-  const pickShow = (show) => {
-    justPickedRef.current = true;
-    if (show.artist) setArtist(show.artist);
-    else setArtist((cur) => titleCase(cur));
-    if (show.venue) setVenue(show.venue);
-    if (show.city) setCity(show.city);
-    if (show.date) setDate(show.date);
-    // Auto-fill festival from setlist.fm if it's there and the user
-    // hasn't already typed something. They can still edit after.
-    if (show.festival && !festival.trim()) setFestival(show.festival);
-    if (Array.isArray(show.songs) && show.songs.length > 0) setSetlist(show.songs);
+  // A pick from ArtistShowPicker. The picker owns the search and the dropdown;
+  // this owns what a pick DOES to the form — which is the part QuickLog needs
+  // to answer differently, so it stays out of the component.
+  const pickResult = (draft) => {
+    if (draft.artist) setArtist(draft.artist);
+    if (draft.kind !== 'show') return; // 'artist' / 'typed' only correct the name
 
-    // Suggest openers from upstream data.
-    //  - Ticketmaster's `lineup` is the full bill — skip [0] (headliner)
-    //  - Setlist.fm gives just one artist per row, so we re-query
-    //    co-acts at the same venue+date in a separate call.
-    if (Array.isArray(show.lineup) && show.lineup.length > 1) {
-      const headliner = (show.artist || '').toLowerCase();
-      setOpenerSuggestions(
-        show.lineup
-          .slice(1)
-          .filter((n) => n && n.toLowerCase() !== headliner)
-      );
-    } else if (show.venue && show.date && show.artist) {
-      fetchCoActs(show.venue, show.date, show.artist).then((coActs) => {
-        if (coActs && coActs.length > 0) setOpenerSuggestions(coActs);
+    if (draft.venue) setVenue(draft.venue);
+    if (draft.city) setCity(draft.city);
+    if (draft.date) setDate(draft.date);
+    // Festival autofills only when the user hasn't typed one — theirs wins.
+    if (draft.festival && !festival.trim()) setFestival(draft.festival);
+    if (draft.songs?.length) setSetlist(draft.songs);
+
+    // Opener suggestions from upstream:
+    //  - Ticketmaster's `lineup` is the full bill — skip [0] (the headliner)
+    //  - Setlist.fm returns one artist per row, so co-acts at the same
+    //    venue+date need a separate lookup.
+    if (draft.lineup?.length > 1) {
+      const headliner = (draft.artist || '').toLowerCase();
+      setOpenerSuggestions(draft.lineup.slice(1).filter((n) => n && n.toLowerCase() !== headliner));
+    } else if (draft.venue && draft.date && draft.artist) {
+      fetchCoActs(draft.venue, draft.date, draft.artist).then((coActs) => {
+        if (coActs?.length) setOpenerSuggestions(coActs);
       });
     }
-
-    setArtistOpen(false);
-    setShowResults([]);
-    setArtistMatches([]);
   };
 
   // If the user edits the venue text, any existing `venueUrl` is for
@@ -423,24 +296,6 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
     if (venueUrl) setVenueUrl('');
   };
 
-  // User picked an artist suggestion (Deezer) — replace the typed text
-  // with the canonical name. The useEffect will re-run with the new value
-  // and load fresh Ticketmaster events for the corrected name.
-  const pickArtist = (match) => {
-    setArtist(match.name);
-    setArtistMatches([]);
-    // Don't close the dropdown — let the spinner show while we re-fetch.
-  };
-
-  // Accept whatever the user typed as the band — the universal escape
-  // hatch so ANY artist (small/local/pop-up, in no database) can be
-  // selected, not just ones Setlist.fm/Deezer/Ticketmaster know about.
-  const pickTyped = () => {
-    setArtist(titleCase(artist.trim()));
-    setArtistOpen(false);
-    setShowResults([]);
-    setArtistMatches([]);
-  };
 
   const handleSubmit = async () => {
     if (saving) return;
@@ -529,11 +384,6 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
       setSaving(false);
     }
   };
-
-  const showResultLocation = (s) =>
-    [s.city, s.state, s.country && !s.state ? s.country : null]
-      .filter(Boolean)
-      .join(', ');
 
   const submitLabel = editingShow
     ? 'Save Show'
@@ -1105,123 +955,21 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
           <div className="log-section">
             <div className="log-section-title">Details</div>
 
-            <div className="log-input-wrap log-artist-wrap">
-              {artistImage && (
-                <div
-                  className="log-artist-avatar"
-                  style={{ backgroundImage: `url(${artistImage})` }}
-                />
-              )}
-              <input
-                className={`log-input ${artistImage ? 'with-avatar' : ''}`}
-                placeholder="Artist / Band"
-                value={artist}
-                style={artistError ? { borderColor: 'var(--red, #E24B4A)' } : undefined}
-                onChange={(e) => {
-                  setArtist(e.target.value);
-                  setArtistOpen(true);
-                  setArtistError(false);
-                }}
-                onFocus={() => setArtistOpen(true)}
-                onBlur={() => setTimeout(() => setArtistOpen(false), 200)}
-              />
-              {showsLoading && (
-                <span className="log-input-spinner" aria-hidden />
-              )}
-
-              {artistOpen && artist.trim().length >= 2 && (
-                <div className="log-autocomplete log-show-picker">
-                  {showsLoading && showResults.length === 0 && artistMatches.length === 0 ? (
-                    <div className="log-show-empty">Searching {isFutureTab ? 'upcoming' : 'past'} shows…</div>
-                  ) : showResults.length > 0 ? (
-                    showResults.map((s, i) => (
-                      <div
-                        key={`${s.venue}-${s.date}-${i}`}
-                        className="log-show-item"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => pickShow(s)}
-                      >
-                        <div className="log-show-item-main">
-                          <div className="log-show-item-title">
-                            {s.artist || titleCase(artist.trim())}
-                          </div>
-                          {s.festival && (
-                            <div className="log-show-item-fest">🎪 {s.festival}</div>
-                          )}
-                          <div className="log-show-item-venue">{s.venue || 'Venue TBA'}</div>
-                          <div className="log-show-item-meta">
-                            {showResultLocation(s)}
-                            {showResultLocation(s) && (s.date || s.displayDate) ? ' · ' : ''}
-                            {s.date ? formatDate(s.date) : s.displayDate}
-                          </div>
-                        </div>
-                        {isAttendedTab && s.songCount > 0 && (
-                          <div className="log-show-item-songs">{s.songCount} songs</div>
-                        )}
-                        {isFutureTab && (
-                          <div className="log-show-item-songs upcoming">Upcoming</div>
-                        )}
-                      </div>
-                    ))
-                  ) : isFutureTab && artistMatches.length > 0 ? (
-                    <>
-                      <div className="log-show-empty" style={{ paddingBottom: 4 }}>
-                        No upcoming tour dates yet — pick an artist to autofill the name:
-                      </div>
-                      {artistMatches.map((m) => (
-                        <div
-                          key={m.name}
-                          className="log-show-item log-artist-suggestion"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => pickArtist(m)}
-                        >
-                          {m.image && (
-                            <div
-                              className="log-suggest-avatar"
-                              style={{ backgroundImage: `url(${m.image})` }}
-                            />
-                          )}
-                          <div className="log-show-item-main">
-                            <div className="log-show-item-title">{m.name}</div>
-                            {m.fans > 0 && (
-                              <div className="log-show-item-meta">
-                                {m.fans.toLocaleString()} fans on Deezer
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </>
-                  ) : showsSearched ? (
-                    <div className="log-show-empty">
-                      No {isFutureTab ? 'upcoming tour dates' : 'setlists'} found for "{artist.trim()}".<br />
-                      <span style={{ opacity: 0.7, fontSize: 12 }}>
-                        {isFutureTab
-                          ? 'Try the artist\'s full name — or just fill in the show details below manually.'
-                          : 'Try the artist\'s exact name on Setlist.fm — or fill in the venue and date below yourself.'}
-                      </span>
-                    </div>
-                  ) : null}
-                  {/* Universal "use what I typed" — always selectable so
-                      ANY band can be logged, even one in no database. */}
-                  <div
-                    className="log-show-item log-use-typed"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={pickTyped}
-                  >
-                    <span className="log-use-typed-check" aria-hidden="true">✓</span>
-                    <div className="log-show-item-main">
-                      <div className="log-show-item-title">Use “{titleCase(artist.trim())}”</div>
-                      <div className="log-show-item-meta">Log this band as you typed it</div>
-                    </div>
-                  </div>
-
-                  <div className="log-show-attr">
-                    Powered by {isFutureTab ? 'Deezer + Ticketmaster' : 'Setlist.fm'}
-                  </div>
-                </div>
-              )}
-            </div>
+            <ArtistShowPicker
+              value={artist}
+              onChange={(v) => { setArtist(v); setArtistError(false); }}
+              onPick={pickResult}
+              mode={isFutureTab ? 'future' : 'attended'}
+              // On a NEW Going/Wishlist show the only artist field is Search
+              // mode's manual fallback, which shares this `artist` state — so
+              // no search there, or we'd burn Deezer/TM calls and flash stale
+              // results when switching back to Attended.
+              enabled={isAttendedTab || !!editingShow}
+              city={city}
+              date={date}
+              apiKey={settings?.setlistFmKey || ''}
+              error={artistError}
+            />
 
             <div className="log-row">
               <input

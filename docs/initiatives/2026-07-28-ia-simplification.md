@@ -159,6 +159,28 @@ Read those before re-deriving anything here.
     has a real parent tab. It strips comments first, so prose about the old
     routing can't be mistaken for the old routing.
 
+- 2026-07-28: Phase 5 (`ArtistShowPicker`). Pure refactor — no UI change.
+  Pulled the artist input, both upstream searches, the artist avatar, the
+  dropdown and the "use what I typed" escape hatch out of `LogShow.jsx` into
+  `components/ArtistShowPicker.jsx`. **LogShow lost 252 lines** (1641 → 1389).
+  - The split is at *search* vs *what a pick does*. The component emits a
+    normalised draft (`{ kind: 'show'|'artist'|'typed', artist, venue, city,
+    date, festival, songs, lineup }`); the sheet decides which fields to fill.
+    LogShow fills thirteen sections and chases co-acts for opener suggestions;
+    QuickLog will fill four. Putting that decision in the component would mean
+    it knew about forms.
+  - This is where logging speed actually comes from — picking a real row
+    autofills venue, city, date, festival and the setlist in one tap. Without
+    it a "quick" log is four text inputs and no faster than the long form.
+  - Also removed four now-dead `api` imports and the orphaned
+    `showResultLocation` helper from LogShow.
+  - Verified in a browser harness: typed a query, the Setlist.fm search ran,
+    the empty state rendered with the right copy and attribution, and clicking
+    the escape hatch fired `onPick({ kind:'typed', artist:'Goose' })` — correct
+    shape, `titleCase` applied, input updated, dropdown closed. Then rendered
+    the whole of `LogShow` against a mock context and confirmed all thirteen
+    sections still render with the picker in place.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with
