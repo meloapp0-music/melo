@@ -1,7 +1,7 @@
 # Rank outings, not shows — festivals as first-class ranked entities
 
 - Started: 2026-07-30
-- Status: built (dev) — migration 0020 NOT yet applied
+- Status: shipped (dev) — migration 0020 applied 2026-07-30
 - Last updated: 2026-07-30
 
 ## Context
@@ -207,9 +207,12 @@ keeps its current signature and none of the 14 swept files change.
   multi-select — only the DUEL was collapsed to one. Asking once for the weekend
   is the natural follow-up; the ranking side is already ready for it, since a
   festival's entity bucket comes from whichever act is the entity lead.
-- **RUN THE MIGRATION.** `0020_ranking_entries.sql` is written but not applied.
-  Until it is, `getPositions`/`savePositions` fail on the missing table — the
-  duel catches it and toasts, so nothing crashes, but no ranking persists.
+- **Migration 0020 applied 2026-07-30** via the dashboard SQL editor. The CLI
+  still isn't linked to the project (`supabase link` needs the db password), so
+  `db push` fails — use the editor for 0021+ too, or link it once.
+- **`rankings` (0001) is now dead weight.** Nothing reads it; Battle Mode still
+  writes `elo`. Drop it in a later migration once this has run for a while —
+  keeping it is the rollback path until then.
 - **Lollapalooza is the first weekend of August** (~days from this writing) and
   is Chicago — the best natural test this will get all year. That's an argument
   for doing it now, but "ship a migration in under a week on the security
