@@ -143,6 +143,7 @@ input{font:inherit;color:inherit}
 
 /* ─── banner (shared picks) ─────────────────────────────────── */
 .banner{background:linear-gradient(90deg,rgba(232,181,74,.14),rgba(232,181,74,.04));border-bottom:1px solid rgba(232,181,74,.28)}
+.banner.nostore{background:linear-gradient(90deg,rgba(226,85,95,.16),rgba(226,85,95,.05));border-bottom-color:rgba(226,85,95,.4)}
 .banner-in{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:11px 0;font-size:13.5px}
 .banner b{font-weight:600}
 .banner .sp{flex:1}
@@ -1207,9 +1208,38 @@ let slabGames = [];       // game indices, in render order
 function blank(){
   return {name:"", fav:"", picks:{}, po:{}, order:{AFC:[], NFC:[]}};
 }
+let storageOK = true;
+
+/* Editing someone else's shared sheet used to be silently discarded: the W/L
+   buttons still responded and the screen still updated, but save() bailed out
+   because `shared` was set, so everything vanished on reload. Changing a pick
+   is unambiguously an intent to own the sheet, so it now takes ownership. */
 function save(){
-  if (shared || computing) return;
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+  if (computing) return;
+  if (shared) takeOwnership();
+  persist();
+}
+function persist(){
+  const was = storageOK;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    storageOK = true;
+  } catch(e){
+    storageOK = false;
+  }
+  if (was !== storageOK) renderBanner();
+}
+function takeOwnership(){
+  const whose = shared && shared.name;
+  shared = null;
+  state.name = "";
+  /* their club does not come with the picks — keep your own if you had one */
+  let mine = "";
+  try { mine = (JSON.parse(localStorage.getItem(KEY) || "{}").fav) || ""; } catch(e){}
+  if (TEAMS[mine]){ state.fav = mine; team = mine; }
+  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
+  toast(whose ? "You changed a pick — this is your copy now, not " + whose + "'s."
+              : "You changed a pick — this is your own copy now.");
 }
 function remember(k, v){ try { localStorage.setItem(KEY + "." + k, v); } catch(e){} }
 function recall(k){ try { return localStorage.getItem(KEY + "." + k); } catch(e){ return null; } }
@@ -1885,6 +1915,17 @@ function renderBanner(){
   const b = $("#banner");
   b.innerHTML = "";
   b.className = "";
+
+  if (!storageOK){
+    b.className = "banner nostore";
+    b.appendChild(el("div", {"class":"shell banner-in"}, [
+      el("span", {html:"<b>This browser will not let the page save.</b> Your picks are only in " +
+        "memory and will be gone when you close the tab. Private or incognito windows usually cause this — " +
+        "open the site in a normal window. In the meantime, use <b>Share</b> to keep a link that carries them."})
+    ]));
+    return;
+  }
+
   if (!shared) return;
   b.className = "banner";
   b.appendChild(el("div", {"class":"shell banner-in"}, [
@@ -3622,17 +3663,8 @@ async function openShare(){
 }
 
 function adoptShared(){
-  const copy = JSON.parse(JSON.stringify(state));
-  copy.name = "";
-  /* their name and their club do not come with the picks — keep your own */
-  let mine = "";
-  try { mine = (JSON.parse(localStorage.getItem(KEY) || "{}").fav) || ""; } catch(e){}
-  copy.fav = TEAMS[mine] ? mine : "";
-  shared = null;
-  state = copy;
-  if (state.fav) team = state.fav;
-  save();
-  history.replaceState(null, "", location.pathname + location.search);
+  takeOwnership();
+  persist();
   render();
   toast("Copied — these are your picks now.");
 }
@@ -3748,6 +3780,11 @@ window.addEventListener("resize", function(){
 });
 
 (async function boot(){
+  try {
+    localStorage.setItem(KEY + ".probe", "1");
+    localStorage.removeItem(KEY + ".probe");
+  } catch(e){ storageOK = false; }
+
   load();
 
   const m = location.hash.match(/[#&]p=([^&]+)/);

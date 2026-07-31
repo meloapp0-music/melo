@@ -371,6 +371,38 @@ storage until "Use as my starting point" is pressed.
   else. Anyone typing the name by hand will land there, so this should be shared
   as a link or QR code rather than dictated.
 
+- 2026-07-24: **Data-loss bug fixed.** User reported picks vanishing between
+  visits. Reproduced two distinct causes.
+
+  **The bug.** Opening a share link (`#p=...`) puts the page in read-only mode,
+  but only `save()` honoured that — the W/L buttons, score fields and bracket
+  controls all still responded and updated the screen. Every edit was silently
+  discarded, and the whole session evaporated on reload. The banner said
+  "read-only"; nothing else did. Anyone using a share link as their bookmark
+  (easy to do, since that is the link that gets passed around) would lose
+  everything, repeatedly, with no signal.
+
+  Changing a pick is an unambiguous intent to own the sheet, so `save()` now
+  calls `takeOwnership()` instead of bailing: it clears the `shared` flag, drops
+  the borrowed name, restores your own club, strips the payload from the URL,
+  and tells you what just happened. Merely *browsing* someone's sheet still
+  writes nothing — the read-only guarantee only ends when you actually edit.
+
+  **Storage refusal is now visible.** `persist()` tracks whether the write
+  succeeded and a red banner explains it when it did not, instead of failing
+  silently into a `catch {}`. Boot also probes storage up front, so a private
+  window warns before anything is lost rather than after.
+
+  **The second cause was not a bug.** `localStorage` is per-origin, so
+  `*.pages.dev` and `football-sundays.com` — and `127.0.0.1` vs `localhost` —
+  each hold separate picks. Nothing in the page can bridge that; the share link
+  is the migration path (Share → open the link on the new origin → edit, which
+  now adopts it automatically).
+
+  Covered by `savetest.py`: plain use survives reload; editing a shared sheet
+  adopts and persists; browsing one does not; blocked storage warns and stays
+  usable.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
