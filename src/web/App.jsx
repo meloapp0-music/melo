@@ -23,6 +23,7 @@ import KnowBeforeYouGo from './components/KnowBeforeYouGo';
 import RatePromptCard from './components/RatePromptCard';
 import ShowComparison from './components/ShowComparison';
 import RankDuel from './components/RankDuel';
+import PhotoBackfill from './components/PhotoBackfill';
 import UserProfileView from './pages/UserProfileView';
 import QuickLog from './components/QuickLog';
 import AuthGate from './components/AuthGate';
@@ -838,6 +839,7 @@ export default function App() {
               )}
               {o.type === 'quicklog' && (
                 <QuickLog
+                  prefill={p.prefill || null}
                   onClose={close}
                   onOpenFull={(draft) => { close(); openOverlay('log', { prefill: draft || null }); }}
                 />
@@ -860,6 +862,7 @@ export default function App() {
               {o.type === 'wrapped' && <Wrapped year={p.year} onClose={close} />}
               {o.type === 'compare' && <ShowComparison showA={p.showA} onClose={close} />}
               {o.type === 'rank' && <RankDuel show={p.show} queue={p.queue} scope={p.scope} pool={p.pool} onClose={close} />}
+              {o.type === 'backfill' && <PhotoBackfill onClose={close} />}
             </Fragment>
           );
         })}

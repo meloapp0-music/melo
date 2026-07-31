@@ -43,7 +43,7 @@ const WRAPPED_CARD_GRADIENTS = [
 export default function You() {
   const {
     shows, navigate, getArtistImage, setSelectedVenue, setSelectedArtist, setSelectedShow, showScore,
-    rankPositions, profile, session, updateProfile, setWrappedYear,
+    rankPositions, profile, session, updateProfile, setWrappedYear, openOverlay,
   } = useApp();
 
   // ---- Avatar (from Profile) ----
@@ -190,6 +190,19 @@ export default function You() {
   // Buddies / Music Taste / Settings only. Rankings, Songs and Map used to live
   // here too, but they're reachable from the stat tiles above now — six buttons
   // where three will do was most of why this page felt like a junk drawer.
+  const backfillCard = (
+    <button className="backfill-entry" onClick={() => openOverlay('backfill', {})}>
+      <span className="backfill-entry-icon" aria-hidden="true">📷</span>
+      <span className="backfill-entry-text">
+        <span className="backfill-entry-title">Find shows in your photos</span>
+        <span className="backfill-entry-sub">
+          Your camera roll already remembers them — melo can read the dates.
+        </span>
+      </span>
+      <span className="backfill-entry-chev" aria-hidden="true">›</span>
+    </button>
+  );
+
   const navRow = (
     <div className="profile-nav-btns">
       <button className="profile-nav-btn" onClick={() => navigate('buddies')}>
@@ -254,6 +267,7 @@ export default function You() {
             <p style={{ color: 'var(--brown-muted)', fontSize: 15, marginTop: 4, marginBottom: 18 }}>
               Log your first show and your live-music stats will start filling in here.
             </p>
+            {backfillCard}
             {navRow}
           </>
         ) : (
@@ -426,6 +440,8 @@ export default function You() {
                 ))}
               </div>
             </div>
+
+            {backfillCard}
 
             {timeline.length > 0 && (
               <div className="profile-section">

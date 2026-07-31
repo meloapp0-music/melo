@@ -13,7 +13,7 @@
  *  a branch in the render map. */
 export const OVERLAY_TYPES = [
   'log', 'quicklog', 'festival', 'venue', 'artist', 'show',
-  'recap', 'firstCard', 'user', 'wrapped', 'compare', 'rank',
+  'recap', 'firstCard', 'user', 'wrapped', 'compare', 'rank', 'backfill',
 ];
 
 // Monotonic, never reused. This is the React key: an array index would remount

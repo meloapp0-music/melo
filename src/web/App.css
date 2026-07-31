@@ -10918,3 +10918,100 @@ h4 { font-size: 17px; }
   margin-left: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--brown-light-muted, #9B8A7E);
 }
+
+/* ============================================================
+   Camera-roll backfill — turning a photo library into a back catalogue.
+   docs/initiatives/2026-07-30-camera-roll-backfill.md
+   ============================================================ */
+.backfill-entry {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  background: #fff; border: 1.5px solid rgba(61, 44, 30, 0.08);
+  border-radius: 18px; padding: 15px 16px; margin-bottom: 14px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.13s ease;
+}
+.backfill-entry:active { transform: scale(0.985); }
+.backfill-entry-icon { font-size: 24px; line-height: 1; flex: none; }
+.backfill-entry-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.backfill-entry-title {
+  font-family: var(--font-heading); font-weight: 750; font-size: 15.5px;
+  color: var(--brown-ink, #3D2C1E);
+}
+.backfill-entry-sub {
+  font-weight: 600; font-size: 12.5px; line-height: 1.35;
+  color: var(--brown-light-muted, #9B8A7E);
+}
+.backfill-entry-chev { font-size: 22px; color: var(--brown-light-muted, #9B8A7E); flex: none; }
+
+.backfill-overlay {
+  position: fixed; inset: 0; z-index: 3050;
+  background: rgba(20, 12, 6, 0.42); backdrop-filter: blur(3px);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.backfill-sheet {
+  width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto;
+  background: var(--cream, #FAF8F5);
+  border-radius: 24px 24px 0 0;
+  padding: 8px 20px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  -webkit-overflow-scrolling: touch;
+}
+.backfill-body { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+.backfill-lede {
+  font-size: 14.5px; line-height: 1.5; color: var(--brown-ink, #3D2C1E); margin: 0;
+}
+.backfill-note {
+  font-size: 12.5px; line-height: 1.45; color: var(--brown-light-muted, #9B8A7E); margin: 0;
+}
+.backfill-cta {
+  width: 100%; border: none; cursor: pointer; margin-top: 4px;
+  background: linear-gradient(135deg, #F4A261, #E8573A); color: #fff;
+  font-family: var(--font-heading); font-weight: 750; font-size: 15px;
+  border-radius: 15px; padding: 13px 20px;
+  box-shadow: 0 6px 18px rgba(232, 87, 58, 0.36);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.backfill-progress-num {
+  font-family: var(--font-heading); font-weight: 800; font-size: 40px;
+  color: var(--brown-ink, #3D2C1E); text-align: center; letter-spacing: -0.03em;
+}
+.backfill-progress-num span { font-size: 20px; color: var(--brown-light-muted, #9B8A7E); }
+.backfill-progress-track {
+  height: 6px; border-radius: 999px; background: rgba(61, 44, 30, 0.08); overflow: hidden;
+}
+.backfill-progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #F4A261, #E8573A); transition: width 0.2s ease;
+}
+
+.backfill-list { display: flex; flex-direction: column; gap: 8px; }
+.backfill-card {
+  display: flex; align-items: center; gap: 10px;
+  background: #fff; border: 1.5px solid rgba(61, 44, 30, 0.08);
+  border-radius: 15px; padding: 12px 13px;
+}
+.backfill-card-main { flex: 1; min-width: 0; }
+.backfill-card-date {
+  font-family: var(--font-heading); font-weight: 750; font-size: 15px;
+  color: var(--brown-ink, #3D2C1E);
+}
+.backfill-card-meta {
+  font-weight: 600; font-size: 12.5px; color: var(--brown-light-muted, #9B8A7E); margin-top: 1px;
+}
+/* A date from `lastModified` rather than EXIF — say so rather than pretend. */
+.backfill-soft {
+  margin-left: 7px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #B4472A;
+  background: rgba(232, 87, 58, 0.1); border-radius: 999px; padding: 2px 7px;
+}
+.backfill-log {
+  border: none; cursor: pointer; flex: none;
+  background: linear-gradient(135deg, #F4A261, #E8573A); color: #fff;
+  font-family: var(--font-heading); font-weight: 750; font-size: 13.5px;
+  border-radius: 12px; padding: 9px 15px;
+  -webkit-tap-highlight-color: transparent;
+}
+.backfill-skip {
+  border: none; background: none; cursor: pointer; flex: none;
+  font-size: 15px; color: var(--brown-light-muted, #9B8A7E); padding: 6px 4px;
+  -webkit-tap-highlight-color: transparent;
+}

@@ -20,9 +20,10 @@ import { generateId, SHOW_STATUS } from '../store';
 import { BUCKETS, bucketScore } from '../lib/ranking';
 import { track } from '../lib/analytics';
 import ArtistShowPicker from './ArtistShowPicker';
+import { uploadShowPhoto } from '../lib/storage';
 
-export default function QuickLog({ onClose, onOpenFull }) {
-  const { addShow, showToast, setSelectedShow, settings } = useApp();
+export default function QuickLog({ onClose, onOpenFull, prefill = null }) {
+  const { addShow, updateShow, showToast, setSelectedShow, settings, session } = useApp();
   // Default to yesterday: the common case is logging the morning after, which
   // is also when the recap push lands.
   //
@@ -35,10 +36,11 @@ export default function QuickLog({ onClose, onOpenFull }) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
 
-  const [artist, setArtist] = useState('');
-  const [venue, setVenue] = useState('');
+  const [artist, setArtist] = useState(prefill?.artist || '');
+  const [venue, setVenue] = useState(prefill?.venue || '');
   const [city, setCity] = useState('');
-  const [date, setDate] = useState(yesterday);
+  // A backfill hand-off arrives with the night already worked out.
+  const [date, setDate] = useState(prefill?.date || yesterday);
   // The coarse gut call. Stored as a representative number in `score`.
   const [bucket, setBucket] = useState(null);
   const [setlist, setSetlist] = useState([]);
@@ -128,6 +130,31 @@ export default function QuickLog({ onClose, onOpenFull }) {
       message: `✓ Logged ${name}`,
       onClick: saved?.id ? () => setSelectedShow(saved) : undefined,
     });
+
+    // Photos handed over by the camera-roll backfill. Uploaded AFTER the save,
+    // deliberately: attaching a dozen images before the row exists would turn a
+    // four-tap log into a thirty-second wait. The show appears immediately and
+    // its photos fill in behind it.
+    //
+    // This runs past our own unmount, so it must not touch component state —
+    // updateShow and showToast both live on the context and survive.
+    const files = prefill?.photoFiles || [];
+    if (saved?.id && files.length) {
+      const userId = session?.user?.id;
+      try {
+        const urls = [];
+        for (const f of files) {
+          // eslint-disable-next-line no-await-in-loop
+          urls.push(await uploadShowPhoto(f, userId, saved.id));
+        }
+        await updateShow(saved.id, { photos: urls });
+        showToast?.({ message: `📷 ${urls.length} photos added to ${name}` });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[Melo] backfill photo upload failed', err);
+        showToast?.({ message: 'Show saved, but the photos didn’t upload.' });
+      }
+    }
   };
 
   // Hand off to the full sheet WITH everything typed so far. This used to throw
