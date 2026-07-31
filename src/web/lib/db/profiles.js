@@ -11,6 +11,8 @@ function fromRow(row) {
     displayName: row.display_name || '',
     avatarColor: row.avatar_color || '#E8573A',
     avatarUrl: row.avatar_url || '',
+    // Opt-in publication of melo.show/@username. Defaults false in the db.
+    publicProfile: !!row.public_profile,
     bio: row.bio || '',
     isSearchable: row.is_searchable !== false,
     showsVisibility: row.shows_visibility || 'friends',
@@ -67,6 +69,7 @@ export async function updateMyProfile(patch) {
   if ('displayName' in patch) row.display_name = patch.displayName || '';
   if ('avatarColor' in patch) row.avatar_color = patch.avatarColor || '#E8573A';
   if ('avatarUrl' in patch) row.avatar_url = patch.avatarUrl || '';
+  if ('publicProfile' in patch) row.public_profile = !!patch.publicProfile;
   if ('bio' in patch) row.bio = patch.bio || '';
   if ('isSearchable' in patch) row.is_searchable = !!patch.isSearchable;
   if ('showsVisibility' in patch) row.shows_visibility = patch.showsVisibility;

@@ -21,6 +21,7 @@ export default function Settings() {
   const [deleting, setDeleting] = useState(false);
   // 'csv' | 'json' | false — which export is in flight (drives button labels).
   const [exporting, setExporting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   // ----- Profile (display name + username) edit state -----
   // Inline-edit affordance in the Account row. Backend (updateMyProfile +
@@ -390,6 +391,68 @@ export default function Settings() {
             <span>Legal & Attributions</span>
             <span className="settings-link-row-chevron">›</span>
           </button>
+        </div>
+      </div>
+
+      {/* Publishing a profile makes a guessable URL — melo.show/@handle — show
+          real show history to anyone. So it's OFF until turned on here, the
+          copy says exactly what becomes visible, and turning it off 404s the
+          page immediately. See migration 0021. */}
+      <div className="settings-section">
+        <div className="settings-section-title">Public profile</div>
+        <div className="settings-card">
+          <div className="settings-row">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="settings-label">Publish melo.show/@{profile?.username || 'you'}</div>
+              <p className="settings-desc" style={{ marginTop: 4 }}>
+                {profile?.publicProfile
+                  ? 'Anyone with the link can see your show count, most-seen artists, and the artists, venues and dates of shows you’ve attended.'
+                  : 'Off. Your profile is private — the link 404s for everyone.'}
+              </p>
+            </div>
+            <button
+              className={`settings-switch${profile?.publicProfile ? ' on' : ''}`}
+              role="switch"
+              aria-checked={!!profile?.publicProfile}
+              aria-label="Publish public profile"
+              disabled={publishing}
+              onClick={async () => {
+                const next = !profile?.publicProfile;
+                // Publishing is outward-facing, so confirm before the first
+                // time — never on the way back to private.
+                if (next && !confirm(
+                  `Publish your profile at melo.show/@${profile?.username}?\n\n`
+                  + 'Anyone with the link will be able to see the artists, venues and '
+                  + 'dates of shows you’ve attended. Your notes, ratings, wishlist '
+                  + 'and who you went with stay private.\n\nYou can turn this off any time.'
+                )) return;
+                setPublishing(true);
+                try {
+                  await updateProfile({ publicProfile: next });
+                } catch (err) {
+                  // eslint-disable-next-line no-console
+                  console.error('[Melo] publicProfile toggle failed', err);
+                } finally {
+                  setPublishing(false);
+                }
+              }}
+            >
+              <span className="settings-switch-knob" />
+            </button>
+          </div>
+          {profile?.publicProfile && profile?.username && (
+            <button
+              className="settings-link-row"
+              onClick={() => { try { window.open(`https://melo.show/@${profile.username}`, '_blank'); } catch { /* noop */ } }}
+            >
+              <span>View your page</span>
+              <span className="settings-link-row-chevron">›</span>
+            </button>
+          )}
+          <p className="settings-desc" style={{ marginTop: 8 }}>
+            Never published: notes, ratings, your wishlist, who you went with,
+            and anything you haven&rsquo;t marked as attended.
+          </p>
         </div>
       </div>
 

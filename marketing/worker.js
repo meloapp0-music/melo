@@ -16,6 +16,7 @@
 
 import { handleTonight } from './routes/tonight.js';
 import { handleShow } from './routes/show.js';
+import { handleProfile } from './routes/profile.js';
 
 export default {
   async fetch(request, env) {
@@ -36,6 +37,15 @@ export default {
     if (share) {
       if (!readOnly) return new Response('Method not allowed', { status: 405 });
       return handleShow(request, env, decodeURIComponent(share[1]));
+    }
+
+    // /@username — the public concert résumé. Unlike /s/<token> this URL is
+    // guessable by design, so the safety is an explicit opt-in flag checked
+    // inside get_public_profile(); an un-published handle 404s.
+    const profile = url.pathname.match(/^\/@([A-Za-z0-9_]{3,24})\/?$/);
+    if (profile) {
+      if (!readOnly) return new Response('Method not allowed', { status: 405 });
+      return handleProfile(profile[1], env, url.origin);
     }
 
     return env.ASSETS.fetch(request);

@@ -11015,3 +11015,73 @@ h4 { font-size: 17px; }
   font-size: 15px; color: var(--brown-light-muted, #9B8A7E); padding: 6px 4px;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Public-profile toggle. Publishing is outward-facing, so the control reads as
+   a deliberate switch rather than another tappable row.
+   docs/initiatives/2026-07-30-public-profile.md */
+.settings-row { display: flex; align-items: flex-start; gap: 14px; }
+.settings-switch {
+  flex: none; width: 50px; height: 30px; border-radius: 999px; border: none;
+  background: rgba(61, 44, 30, 0.16); position: relative; cursor: pointer;
+  transition: background 0.18s ease; -webkit-tap-highlight-color: transparent;
+  margin-top: 2px;
+}
+.settings-switch.on { background: var(--orange, #E8573A); }
+.settings-switch:disabled { opacity: 0.55; }
+.settings-switch-knob {
+  position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+  border-radius: 50%; background: #fff;
+  box-shadow: 0 2px 5px rgba(61, 44, 30, 0.3);
+  transition: transform 0.18s cubic-bezier(.2,.9,.3,1.15);
+}
+.settings-switch.on .settings-switch-knob { transform: translateX(20px); }
+
+/* ============================================================
+   The stub drawer — MyShows as a collection, not a database view.
+   Everything is a barcode in Apple Wallet now; there is no shoebox and
+   nothing to keep. This puts the object back.
+   docs/initiatives/2026-07-30-public-profile.md
+   ============================================================ */
+.stub-drawer { list-style: none; padding: 0; margin: 0; }
+.stub {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  border-radius: 9px; padding: 15px 16px 15px 22px;
+  margin-top: -6px; cursor: pointer;
+  box-shadow: 0 6px 16px rgba(61, 44, 30, 0.18);
+  /* A whisper of rotation, seeded per row, so the pile looks handled. */
+  transform: rotate(calc((var(--i) - 2) * 0.22deg));
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.stub:first-child { margin-top: 0; }
+.stub:active {
+  transform: rotate(0deg) translateY(-2px) scale(1.008);
+  box-shadow: 0 12px 26px rgba(61, 44, 30, 0.26);
+  z-index: 2;
+}
+/* The tear line down the left edge. */
+.stub-perf {
+  position: absolute; left: 11px; top: 9px; bottom: 9px; width: 1px;
+  background: repeating-linear-gradient(
+    to bottom, rgba(44, 25, 18, 0.32) 0 3px, transparent 3px 7px);
+}
+.stub-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stub-artist {
+  font-family: 'Oswald', var(--font-heading), sans-serif;
+  font-weight: 600; font-size: 17px; letter-spacing: 0.01em;
+  color: #2C1912; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stub-meta {
+  font-size: 12px; font-weight: 600; color: #7A5A44;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stub-acts {
+  flex: none; font-size: 11px; font-weight: 700; color: #7A5A44;
+  background: rgba(44, 25, 18, 0.07); border-radius: 999px; padding: 3px 8px;
+}
+.stub-score {
+  flex: none; font-family: 'Oswald', var(--font-heading), sans-serif;
+  font-weight: 700; font-size: 17px; color: #7A2E22;
+}
+.stub-fest { border-left: 3px solid #7A2E22; padding-left: 24px; }

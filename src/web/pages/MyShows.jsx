@@ -22,6 +22,16 @@ function upcomingLabel(dateStr) {
   return `In ${Math.round(d / 30)} months`;
 }
 
+// Stub paper. Real ticket stock varied — pick a shade deterministically from
+// the name so a drawer reads like a shoebox of different tickets rather than a
+// stack of identical cards, and so a given show always looks the same.
+const STOCKS = ['#F3E8CC', '#EFE0BE', '#F6EDD6', '#EADDBE', '#F1E6CE'];
+const stubPaper = (name) => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return STOCKS[h % STOCKS.length];
+};
+
 export default function MyShows() {
   const { shows: allShows, setSelectedShow, getArtistImage, setSelectedFestival, showScore } = useApp();
   // Scoped when arriving from a Stats year tile. Named `shows` so the rest of
@@ -202,6 +212,19 @@ export default function MyShows() {
           ))}
         </div>
         <div className="shows-view-toggle">
+          {/* The drawer. Everything else here is a database view; this is the
+              one that looks like a collection. The digital ticket killed the
+              shoebox — this puts it back. */}
+          <button
+            className={`view-btn ${view === 'drawer' ? 'active' : ''}`}
+            onClick={() => setView('drawer')}
+            aria-label="Stub drawer"
+          >
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="7" width="18" height="5" rx="1.5" />
+              <rect x="3" y="13" width="18" height="5" rx="1.5" />
+            </svg>
+          </button>
           <button
             className={`view-btn ${view === 'grid' ? 'active' : ''}`}
             onClick={() => setView('grid')}
@@ -244,6 +267,33 @@ export default function MyShows() {
                   : 'No shows found'}
           </p>
         </div>
+      ) : view === 'drawer' ? (
+        <ul className="stub-drawer fade-in">
+          {displayItems.map((item, i) => {
+            const fest = item.isFestival;
+            const show = fest ? item.shows?.[0] : item.show;
+            const title = fest ? item.festival : show?.artist;
+            const sc = fest ? item.score : showScore(show);
+            return (
+              <li
+                key={item.key}
+                className={`stub${fest ? ' stub-fest' : ''}`}
+                style={{ '--i': i % 5, background: stubPaper(title || '') }}
+                onClick={() => (fest ? setSelectedFestival(item) : setSelectedShow(show))}
+              >
+                <span className="stub-perf" aria-hidden="true" />
+                <span className="stub-main">
+                  <span className="stub-artist">{title}</span>
+                  <span className="stub-meta">
+                    {[show?.venue, show?.date ? formatDate(show.date) : ''].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                {fest && <span className="stub-acts">🎪 {item.artistCount}</span>}
+                {sc > 0 && <span className="stub-score">{scoreText(sc)}</span>}
+              </li>
+            );
+          })}
+        </ul>
       ) : view === 'grid' ? (
         <div className="shows-grid fade-in">
           {displayItems.map((item) =>

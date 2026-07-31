@@ -37,6 +37,7 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-07-30-public-profile.md` — built (dev) · the stub drawer as a MyShows view, plus opt-in melo.show/@username concert résumés.
 - `2026-07-30-camera-roll-backfill.md` — shipped (dev) · read EXIF capture times from a picked batch of photos, cluster them into nights, propose the gig-shaped ones.
 - `2026-07-30-rank-outings-not-shows.md` — planned · make festivals a single ranked entity so a 12-act weekend is one duel, not fifty questions.
 - `2026-07-16-media-reorder.md` — built (dev) · Drag-to-reorder photos + videos in the pickers (hold-and-drag), replacing delete-everything-and-re-upload. Matters more than it looks: `photos[0]` now drives the share-card hero, the **og:image in every link preview**, and the video poster — so a "Cover" badge names position 1. Uses dnd-kit because the pickers sit in a scrollable form and the scroll-vs-drag long-press disambiguation can't be verified without real iOS touch. Surfaced + fixed a pre-existing dep bug: react pinned exactly vs react-dom floating would have blocked every future npm install.
