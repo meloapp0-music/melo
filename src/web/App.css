@@ -10885,3 +10885,36 @@ h4 { font-size: 17px; }
 .bucket-btn.bucket-fine.active  .bucket-hint { color: #C97B36; }
 .bucket-btn.bucket-meh.active   { border-color: #9B8A7E; background: rgba(155, 138, 126, 0.10); }
 .bucket-btn.bucket-meh.active   .bucket-hint { color: #6B5A4E; }
+
+/* Rank outings, not shows — festival affordances.
+   docs/initiatives/2026-07-30-rank-outings-not-shows.md */
+
+/* The leaderboard lists outings; a festival row says how many acts it stands for. */
+.rank-fest-tag {
+  margin-left: 8px; font-size: 11px; font-weight: 700;
+  color: var(--brown-light-muted, #9B8A7E);
+  background: rgba(61, 44, 30, 0.06); border-radius: 999px; padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* "Rank the sets" — the SECOND, separate order inside one festival. */
+.fest-rank-cta {
+  width: 100%; margin: 2px 0 12px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #F4A261, #E8573A); color: #fff;
+  font-family: var(--font-heading); font-weight: 750; font-size: 14.5px;
+  border-radius: 14px; padding: 11px 18px;
+  box-shadow: 0 6px 16px rgba(232, 87, 58, 0.32);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.13s ease;
+}
+.fest-rank-cta:active { transform: scale(0.985); }
+
+/* A set's rank within its festival. A RANK, never a second score — the score
+   belongs to the outing. */
+.fest-set-rank {
+  font-family: var(--font-heading); font-weight: 800; font-size: 15px;
+  color: var(--orange, #E8573A); flex: none; min-width: 32px; text-align: right;
+}
+.detail-section-note {
+  margin-left: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--brown-light-muted, #9B8A7E);
+}

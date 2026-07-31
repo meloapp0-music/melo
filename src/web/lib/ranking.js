@@ -37,6 +37,11 @@
 //
 // Stored in the existing numeric `score` column as a representative value, so
 // there's no migration and every pre-existing 1–10 classifies itself.
+// Explicit .js so the plain-node test runner can resolve it (Vite doesn't care
+// either way). Imported rather than re-implemented: the 0020 migration's SQL
+// has to reproduce this exact key, so there must be one definition of it.
+import { festivalKey } from '../store.js';
+
 export const BUCKETS = [
   { id: 'loved', label: 'Loved it', hint: 'One of the good ones', score: 9, emoji: '🔥' },
   { id: 'fine', label: 'It was fine', hint: 'Glad I went', score: 6.5, emoji: '👍' },
@@ -127,25 +132,84 @@ export function place(s) {
 export const toPositions = (orderedIds) =>
   Object.fromEntries((orderedIds || []).map((id, i) => [id, i + 1]));
 
+// ===========================================================================
+// Entities — what actually gets ranked.
+// ===========================================================================
+// You rank OUTINGS, not show rows. A twelve-act festival is one night out, and
+// every other layer of the app already agrees: groupIntoOutings collapses it,
+// the Shows count counts it once, festivalKey excludes its stages from the
+// venue count. This is the ranking layer catching up.
+//
+// One function decides everything downstream.
+
+/** The thing a show is ranked AS: its festival, or itself. */
+export const entityKeyOf = (show) => (show ? festivalKey(show) || show.id : '');
+
+/** Ranking scopes. `outing` is the top-level order; each festival gets its own. */
+export const OUTING_SCOPE = 'outing';
+export const festivalScope = (key) => `festival:${key}`;
+
 /**
- * The user's ranked order, best → worst.
- *
- * Shows that have never been placed fall to the back, ordered by score so a
- * library that predates ranking still reads sensibly. `positions` is the stored
- * map; `shows` is any list of show objects.
+ * Collapse shows into the entities that get ranked: one per festival, one per
+ * standalone show. Returns `{ key, shows, lead }` — `lead` is the earliest show,
+ * used for artwork and dates.
  */
-export function rankedOrder(shows, positions = {}) {
+export function toEntities(shows) {
+  const byKey = new Map();
+  (shows || []).forEach((sh) => {
+    const key = entityKeyOf(sh);
+    if (!byKey.has(key)) byKey.set(key, { key, shows: [], festival: festivalKey(sh) ? (sh.festival || '').trim() : '' });
+    byKey.get(key).shows.push(sh);
+  });
+  return [...byKey.values()].map((e) => {
+    const sorted = [...e.shows].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const lead = sorted[0];
+    // city / date / venue mirror the shape groupIntoOutings produces, so an
+    // entity can be handed straight to FestivalDetail without a translation
+    // step. `date` is the LAST day — newest-first sorting elsewhere keys off it,
+    // matching groupIntoOutings.
+    return {
+      ...e,
+      shows: sorted,
+      lead,
+      isFestival: !!e.festival,
+      city: lead?.city || '',
+      venue: lead?.venue || '',
+      date: sorted[sorted.length - 1]?.date || lead?.date || '',
+    };
+  });
+}
+
+/**
+ * The user's ranked order of ENTITIES, best → worst.
+ *
+ * Entities never placed fall to the back, ordered by their best entered score so
+ * a library predating ranking still reads sensibly.
+ */
+export function rankedEntities(shows, positions = {}) {
   const placed = [];
   const unplaced = [];
-  (shows || []).forEach((sh) => (positions[sh.id] ? placed : unplaced).push(sh));
-  placed.sort((a, b) => positions[a.id] - positions[b.id]);
-  unplaced.sort((a, b) => (b.score || 0) - (a.score || 0) || String(a.date).localeCompare(String(b.date)));
+  toEntities(shows).forEach((e) => (positions[e.key] ? placed : unplaced).push(e));
+  placed.sort((a, b) => positions[a.key] - positions[b.key]);
+  const best = (e) => Math.max(...e.shows.map((s) => s.score || 0), 0);
+  unplaced.sort((a, b) => best(b) - best(a) || String(a.lead?.date).localeCompare(String(b.lead?.date)));
   return [...placed, ...unplaced];
 }
 
-/** 1-based rank of one show within `rankedOrder`, or 0 if absent. */
-export const rankOf = (shows, positions, showId) =>
-  rankedOrder(shows, positions).findIndex((s) => s.id === showId) + 1;
+/**
+ * Backwards-compatible show-level order: entities expanded back into shows.
+ * A festival contributes its shows contiguously, in date order.
+ */
+export const rankedOrder = (shows, positions = {}) =>
+  rankedEntities(shows, positions).flatMap((e) => e.shows);
+
+/** 1-based rank of a show's ENTITY, or 0 if absent. */
+export const rankOf = (shows, positions, showId) => {
+  const target = (shows || []).find((s) => s.id === showId);
+  if (!target) return 0;
+  const key = entityKeyOf(target);
+  return rankedEntities(shows, positions).findIndex((e) => e.key === key) + 1;
+};
 
 // ===========================================================================
 // The melo score — a number DERIVED from where a show sits, not typed in.
@@ -181,17 +245,26 @@ export function meloScore(r, n) {
 }
 
 /**
- * `{ showId: score }` for every PLACED show.
+ * `{ showId: score }` for every show belonging to a PLACED entity.
  *
- * Only placed shows count toward the denominator — an unranked back catalogue
- * shouldn't drag the scale of the shows you have ranked. Unplaced shows are
- * simply absent from the map; callers fall back to the entered score.
+ * ONE SCORE PER OUTING: all twelve of a festival's shows carry the festival's
+ * score. Within-festival ranking produces a rank badge, never a second number —
+ * two different scores for the same show would be worse than the problem it
+ * was meant to solve.
+ *
+ * Only placed entities count toward the denominator, so an unranked back
+ * catalogue can't drag the scale of the outings you have ranked. Unplaced shows
+ * are absent; callers fall back to the entered score.
  */
 export function meloScores(shows, positions = {}) {
-  const placed = (shows || []).filter((s) => positions[s.id]);
-  placed.sort((a, b) => positions[a.id] - positions[b.id]);
+  const placed = rankedEntities(shows, positions).filter((e) => positions[e.key]);
   const n = placed.length;
-  return Object.fromEntries(placed.map((s, i) => [s.id, meloScore(i + 1, n)]));
+  const out = {};
+  placed.forEach((e, i) => {
+    const v = meloScore(i + 1, n);
+    e.shows.forEach((sh) => { out[sh.id] = v; });
+  });
+  return out;
 }
 
 /**

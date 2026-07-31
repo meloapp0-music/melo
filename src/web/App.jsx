@@ -5,7 +5,7 @@ import { getMyProfile, updateMyProfile } from './lib/db/profiles';
 import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settings';
 import * as showsDb from './lib/db/shows';
 import { getPositions } from './lib/db/rankings';
-import { meloScores, displayScore } from './lib/ranking';
+import { meloScores, displayScore, entityKeyOf } from './lib/ranking';
 import { registerForPush, onPushTap } from './lib/push';
 import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
@@ -498,7 +498,10 @@ export default function App() {
       // and gets the share card above instead. Both sheets close before their
       // addShow resolves, so this lands on a clean screen.
       const attendedCount = shows.filter(isAttended).length;
-      if (created && isAttended(created) && attendedCount >= 1) {
+      // Skip when this show's OUTING is already ranked — adding a thirteenth act
+      // to a festival you've already placed shouldn't re-ask.
+      const alreadyRanked = !!rankPositions[entityKeyOf(created || {})];
+      if (created && isAttended(created) && attendedCount >= 1 && !alreadyRanked) {
         setTimeout(() => openOverlay('rank', { show: created }), 450);
       }
       return created;
@@ -516,6 +519,22 @@ export default function App() {
     try {
       const created = await showsDb.createShows(showsToAdd, userId);
       setShows((prev) => [...created, ...prev]);
+
+      // ONE duel for the whole weekend. This path is the festival multi-select,
+      // so `created` is typically a dozen acts that are all the same night out —
+      // and ranking is per-OUTING now, so they share a single entity key. Before
+      // this, the batch path opened no duel at all and left every act unranked.
+      const attendedNew = created.filter((s) => isAttended(s));
+      if (attendedNew.length) {
+        const seen = new Set();
+        const leads = attendedNew.filter((s) => {
+          const k = entityKeyOf(s);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        setTimeout(() => openOverlay('rank', { queue: leads }), 450);
+      }
       return created;
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -840,7 +859,7 @@ export default function App() {
               {o.type === 'user' && <UserProfileView userId={p.userId} onClose={close} />}
               {o.type === 'wrapped' && <Wrapped year={p.year} onClose={close} />}
               {o.type === 'compare' && <ShowComparison showA={p.showA} onClose={close} />}
-              {o.type === 'rank' && <RankDuel show={p.show} queue={p.queue} onClose={close} />}
+              {o.type === 'rank' && <RankDuel show={p.show} queue={p.queue} scope={p.scope} pool={p.pool} onClose={close} />}
             </Fragment>
           );
         })}

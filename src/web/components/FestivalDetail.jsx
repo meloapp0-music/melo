@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
-import { scoreText } from '../lib/ranking';
+import { scoreText, festivalScope } from '../lib/ranking';
+import { getPositions } from '../lib/db/rankings';
 import { getArtistGradient, formatDate, vibeStyle, festivalKey, isAttended } from '../store';
 import PhotoGallery from './PhotoGallery';
 import PhotoPicker from './PhotoPicker';
@@ -14,7 +15,19 @@ import { getProfilesByIds } from '../lib/db/profiles';
 // Opened from the festival card in My Shows. Members are derived from the LIVE
 // shows so deleting an act (or the festival) updates in place.
 export default function FestivalDetail({ outing, onClose, onOpenShow }) {
-  const { shows, deleteShow, getArtistImage, showToast, session, setSelectedUserId, showScore } = useApp();
+  const { shows, deleteShow, getArtistImage, showToast, session, setSelectedUserId, showScore, openOverlay, overlayCount } = useApp();
+  // This festival's OWN order over its sets — a scope separate from the
+  // top-level outing ranking. Re-read when an overlay closes so the list
+  // updates after the ranking duel finishes.
+  const [setOrder, setSetOrder] = useState(null);
+  useEffect(() => {
+    let gone = false;
+    getPositions(festivalScope(outing.key))
+      .then((p) => { if (!gone) setSetOrder(Object.keys(p || {}).length ? p : null); })
+      .catch(() => {});
+    return () => { gone = true; };
+  }, [outing.key, overlayCount]);
+
   const [confirmFest, setConfirmFest] = useState(false);
   const [pendingAct, setPendingAct] = useState(null);
   // General festival-level media (crowd/grounds shots, not tied to one act).
@@ -29,6 +42,11 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
   const members = shows
     .filter((s) => festivalKey(s) === outing.key)
     .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.artist || '').localeCompare(b.artist || ''));
+
+  // Ranked order when the sets have been ranked, otherwise the natural one.
+  const orderedMembers = setOrder
+    ? [...members].sort((a, b) => (setOrder[a.id] || 1e9) - (setOrder[b.id] || 1e9))
+    : members;
 
   // Close when the festival no longer has any sets (all removed).
   useEffect(() => {
@@ -215,16 +233,43 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
           )}
 
           <div className="detail-section">
-            <div className="detail-section-title">Sets you saw ({members.length})</div>
+            <div className="detail-section-title">
+              Sets you saw ({members.length})
+              {setOrder && <span className="detail-section-note">your order</span>}
+            </div>
+
+            {/* Ranking the sets is a SECOND, separate order — the festival
+                competes with other nights out, its sets compete only with each
+                other. Offered here rather than at log time: twelve comparisons
+                straight after a four-tap log would undo the fast path. */}
+            {members.length >= 2 && (
+              <button
+                className="fest-rank-cta"
+                onClick={() => openOverlay('rank', {
+                  queue: setOrder ? members.filter((s) => !setOrder[s.id]) : members,
+                  scope: festivalScope(outing.key),
+                  pool: members,
+                })}
+              >
+                {setOrder
+                  ? `Rank the rest (${members.filter((s) => !setOrder[s.id]).length} left)`
+                  : '🏆  Rank the sets'}
+              </button>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {members.map((s) => (
+              {orderedMembers.map((s) => (
                 <div key={s.id} className="show-list-item" onClick={() => onOpenShow(s)}>
                   <div className="show-list-thumb" style={thumbStyle(s.artist)} />
                   <div className="show-list-info">
                     <div className="show-list-artist">{s.artist}</div>
                     <div className="show-list-meta">{formatDate(s.date)}</div>
                   </div>
-                  {showScore(s) != null && (
+                  {/* Within a festival the ranking yields a RANK, never a second
+                      score — one score per outing. */}
+                  {setOrder?.[s.id] ? (
+                    <div className="fest-set-rank">#{setOrder[s.id]}</div>
+                  ) : showScore(s) != null && (
                     <div className="show-list-score">
                       {scoreText(showScore(s))}
                     </div>

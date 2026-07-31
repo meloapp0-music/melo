@@ -13,6 +13,7 @@ import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex,
   remaining, toPositions, rankedOrder, rankOf, meloScore, meloScores, scoreText, displayScore,
   BUCKETS, BUCKET_IDS, bucketOf, bucketScore,
+  entityKeyOf, toEntities, rankedEntities, OUTING_SCOPE, festivalScope,
 } from '../ranking.js';
 
 let fail = 0;
@@ -201,6 +202,58 @@ console.log('\nBUCKETS — the coarse call, and the partition it enforces');
 
   ok('no bucket opts → searches the whole list (back-compat)',
     startPlacement(lib, 'NEW').hi === lib.length);
+}
+
+console.log('\nENTITIES — a festival is ONE ranked thing');
+{
+  const fest = (artist, i) => ({ id: `c${i}`, artist, festival: 'Coachella', date: '2025-04-1' + i, score: 9 });
+  const lib = [
+    { id: 'r1', artist: 'Radiohead', date: '2025-06-01', score: 9 },
+    fest('Doja', 2), fest('Tame', 3), fest('Goose', 4),
+    { id: 'r2', artist: 'Wilco', date: '2025-07-01', score: 6.5 },
+  ];
+
+  ok('a festival show keys to its festival', entityKeyOf(lib[1]) === 'coachella|2025');
+  ok('a standalone show keys to itself', entityKeyOf(lib[0]) === 'r1');
+  ok('all of a festival\'s shows share one key',
+    new Set(lib.slice(1, 4).map(entityKeyOf)).size === 1);
+
+  const ents = toEntities(lib);
+  ok('5 shows collapse to 3 entities', ents.length === 3, ents.map((e) => e.key).join());
+  const cf = ents.find((e) => e.key === 'coachella|2025');
+  ok('the festival entity holds all its shows', cf.shows.length === 3);
+  ok('...and is flagged as a festival', cf.isFestival === true && cf.festival === 'Coachella');
+  ok('...with the earliest show as lead', cf.lead.id === 'c2');
+  ok('a standalone entity is not a festival', ents.find((e) => e.key === 'r1').isFestival === false);
+
+  // Rank the festival ABOVE Radiohead, Wilco last.
+  const pos = { 'coachella|2025': 1, r1: 2, r2: 3 };
+  ok('rankedEntities orders by stored position',
+    rankedEntities(lib, pos).map((e) => e.key).join() === 'coachella|2025,r1,r2');
+
+  // ONE SCORE PER OUTING — the display rule.
+  const scores = meloScores(lib, pos);
+  ok('every festival show gets the SAME score',
+    scores.c2 === scores.c3 && scores.c3 === scores.c4, JSON.stringify(scores));
+  ok('...which is the festival\'s, not a per-show one', scores.c2 === meloScore(1, 3));
+  ok('the denominator counts entities, not shows',
+    Object.keys(scores).length === 5 && scores.r2 === meloScore(3, 3));
+
+  ok('rankOf reports the ENTITY rank for any of its shows',
+    rankOf(lib, pos, 'c3') === 1 && rankOf(lib, pos, 'r1') === 2);
+  ok('rankedOrder still expands back to shows, festival contiguous',
+    rankedOrder(lib, pos).map((s) => s.id).join() === 'c2,c3,c4,r1,r2');
+
+  // Unplaced entities fall back on their BEST entered score.
+  const someUnplaced = rankedEntities(lib, { r2: 1 });
+  ok('placed entity leads even with a worse score', someUnplaced[0].key === 'r2');
+  ok('unplaced sort by best score in the entity',
+    someUnplaced.slice(1).map((e) => e.key).join() === 'coachella|2025,r1'
+    || someUnplaced.slice(1).map((e) => e.key).join() === 'r1,coachella|2025');
+
+  ok('scopes are distinct strings',
+    OUTING_SCOPE === 'outing' && festivalScope('coachella|2025') === 'festival:coachella|2025');
+  ok('empty input is safe', toEntities(null).length === 0 && rankedEntities(null, {}).length === 0);
 }
 
 console.log('\nDISPLAY RESOLUTION (what number a surface actually shows)');

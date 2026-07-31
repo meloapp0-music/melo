@@ -11,21 +11,30 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, isAttended } from '../store';
-import { savePositions } from '../lib/db/rankings';
+import { getArtistGradient, formatDate, isAttended, festivalKey } from '../store';
+import { savePositions, getPositions } from '../lib/db/rankings';
 import {
   startPlacement, nextOpponent, answer, isPlaced, place, placementIndex, remaining,
-  rankedOrder, toPositions, meloScore, scoreText, bucketOf,
+  rankedEntities, toPositions, meloScore, scoreText, bucketOf,
+  entityKeyOf, OUTING_SCOPE,
 } from '../lib/ranking';
 import { track } from '../lib/analytics';
 
 /**
- * `queue` places several shows back to back — that's the back-catalogue ranker.
- * `show` is the single-show case (straight after a log). Either works.
+ * Places ENTITIES, not show rows — a twelve-act festival is one thing to rank.
+ *
+ *   show / queue  — the entities to place. Each is a show; its festival (if any)
+ *                   is what actually gets ranked.
+ *   scope         — 'outing' (default) ranks festivals and standalone shows
+ *                   together. 'festival:<key>' ranks the sets inside one
+ *                   festival against each other only.
+ *   pool          — the shows this scope ranks among. Defaults to the whole
+ *                   attended library; a festival scope passes its own sets.
  */
-export default function RankDuel({ show, queue, onClose }) {
+export default function RankDuel({ show, queue, scope = OUTING_SCOPE, pool, onClose }) {
   const { shows, getArtistImage, session, showToast, rankPositions, setRankPositions } = useApp();
   const userId = session?.user?.id || null;
+  const isFestivalScope = scope !== OUTING_SCOPE;
 
   const line = useMemo(() => (queue?.length ? queue : [show]).filter(Boolean), [queue, show]);
   const [round, setRound] = useState(0);
@@ -35,41 +44,73 @@ export default function RankDuel({ show, queue, onClose }) {
   const [done, setDone] = useState(null); // { rank, total, displaced } once placed
   const [saving, setSaving] = useState(false);
 
-  // Live positions. Placing show #2 of a queue has to see where show #1 landed,
-  // so this is re-read each round rather than captured once.
-  const posRef = useRef(rankPositions || {});
+  // Live positions for THIS scope. Placing entity #2 of a queue has to see where
+  // #1 landed, so it's re-read each round rather than captured once. A festival
+  // scope starts from its own stored order, fetched on mount.
+  const posRef = useRef(isFestivalScope ? {} : (rankPositions || {}));
+  const [ready, setReady] = useState(!isFestivalScope);
+  useEffect(() => {
+    if (!isFestivalScope) return undefined;
+    let gone = false;
+    getPositions(scope)
+      .then((p) => { if (!gone) { posRef.current = p || {}; setReady(true); } })
+      .catch(() => { if (!gone) setReady(true); }); // empty order is a valid start
+    return () => { gone = true; };
+  }, [scope, isFestivalScope]);
 
-  // ONLY shows that already have a position are comparison candidates.
-  //
-  // This matters for correctness, not tidiness: binary search requires a sorted
-  // list. Unplaced shows have no true order — interleaving them by score would
-  // hand the search an unsorted array and it would confidently return the wrong
-  // slot. So the ranked set builds up from nothing: the first show placed is #1
-  // unopposed, the second takes one question, and so on.
-  const byId = useMemo(() => Object.fromEntries((shows || []).map((s) => [s.id, s])), [shows]);
+  // The shows this scope ranks among.
+  const universe = useMemo(
+    () => (pool?.length ? pool : (shows || []).filter(isAttended)),
+    [pool, shows]
+  );
+  // At outing scope the candidate is its ENTITY; inside a festival, each set is
+  // ranked as itself.
+  const keyOf = useMemo(
+    () => (isFestivalScope ? (s) => s.id : entityKeyOf),
+    [isFestivalScope]
+  );
+  const byKey = useMemo(() => {
+    const m = {};
+    universe.forEach((s) => { const k = keyOf(s); if (!m[k]) m[k] = s; });
+    return m;
+  }, [universe, keyOf]);
 
   useEffect(() => {
-    if (!current) return;
-    const placedOnly = (shows || []).filter(
-      (s) => isAttended(s) && s.id !== current.id && posRef.current[s.id]
-    );
-    const ordered = rankedOrder(placedOnly, posRef.current).map((s) => s.id);
-    // Confine the search to the bucket the user picked at log time. That's
-    // fewer questions AND it never asks whether a night you loved beat one you
-    // didn't — a comparison with no useful answer. See lib/ranking.js BUCKETS.
-    setState(startPlacement(ordered, current.id, {
+    if (!current || !ready) return;
+    const currentKey = keyOf(current);
+    // ONLY entities that already hold a position are comparison candidates.
+    //
+    // This is correctness, not tidiness: binary search requires a sorted list.
+    // Unplaced entities have no true order, so interleaving them by score would
+    // hand the search an unsorted array and it would confidently return the
+    // wrong slot. The ranked set builds up from nothing instead — the first is
+    // #1 unopposed, the second costs one question.
+    const placed = universe.filter((s) => keyOf(s) !== currentKey && posRef.current[keyOf(s)]);
+    const ordered = isFestivalScope
+      ? placed.map((s) => s.id).sort((a, b) => posRef.current[a] - posRef.current[b])
+      : rankedEntities(placed, posRef.current).map((e) => e.key);
+
+    // Confine the search to the bucket picked at log time: fewer questions, and
+    // it never asks whether a night you loved beat one you didn't — a
+    // comparison with no useful answer. See lib/ranking.js BUCKETS.
+    setState(startPlacement(ordered, currentKey, {
       bucket: bucketOf(current),
-      bucketOf: (id) => bucketOf(byId[id]),
+      bucketOf: (k) => bucketOf(byKey[k]),
     }));
     setDone(null);
-    track('rank_duel_started', { library_size: ordered.length, queued: line.length });
-    // Keyed on `round` only — re-running mid-placement would restart the search
-    // under the user's fingers.
+    track('rank_duel_started', { library_size: ordered.length, queued: line.length, scope });
+    // Keyed on round/ready only — re-running mid-placement would restart the
+    // search under the user's fingers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round]);
+  }, [round, ready]);
 
-  const opponentId = state ? nextOpponent(state) : null;
-  const opponent = opponentId ? byId[opponentId] : null;
+  const opponentKey = state ? nextOpponent(state) : null;
+  const opponent = opponentKey ? byKey[opponentKey] : null;
+  // A festival opponent shows its festival name, not the first act's.
+  const nameOf = (s) => {
+    if (isFestivalScope || !s) return s?.artist || '';
+    return festivalKey(s) ? (s.festival || '').trim() || s.artist : s.artist;
+  };
 
   // Commit the placement. Also runs on "good enough" — `lo` is always the best
   // current guess, so an early exit is a real answer, not a discarded one.
@@ -78,23 +119,25 @@ export default function RankDuel({ show, queue, onClose }) {
     setSaving(true);
     const ordered = place(s);
     const rank = placementIndex(s) + 1;
-    // The show this one just pushed down — i.e. the best night it beat.
-    const displacedId = ordered[rank]; // rank is 1-based, so this is the next one down
+    // The entity this one just pushed down — i.e. the best night it beat.
+    const displacedKey = ordered[rank]; // rank is 1-based, so this is the next one down
     setDone({
       rank,
       total: ordered.length,
-      displaced: byId[displacedId]?.artist || '',
-      score: meloScore(rank, ordered.length),
+      displaced: nameOf(byKey[displacedKey]),
+      // Within a festival the number would collide with the outing's score, so
+      // that scope reports a RANK only. One score per outing.
+      score: isFestivalScope ? null : meloScore(rank, ordered.length),
     });
-    track('rank_duel_finished', { questions: s.asked, rank, total: ordered.length, early: !isPlaced(s) });
-    // Update app state immediately so the leaderboard, the receipt and the
-    // "Where it ranks" recap cut are correct before the round-trip lands — and
-    // so the NEXT show in the queue searches against the updated order.
+    track('rank_duel_finished', { questions: s.asked, rank, total: ordered.length, early: !isPlaced(s), scope });
+    // Update state immediately so the leaderboard, the receipt and the "Where it
+    // ranks" recap cut are correct before the round-trip lands — and so the NEXT
+    // entity in the queue searches against the updated order.
     const nextPositions = toPositions(ordered);
     posRef.current = nextPositions;
-    setRankPositions?.(nextPositions);
+    if (!isFestivalScope) setRankPositions?.(nextPositions);
     try {
-      await savePositions(ordered, userId);
+      await savePositions(ordered, userId, scope);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[Melo] savePositions failed', err);
@@ -117,7 +160,7 @@ export default function RankDuel({ show, queue, onClose }) {
       : { background: getArtistGradient(s?.artist || '') };
   };
 
-  if (!current) return null;
+  if (!current || !ready) return null;
 
   const more = line.length - 1 - round; // shows still queued behind this one
 
@@ -139,8 +182,14 @@ export default function RankDuel({ show, queue, onClose }) {
         <div className="duel-result">
           {/* The score is the headline now — it's the number that shows up
               everywhere else — with the rank as its provenance underneath. */}
-          <div className="duel-result-score">{scoreText(done.score)}</div>
-          <div className="duel-result-of">#{done.rank} of {done.total} shows</div>
+          <div className="duel-result-score">
+            {done.score != null ? scoreText(done.score) : `#${done.rank}`}
+          </div>
+          <div className="duel-result-of">
+            {done.score != null
+              ? `#${done.rank} of ${done.total} outings`
+              : `of ${done.total} sets`}
+          </div>
           <div className="duel-result-line">{blurb}</div>
           {more > 0 ? (
             <>
@@ -177,7 +226,7 @@ export default function RankDuel({ show, queue, onClose }) {
       <div className="duel-head">
         <div className="duel-title">Which was better?</div>
         <div className="duel-sub">
-          {left <= 1 ? 'Last one' : `About ${left} more`} · placing {current.artist}
+          {left <= 1 ? 'Last one' : `About ${left} more`} · placing {nameOf(current)}
           {more > 0 && <span className="duel-queue"> · {more} to go</span>}
         </div>
       </div>
@@ -188,7 +237,7 @@ export default function RankDuel({ show, queue, onClose }) {
           <span className="duel-card-scrim" />
           {line.length === 1 && <span className="duel-card-tag">just logged</span>}
           <span className="duel-card-info">
-            <span className="duel-card-artist">{current.artist}</span>
+            <span className="duel-card-artist">{nameOf(current)}</span>
             <span className="duel-card-meta">
               {[current.venue, current.date ? formatDate(current.date) : ''].filter(Boolean).join(' · ')}
             </span>
@@ -201,7 +250,7 @@ export default function RankDuel({ show, queue, onClose }) {
           <span className="duel-card-bg" style={bg(opponent)} />
           <span className="duel-card-scrim" />
           <span className="duel-card-info">
-            <span className="duel-card-artist">{opponent.artist}</span>
+            <span className="duel-card-artist">{nameOf(opponent)}</span>
             <span className="duel-card-meta">
               {[opponent.venue, opponent.date ? formatDate(opponent.date) : ''].filter(Boolean).join(' · ')}
             </span>
