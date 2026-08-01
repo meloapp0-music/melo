@@ -24,7 +24,7 @@ function missing(cut, show, shows) {
   if (n.score && !(show.score > 0)) return 'Rate the show';
   if (n.words) return 'Add vibes or a note';
   if (n.library && (shows || []).length < n.library) return 'Log a few more shows';
-  if (n.aged) return 'Unlocks on the anniversary';
+  if (n.aged) return 'Once the night is a year behind you';
   return 'Not available yet';
 }
 

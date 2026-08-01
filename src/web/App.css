@@ -11085,3 +11085,48 @@ h4 { font-size: 17px; }
   font-weight: 700; font-size: 17px; color: #7A2E22;
 }
 .stub-fest { border-left: 3px solid #7A2E22; padding-left: 24px; }
+
+/* ============================================================
+   OnThisDay — the anniversary card on Home.
+   Renders only on an actual anniversary, so it's absent almost
+   every day. That absence is what keeps it feeling like a find.
+   docs/initiatives/2026-07-30-anniversaries.md
+   ============================================================ */
+.otd-card {
+  position: relative; display: block; width: 100%; border: none; padding: 0;
+  height: 176px; border-radius: 20px; overflow: hidden; cursor: pointer;
+  background-size: cover; background-position: center;
+  box-shadow: 0 12px 30px rgba(61, 44, 30, 0.26);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.14s ease;
+  text-align: left; margin-bottom: 16px;
+}
+.otd-card:active { transform: scale(0.985); }
+.otd-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(22,13,7,0.20) 0%, rgba(22,13,7,0.52) 45%, rgba(22,13,7,0.92) 100%);
+}
+.otd-body {
+  position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2;
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start;
+}
+.otd-eyebrow {
+  font-family: var(--font-heading); font-weight: 800; font-size: 11px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber, #F4A261);
+}
+.otd-head {
+  font-family: var(--font-heading); font-weight: 800; font-size: 24px;
+  letter-spacing: -0.025em; color: #FBF6EE; line-height: 1.1;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.5);
+}
+.otd-sub {
+  font-weight: 500; font-size: 13px; color: rgba(251, 246, 238, 0.82);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.5); line-height: 1.35;
+}
+.otd-sub b { font-weight: 750; color: #fff; }
+.otd-cta {
+  margin-top: 9px; display: inline-block;
+  background: linear-gradient(135deg, #F4A261, #E8573A); color: #fff;
+  font-family: var(--font-heading); font-weight: 750; font-size: 13.5px;
+  border-radius: 14px; padding: 8px 15px;
+  box-shadow: 0 6px 16px rgba(232, 87, 58, 0.4);
+}

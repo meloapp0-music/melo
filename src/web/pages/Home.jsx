@@ -11,6 +11,7 @@ import { getProfilesByIds } from '../lib/db/profiles';
 import { MeloIcon } from '../components/MeloLogo';
 import FriendsFeed from '../components/FriendsFeed';
 import GetStarted from '../components/GetStarted';
+import OnThisDay from '../components/OnThisDay';
 import TasteNudge from '../components/TasteNudge';
 
 // Day-precision local midnight; safer than `new Date()` for relative
@@ -194,6 +195,8 @@ export default function Home() {
       {/* First-run "starting navigation" — a 3-step activation checklist
           that ticks off against real state and vanishes once complete.
           Subsumes the old zero-show block + the music-taste prompt. */}
+      {/* Renders only on an actual anniversary — absent almost every day. */}
+      <OnThisDay />
       <GetStarted />
 
       {/* Second chance at "turn on alerts" for anyone who got past

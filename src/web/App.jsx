@@ -292,6 +292,24 @@ export default function App() {
     // daily_post — the founder/ops nudge from the `daily-post` cron. Opens the
     // screenshot-ready card at melo.show/tonight; falls back to Discover (whose
     // "Tonight in {city}" rail is the same data) if the payload has no url.
+    // anniversary — "one year ago tonight". Same shape as recap_ready: the
+    // notification promised a memory, so it lands ON the reel, and on the
+    // anniversary CUT specifically rather than whatever pickAutoCut would pick.
+    if (kind === 'anniversary') {
+      const show = shows.find((s) => s.id === pushNav.showId);
+      if (show) {
+        setSubPage(null);
+        dispatchOverlay({
+          type: 'set',
+          list: [
+            { type: 'show', props: { show } },
+            { type: 'recap', props: { show, cutId: 'anniversary' } },
+          ],
+        });
+      }
+      return done();
+    }
+
     if (kind === 'daily_post') {
       if (pushNav.url) {
         try { window.open(pushNav.url, '_blank'); } catch { setSubPage('festivals'); }
@@ -848,7 +866,7 @@ export default function App() {
               {o.type === 'venue' && <VenueDetail venue={p.venue} onClose={close} onOpenShow={openShow} />}
               {o.type === 'artist' && <ArtistDetail artist={p.artist} onClose={close} onOpenShow={openShow} />}
               {o.type === 'show' && <ShowDetail show={p.show} onClose={close} />}
-              {o.type === 'recap' && <RecapReel show={p.show} onClose={close} />}
+              {o.type === 'recap' && <RecapReel show={p.show} cutId={p.cutId} onClose={close} />}
               {o.type === 'firstCard' && (
                 <ShareCardView
                   show={p.show}

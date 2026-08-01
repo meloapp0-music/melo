@@ -37,6 +37,7 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-07-30-anniversaries.md` — built (dev) · "One year ago tonight" — a daily cron push + a Home card that resurface an old show on its anniversary, finally surfacing the One-year-ago recap cut the picker already promised.
 - `2026-07-30-public-profile.md` — built (dev) · the stub drawer as a MyShows view, plus opt-in melo.show/@username concert résumés.
 - `2026-07-30-camera-roll-backfill.md` — shipped (dev) · read EXIF capture times from a picked batch of photos, cluster them into nights, propose the gig-shaped ones.
 - `2026-07-30-rank-outings-not-shows.md` — planned · make festivals a single ranked entity so a 12-act weekend is one duel, not fifty questions.
