@@ -352,6 +352,28 @@ Read those before re-deriving anything here.
     nine-show library asked only **two** questions, both against fine-bucket
     shows, landing the show last in its block and above both "not for me" ones.
 
+- 2026-07-31: **Reworded the duel, and made ranking opt-out.**
+  - **"Which was better?" → "Which would you relive?"** Beli's wording is a
+    quality judgement, which is right for restaurants and wrong here: it reads
+    as scoring the artist rather than remembering the night, and that's the
+    thing people object to about ranking music. Same mechanic, same data, but
+    it's also a *more accurate* question — the mediocre band on the night you
+    fell in love beats the technically better show you saw alone, and everyone
+    knows it.
+  - **Settings → "Compare shows after logging"**, default ON. Ranking stays
+    opt-OUT because it's what makes the scores honest and almost nobody would
+    turn it on deliberately — but plenty of people find ranking music
+    distasteful and shouldn't be stuck with it. Off stops the duel and the
+    backlog prompt; the bucket stays the score, and the drawer, recaps and
+    leaderboard are untouched. Existing rankings are kept, not deleted.
+  - Stored in `lib/prefs.js` (localStorage), **per-device rather than synced**:
+    `user_settings` writes proxy through the `setlistfm-set-key` Edge Function,
+    so a synced column would mean a migration plus a new write path — out of
+    proportion to a UI preference. Promote it if it ever needs to follow a user.
+  - Verified in-browser: defaults ON, both directions persist, a corrupted
+    value degrades instead of throwing (localStorage throws outright in
+    private-mode Safari and some WKWebView configs).
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with

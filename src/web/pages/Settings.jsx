@@ -5,6 +5,7 @@ import { checkUsernameAvailable, getProfilesByIds } from '../lib/db/profiles';
 import { listBlocked, unblockUser } from '../lib/db/friendships';
 import { showsToCsv, showsToJson, deliverFile } from '../lib/exportShows';
 import { track } from '../lib/analytics';
+import { rankingEnabled, setRankingEnabled } from '../lib/prefs';
 
 export default function Settings() {
   const { navigate, settings, updateSettings, signOut, profile, updateProfile, shows } = useApp();
@@ -19,6 +20,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [ranking, setRanking] = useState(() => rankingEnabled());
   // 'csv' | 'json' | false — which export is in flight (drives button labels).
   const [exporting, setExporting] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -401,6 +403,37 @@ export default function Settings() {
       <div className="settings-section">
         <div className="settings-section-title">Public profile</div>
         <div className="settings-card">
+          {/* Comparison ranking is opt-OUT: it's what makes the scores honest,
+              and turning it on by default is the only way most people ever see
+              it. But plenty of people find ranking music distasteful — it can
+              read as judging the artist rather than remembering the night — and
+              nobody should be stuck with it. Off keeps the bucket as the score
+              and leaves the drawer, recaps and everything else untouched. */}
+          <div className="settings-row">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="settings-label">Compare shows after logging</div>
+              <p className="settings-desc" style={{ marginTop: 4 }}>
+                {ranking
+                  ? 'After you log a show, melo asks which nights you’d rather relive and builds your order from the answers.'
+                  : 'Off. Nothing is compared — a show just keeps how you rated it. Rankings you’ve already made are kept.'}
+              </p>
+            </div>
+            <button
+              className={`settings-switch${ranking ? ' on' : ''}`}
+              role="switch"
+              aria-checked={ranking}
+              aria-label="Compare shows after logging"
+              onClick={() => {
+                const next = !ranking;
+                setRanking(next);
+                setRankingEnabled(next);
+                track('ranking_pref_changed', { enabled: next });
+              }}
+            >
+              <span className="settings-switch-knob" />
+            </button>
+          </div>
+
           <div className="settings-row">
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="settings-label">Publish melo.show/@{profile?.username || 'you'}</div>

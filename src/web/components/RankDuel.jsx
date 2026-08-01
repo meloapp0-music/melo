@@ -1,7 +1,15 @@
-// RankDuel — "which was better?", asked at the right moment.
-// ==========================================================
+// RankDuel — "which would you relive?", asked at the right moment.
+// ================================================================
 // Opens right after a show is logged, while the user is still thinking about
 // it, and binary-searches it into their ranked library in 2–5 taps.
+//
+// THE WORDING IS THE POINT. Beli asks "which was better?" — a quality
+// judgement, which is fine for restaurants and wrong here: it reads as scoring
+// the artist rather than remembering the night, and that's the thing people
+// object to about ranking music. "Which would you relive?" asks the same
+// question of the same data and gets a better answer, because it's what people
+// are actually comparing — the mediocre band on the night you fell in love
+// beats the technically better show you saw alone, and everyone knows it.
 //
 // This replaces asking for a number. A 1–10 score compresses — nobody goes to
 // shows they expect to hate — so libraries cluster at 8–10 and the resulting
@@ -224,7 +232,7 @@ export default function RankDuel({ show, queue, scope = OUTING_SCOPE, pool, onCl
       <button className="duel-skip" onClick={onClose}>Skip</button>
 
       <div className="duel-head">
-        <div className="duel-title">Which was better?</div>
+        <div className="duel-title">Which would you relive?</div>
         <div className="duel-sub">
           {left <= 1 ? 'Last one' : `About ${left} more`} · placing {nameOf(current)}
           {more > 0 && <span className="duel-queue"> · {more} to go</span>}

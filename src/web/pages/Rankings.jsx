@@ -3,6 +3,7 @@ import { useApp } from '../App';
 import { getArtistGradient, formatDate, isAttended } from '../store';
 import { getRankings, saveRankings } from '../lib/db/rankings';
 import { rankedEntities, meloScore, scoreText, entityKeyOf } from '../lib/ranking';
+import { rankingEnabled } from '../lib/prefs';
 
 function getRandomPair(shows, seen) {
   if (shows.length < 2) return null;
@@ -107,7 +108,7 @@ export default function Rankings() {
 
   return (
     <div className="page page-top">
-      {unplaced.length > 0 && (
+      {unplaced.length > 0 && rankingEnabled() && (
         <div className="backlog-card">
           <div className="backlog-head">
             {hasPlacements ? 'Finish your ranking' : 'Rank your shows'}

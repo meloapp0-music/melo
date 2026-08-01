@@ -6,6 +6,7 @@ import { getSettings, updateSettings as dbUpdateSettings } from './lib/db/settin
 import * as showsDb from './lib/db/shows';
 import { getPositions } from './lib/db/rankings';
 import { meloScores, displayScore, entityKeyOf } from './lib/ranking';
+import { rankingEnabled } from './lib/prefs';
 import { registerForPush, onPushTap } from './lib/push';
 import { resetFeedCache } from './components/FriendsFeed';
 import { identify, resetAnalytics, track } from './lib/analytics';
@@ -520,7 +521,7 @@ export default function App() {
       // Skip when this show's OUTING is already ranked — adding a thirteenth act
       // to a festival you've already placed shouldn't re-ask.
       const alreadyRanked = !!rankPositions[entityKeyOf(created || {})];
-      if (created && isAttended(created) && attendedCount >= 1 && !alreadyRanked) {
+      if (created && isAttended(created) && attendedCount >= 1 && !alreadyRanked && rankingEnabled()) {
         setTimeout(() => openOverlay('rank', { show: created }), 450);
       }
       return created;
@@ -544,7 +545,7 @@ export default function App() {
       // and ranking is per-OUTING now, so they share a single entity key. Before
       // this, the batch path opened no duel at all and left every act unranked.
       const attendedNew = created.filter((s) => isAttended(s));
-      if (attendedNew.length) {
+      if (attendedNew.length && rankingEnabled()) {
         const seen = new Set();
         const leads = attendedNew.filter((s) => {
           const k = entityKeyOf(s);
