@@ -374,6 +374,23 @@ Read those before re-deriving anything here.
     value degrades instead of throwing (localStorage throws outright in
     private-mode Safari and some WKWebView configs).
 
+- 2026-07-31: **Made the score recessive on show surfaces.** The ranking now
+  reads as memory rather than criticism; the number didn't. Three surfaces
+  softened, two deliberately left alone.
+  - `.detail-hero-score` — was a 60px ember-gradient circle at 24px bold with a
+    white ring and a coloured glow, which made it the second-loudest element on
+    the screen after the artist's name. Now a small translucent pill. The ring
+    and glow were removed too: on a quiet pill they'd have re-created exactly
+    the prominence being taken away.
+  - `.show-poster-score` — filled circle → small dark pill, 12px → 11px.
+  - `.show-list-score` — was gradient-clipped text at 20px/800, which reads as
+    "this is the important part of the row". Now plain muted text at 14px/700.
+    The row's subject is the show, not its rating.
+  - **Left alone on purpose:** the leaderboard (`.rank-elo`) and the duel result
+    (`.duel-result-score`). In both places the number IS the content — a
+    leaderboard without visible scores is just a list, and the duel's payoff is
+    seeing where the night landed.
+
 ## Open questions / follow-ups
 
 - **`Rankings.jsx` ignores the year it's given.** `Stats.jsx:173` navigates with

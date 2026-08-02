@@ -1870,17 +1870,16 @@ h4 { font-size: 17px; }
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.34);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 12px;
+  font-weight: 700;
+  font-size: 11px;
   color: #fff;
 }
 
@@ -1936,14 +1935,13 @@ h4 { font-size: 17px; }
   text-overflow: ellipsis;
 }
 
+/* Plain muted text, not gradient-clipped — a gradient says "look here", and
+   the row's subject is the show, not its rating. */
 .show-list-score {
   font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--amber), var(--orange));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--brown-light-muted, #9B8A7E);
   flex-shrink: 0;
 }
 
@@ -3838,23 +3836,30 @@ h4 { font-size: 17px; }
 
 /* Score badge sits in the bottom-right corner of the hero image,
    freeing the body to give vibes their own clean row. */
+/* Deliberately quiet. This is a memory, not a review: a 60px ember circle at
+   24px bold made the score the second-loudest thing on the screen after the
+   artist's name, which is the wrong emphasis for "that night at the Salt Shed".
+   Still legible, no longer the focal point. See the note in lib/ranking.js on
+   what the number actually means. */
 .detail-hero-score {
   position: absolute;
-  bottom: 16px;
-  right: 16px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--amber), var(--orange));
+  bottom: 14px;
+  right: 14px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(20, 12, 6, 0.42);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 24px;
-  color: #fff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(232, 87, 58, 0.4);
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.92);
+  /* The white ring and ember glow belonged to the old filled badge — on a
+     translucent pill they'd re-create exactly the prominence being removed. */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
   z-index: 4;
 }
 
