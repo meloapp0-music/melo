@@ -21,7 +21,7 @@ import { shareBlob } from '../lib/shareCard';
 const PACE = 1; // scene-duration multiplier; the design exposes 12–26s total
 
 export default function RecapReel({ show, onClose, cutId: initialCut }) {
-  const { getArtistImage, shows, rankPositions, meloScoreMap } = useApp();
+  const { getArtistImage, shows, rankPositions, meloScoreMap, showToast } = useApp();
   // The ranking, receipt and stub-drawer cuts are ABOUT the collection, so the
   // whole library travels with the show into every builder.
   const ctx = useMemo(() => ({ shows, positions: rankPositions, scoreMap: meloScoreMap }),
@@ -121,7 +121,14 @@ export default function RecapReel({ show, onClose, cutId: initialCut }) {
         { onProgress: setExporting },
       );
       const slug = (show.artist || 'show').replace(/\s+/g, '-').toLowerCase();
-      await shareBlob(blob, `melo-recap-${slug}.mp4`, `${show.artist} — melo recap`, undefined, 'video/mp4');
+      const ok = await shareBlob(blob, `melo-recap-${slug}.mp4`, `${show.artist} — melo recap`, undefined, 'video/mp4');
+      // The export is SILENT by design — music licensing is a wall worth not
+      // climbing — but silence reads as a limitation unless you say otherwise.
+      // Instagram already holds the licences, so hand the user off to them
+      // rather than leaving a mute video to explain itself.
+      if (ok) {
+        showToast?.({ message: '🎵 Add your song in Stories — Instagram has the music' });
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[Melo] recap export failed', err);

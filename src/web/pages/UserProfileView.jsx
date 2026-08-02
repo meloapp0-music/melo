@@ -53,6 +53,12 @@ export default function UserProfileView({ userId, onClose }) {
     return theirAttended.filter((s) => mine.has(`${(s.artist || '').toLowerCase()}|${s.date}`));
   }, [myShows, theirAttended]);
 
+  // The earliest night you were both at — turns a count into a history.
+  const firstTogether = useMemo(
+    () => [...together].sort((a, b) => String(a.date).localeCompare(String(b.date)))[0] || null,
+    [together]
+  );
+
   const act = async (fn, msg) => {
     try { await fn(); if (msg) showToast?.({ message: msg }); await load(); }
     catch (err) { showToast?.({ message: err?.message || 'Something went wrong' }); }
@@ -141,9 +147,20 @@ export default function UserProfileView({ userId, onClose }) {
               <div className="profile-stat"><div className="profile-stat-num">{together.length}</div><div className="profile-stat-label">Together</div></div>
             </div>
 
-            {/* Shows together */}
+            {/* Shows together — led by the FACT, not the list.
+                "You and Sam have seen 6 shows together" is the shareable
+                sentence; a list of rows is reference material. Concert memory
+                lives in a small group chat, not a public feed, so the number
+                two people share is worth more than either profile alone. */}
             {together.length > 0 && (
               <div className="profile-section">
+                <div className="together-card">
+                  <div className="together-count">{together.length}</div>
+                  <div className="together-line">
+                    show{together.length === 1 ? '' : 's'} together
+                    {firstTogether && <span className="together-since"> · since {formatDate(firstTogether.date)}</span>}
+                  </div>
+                </div>
                 <h3>Shows you've been to together</h3>
                 <div className="shows-list">
                   {together.slice(0, 10).map((s) => (
