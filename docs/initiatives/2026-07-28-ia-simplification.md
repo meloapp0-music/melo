@@ -1,7 +1,8 @@
 # IA Simplification — four tabs, one overlay stack, four-tap logging
 
 - Started: 2026-07-28
-- Status: main plan shipped · Edition A (Beli) shipped · B and C remain
+- Status: shipped (dev) — main plan + all three editions (Beli / Strava /
+  Letterboxd) built. NOT deployed: see ~/.claude/plans/compressed-gathering-wren.md
 - Last updated: 2026-07-28
 
 ## Context
