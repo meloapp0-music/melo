@@ -37,6 +37,7 @@ The order above respects dependencies: nothing social ships before
 buddies + moderation infra. Cost analysis (concert-economics P4) waits
 on itemized cost capture (P3). Etc.
 
+- `2026-07-31-notes-first-class.md` — shipped (dev) · Your note moves above the photos and is set as a pull quote. On Letterboxd the review is the currency, not the score; Melo's notes were third in the section order in muted 15px text.
 - `2026-07-31-wrapped-season.md` — built (dev) · Wrapped becomes a dated event: the current year locks until Dec 1, then announces itself on Home for two weeks. The synchronised moment is where Spotify's reach comes from, and Melo had none of it.
 - `2026-07-30-anniversaries.md` — built (dev) · "One year ago tonight" — a daily cron push + a Home card that resurface an old show on its anniversary, finally surfacing the One-year-ago recap cut the picker already promised.
 - `2026-07-30-public-profile.md` — built (dev) · the stub drawer as a MyShows view, plus opt-in melo.show/@username concert résumés.

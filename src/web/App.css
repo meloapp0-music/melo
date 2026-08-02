@@ -3924,10 +3924,34 @@ h4 { font-size: 17px; }
   margin-bottom: 10px;
 }
 
-.detail-notes {
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--brown-light);
+/* What you wrote — the account of the night, not metadata about it.
+   Sits ABOVE the media on ShowDetail and is set as the user's voice:
+   larger, warmer, with a hanging quote mark. On Letterboxd the review is
+   the currency, not the score, and that's the closest comp to Melo.
+   docs/initiatives/2026-07-31-notes-first-class.md */
+.detail-note-block {
+  position: relative;
+  background: linear-gradient(160deg, rgba(244, 162, 97, 0.09), rgba(232, 87, 58, 0.05));
+  border-left: 3px solid var(--amber, #F4A261);
+  border-radius: 4px 16px 16px 4px;
+  padding: 16px 18px 14px 20px;
+}
+.detail-note-mark {
+  position: absolute; top: 2px; left: 12px;
+  font-family: var(--font-heading); font-weight: 800; font-size: 46px;
+  line-height: 1; color: rgba(232, 87, 58, 0.22); pointer-events: none;
+}
+.detail-note-body {
+  position: relative; z-index: 1;
+  font-size: 17px; line-height: 1.55; font-weight: 500;
+  color: var(--brown-ink, #3D2C1E);
+  white-space: pre-wrap;   /* keep the user's own line breaks */
+  margin: 0;
+}
+.detail-note-edit {
+  margin-top: 10px; border: none; background: none; cursor: pointer; padding: 0;
+  font-family: var(--font-heading); font-weight: 700; font-size: 12.5px;
+  color: var(--orange, #E8573A); -webkit-tap-highlight-color: transparent;
 }
 
 .detail-setlist {

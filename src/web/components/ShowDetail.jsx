@@ -559,6 +559,28 @@ export default function ShowDetail({ show, onClose }) {
             </div>
           )}
 
+          {/* WHAT YOU WROTE comes before the media, not after it.
+              On Letterboxd the review is the currency — not the score — and
+              that's the closest comp to what Melo is. This used to sit third,
+              below Photos and Videos, set in 15px muted body text under a
+              "Notes" heading, which read as metadata about the night rather
+              than the account of it. It's the one part of a logged show that
+              is entirely the user's voice. */}
+          {show.notes && (
+            <div className="detail-section detail-note-block">
+              <span className="detail-note-mark" aria-hidden="true">“</span>
+              <p className="detail-note-body">{show.notes}</p>
+              {isOwner && (
+                <button
+                  className="detail-note-edit"
+                  onClick={() => setLogEditTarget(show)}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          )}
+
           {show.photos && show.photos.length > 0 && (
             <div className="detail-section">
               <div className="detail-section-title">Photos ({show.photos.length})</div>
@@ -591,12 +613,6 @@ export default function ShowDetail({ show, onClose }) {
             </div>
           )}
 
-          {show.notes && (
-            <div className="detail-section">
-              <div className="detail-section-title">Notes</div>
-              <p className="detail-notes">{show.notes}</p>
-            </div>
-          )}
 
           {show.setlist && show.setlist.length > 0 && (
             <div className="detail-section">
