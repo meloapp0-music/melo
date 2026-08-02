@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import {
   isAttended, calculateStreak, groupIntoOutings, getArtistGradient, festivalKey,
-  getYear, getWrappedYears, wrappedLabel, formatDate,
+  getYear, getWrappedYears, formatDate,
 } from '../store';
+import { isUnlocked, daysUntilUnlock, seasonLabel } from '../lib/wrappedSeason';
 import { MeloIcon } from '../components/MeloLogo';
 import { uploadAvatar } from '../lib/storage';
 
@@ -333,17 +334,32 @@ export default function You() {
                 <div className="wrapped-archive">
                   {wrappedYears.map((year, i) => {
                     const count = attended.filter((sh) => getYear(sh.date) === year).length;
+                    // The CURRENT year stays locked until the season opens on
+                    // Dec 1. That's the point: a year-in-review you can open in
+                    // March isn't an event, it's a stats page — and the reach
+                    // comes from everyone opening theirs on the same day.
+                    // Past years are always available; they've had their moment.
+                    const open = isUnlocked(year);
+                    const days = open ? 0 : daysUntilUnlock(year);
                     return (
                       <button
                         key={year}
                         type="button"
-                        className="wrapped-year-card"
+                        className={`wrapped-year-card${open ? '' : ' locked'}`}
                         style={{ background: WRAPPED_CARD_GRADIENTS[i % WRAPPED_CARD_GRADIENTS.length] }}
-                        onClick={() => setWrappedYear(year)}
+                        onClick={() => open && setWrappedYear(year)}
+                        disabled={!open}
                       >
                         <div className="wrapped-year-card-year">{year}</div>
-                        <div className="wrapped-year-card-label">{wrappedLabel(year)}</div>
+                        <div className="wrapped-year-card-label">{seasonLabel(year)}</div>
                         <div className="wrapped-year-card-count">{count} {count === 1 ? 'show' : 'shows'}</div>
+                        {/* A locked card still says something worth reading —
+                            the count is real, and the countdown is the hook. */}
+                        {!open && (
+                          <div className="wrapped-year-card-lock">
+                            🔒 {days === 1 ? 'Opens tomorrow' : `Opens in ${days} days`}
+                          </div>
+                        )}
                       </button>
                     );
                   })}

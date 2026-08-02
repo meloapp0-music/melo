@@ -11,6 +11,7 @@ import { getProfilesByIds } from '../lib/db/profiles';
 import { MeloIcon } from '../components/MeloLogo';
 import FriendsFeed from '../components/FriendsFeed';
 import GetStarted from '../components/GetStarted';
+import WrappedReady from '../components/WrappedReady';
 import OnThisDay from '../components/OnThisDay';
 import TasteNudge from '../components/TasteNudge';
 
@@ -195,6 +196,9 @@ export default function Home() {
       {/* First-run "starting navigation" — a 3-step activation checklist
           that ticks off against real state and vanishes once complete.
           Subsumes the old zero-show block + the music-taste prompt. */}
+      {/* The season announcement outranks the anniversary: it's two weeks a
+          year and it's the synchronised moment the whole thing exists for. */}
+      <WrappedReady />
       {/* Renders only on an actual anniversary — absent almost every day. */}
       <OnThisDay />
       <GetStarted />

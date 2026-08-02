@@ -11135,3 +11135,68 @@ h4 { font-size: 17px; }
   border-radius: 14px; padding: 8px 15px;
   box-shadow: 0 6px 16px rgba(232, 87, 58, 0.4);
 }
+
+/* ============================================================
+   Wrapped season — a dated event, not a page.
+   The current year's card is LOCKED until Dec 1. The lock is the
+   feature: anticipation is what makes the unlock worth posting
+   about. docs/initiatives/2026-07-31-wrapped-season.md
+   ============================================================ */
+.wrapped-year-card.locked {
+  cursor: default;
+  filter: saturate(0.55) brightness(0.82);
+  position: relative;
+}
+.wrapped-year-card.locked::after {
+  /* A frosted pane rather than plain opacity — the year and the count stay
+     legible, which is what makes the locked state worth looking at. */
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(20, 12, 6, 0.28);
+  backdrop-filter: blur(0.5px);
+}
+.wrapped-year-card-lock {
+  position: relative; z-index: 2;
+  margin-top: 6px;
+  font-family: var(--font-heading); font-weight: 750; font-size: 11px;
+  letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* The announcement. Two weeks a year, top of Home — the synchronised moment
+   the whole season mechanic exists for. */
+.wrapready-card {
+  position: relative; display: block; width: 100%; border: none; padding: 0;
+  border-radius: 20px; overflow: hidden; cursor: pointer; margin-bottom: 16px;
+  background: linear-gradient(135deg, #E8573A 0%, #D65DB1 52%, #845EC2 100%);
+  box-shadow: 0 14px 34px rgba(232, 87, 58, 0.32);
+  -webkit-tap-highlight-color: transparent; transition: transform 0.14s ease;
+  text-align: left;
+}
+.wrapready-card:active { transform: scale(0.985); }
+.wrapready-glow {
+  position: absolute; inset: -40% -10% auto -10%; height: 180%;
+  background: radial-gradient(circle at 20% 0%, rgba(255, 199, 95, 0.55), transparent 62%);
+  pointer-events: none;
+}
+.wrapready-body {
+  position: relative; z-index: 2; display: flex; flex-direction: column;
+  gap: 2px; align-items: flex-start; padding: 18px 18px 16px;
+}
+.wrapready-eyebrow {
+  font-family: var(--font-heading); font-weight: 800; font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85);
+}
+.wrapready-head {
+  font-family: var(--font-heading); font-weight: 800; font-size: 27px;
+  letter-spacing: -0.03em; color: #fff; line-height: 1.08;
+}
+.wrapready-sub {
+  font-weight: 600; font-size: 13.5px; color: rgba(255, 255, 255, 0.88); margin-top: 2px;
+}
+.wrapready-cta {
+  margin-top: 12px; display: inline-block;
+  background: rgba(255, 255, 255, 0.95); color: #7A2E22;
+  font-family: var(--font-heading); font-weight: 800; font-size: 14px;
+  border-radius: 14px; padding: 9px 18px;
+}
