@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../App';
 import {
-  isAttended, calculateStreak, groupIntoOutings, getArtistGradient, festivalKey,
+  isAttended, calculateStreak, groupIntoOutings, artistBackground, festivalKey,
   getYear, getWrappedYears, formatDate,
 } from '../store';
 import { isUnlocked, daysUntilUnlock, seasonLabel } from '../lib/wrappedSeason';
@@ -170,12 +170,7 @@ export default function You() {
   );
   const wrappedYears = years;
 
-  const bgStyle = (artist) => {
-    const img = getArtistImage(artist);
-    return img
-      ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { background: getArtistGradient(artist) };
-  };
+  const bgStyle = (artist) => artistBackground(artist, getArtistImage(artist));
 
   const avgLabel = s.ratedN === 0 ? '—' : (Number.isInteger(s.avg) ? s.avg : s.avg.toFixed(1));
   // navigate() carries the year and each destination scopes itself (see
@@ -378,9 +373,7 @@ export default function You() {
                         <span className="stats-artist-rank">{i + 1}</span>
                         <span
                           className="stats-artist-thumb"
-                          style={img
-                            ? { background: `url("${img}") center / cover no-repeat, ${getArtistGradient(name)}` }
-                            : { background: getArtistGradient(name) }}
+                          style={artistBackground(name, img)}
                         />
                         <span className="stats-artist-name">{name}</span>
                         <span className="stats-artist-count">{count}×</span>

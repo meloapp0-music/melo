@@ -4,7 +4,7 @@ import { listFriends } from '../lib/db/friendships';
 import { listFriendsShows, attendeesForShows, friendsShowStats } from '../lib/db/shows';
 import { reactionSummary, commentCounts, setReaction, notifyInteraction } from '../lib/db/social';
 import { getProfilesByIds } from '../lib/db/profiles';
-import { getArtistGradient, formatDate, isAttended, isGoing, isWishlist, daysUntil, SHOW_STATUS, generateId } from '../store';
+import { artistBackground, formatDate, isAttended, isGoing, isWishlist, daysUntil, SHOW_STATUS, generateId } from '../store';
 
 // Session-lived cache so the feed renders synchronously on every Home
 // remount (no layout pop-in above the fold) and refreshes in the
@@ -336,9 +336,7 @@ export default function FriendsFeed() {
 
             const gHeroPhoto = gshow.photos?.[0] || null;
             const gArtistImg = getArtistImage(gshow.artist);
-            const gHeroStyle = (gHeroPhoto || gArtistImg)
-              ? { backgroundImage: `url(${gHeroPhoto || gArtistImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-              : { background: getArtistGradient(gshow.artist) };
+            const gHeroStyle = artistBackground(gshow.artist, gHeroPhoto || gArtistImg);
             const gd = daysUntil(gshow.date);
             const gcountdown = gd === 0 ? 'Tonight' : gd === 1 ? 'Tomorrow' : `In ${gd} days`;
             const gliked = rep.reactions?.mine === '❤️';
@@ -440,9 +438,7 @@ export default function FriendsFeed() {
           // gradient. Always visual.
           const heroPhoto = show.photos?.[0] || null;
           const artistImg = getArtistImage(show.artist);
-          const heroStyle = (heroPhoto || artistImg)
-            ? { backgroundImage: `url(${heroPhoto || artistImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-            : { background: getArtistGradient(show.artist) };
+          const heroStyle = artistBackground(show.artist, heroPhoto || artistImg);
 
           const liked = reactions?.mine === '❤️';
           const likeCount = reactions?.count || 0;

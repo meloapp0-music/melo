@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../App';
 import {
-  getArtistGradient, getGreeting, formatDate, daysUntil,
+  getArtistGradient, artistBackground, getGreeting, formatDate, daysUntil,
   calculateStreak,
   isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, festivalKey,
 } from '../store';
@@ -134,15 +134,7 @@ export default function Home() {
       .finally(() => setUpcomingLoading(false));
   }, [attended.length]);
 
-  const bgStyle = (artist) => {
-    const img = getArtistImage(artist);
-    const grad = getArtistGradient(artist);
-    // Gradient is always the base layer so a slow or failed photo never
-    // leaves a blank card; the artist photo (if any) sits on top of it.
-    return img
-      ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
-      : { background: grad };
-  };
+  const bgStyle = (artist) => artistBackground(artist, getArtistImage(artist));
 
   const [addedIds, setAddedIds] = useState(() => new Set());
   // Ticketmaster events have no stable id, so key on the same
@@ -232,7 +224,19 @@ export default function Home() {
                 onClick={() => setSelectedShow(show)}
                 aria-label={`${show.artist} ${countdown.toLowerCase()} — view details`}
               >
-                <div className="upnext-card-bg" style={bgStyle(show.artist)} />
+                {/* Three layers, not one: the artist colour underneath at full
+                    strength, the photo over it blended to luminosity so it
+                    reads as a tinted ghost rather than a photograph. A show
+                    you haven't been to yet is a promise, not a memory — the
+                    archive keeps full-colour photographs for nights that
+                    actually happened. */}
+                <div className="upnext-card-bg" style={{ background: getArtistGradient(show.artist) }} />
+                {getArtistImage(show.artist) && (
+                  <div
+                    className="upnext-card-photo"
+                    style={{ backgroundImage: `url("${getArtistImage(show.artist)}")` }}
+                  />
+                )}
                 <div className="upnext-card-overlay" />
                 <div className="upnext-card-content">
                   <div className="upnext-countdown">{countdown}</div>

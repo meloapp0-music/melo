@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useApp } from '../App';
-import { getArtistGradient, formatDate, isAttended } from '../store';
+import { artistBackground, formatDate, isAttended } from '../store';
 import { getRankings, saveRankings } from '../lib/db/rankings';
 import { rankedEntities, meloScore, scoreText, entityKeyOf } from '../lib/ranking';
 import { rankingEnabled } from '../lib/prefs';
@@ -93,12 +93,7 @@ export default function Rankings() {
     return '';
   };
 
-  const bgStyle = (artist) => {
-    const img = getArtistImage(artist);
-    return img
-      ? { backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { background: getArtistGradient(artist) };
-  };
+  const bgStyle = (artist) => artistBackground(artist, getArtistImage(artist));
 
   // OUTINGS never placed. The log-time duel only sees new ones, so without this
   // a library logged before ranking existed stays ordered by the compressed

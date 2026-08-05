@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { scoreText, festivalScope } from '../lib/ranking';
 import { getPositions } from '../lib/db/rankings';
-import { getArtistGradient, formatDate, vibeStyle, festivalKey, isAttended } from '../store';
+import { artistBackground, formatDate, vibeStyle, festivalKey, isAttended } from '../store';
 import PhotoGallery from './PhotoGallery';
 import PhotoPicker from './PhotoPicker';
 import VideoPicker from './VideoPicker';
@@ -136,15 +136,9 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
     ? fNames.join(' & ')
     : `${fNames.slice(0, 2).join(', ')} & ${fNames.length - 2} more`;
 
-  const thumbStyle = (artist) => {
-    const img = getArtistImage(artist);
-    const grad = getArtistGradient(artist);
-    return img ? { background: `url("${img}") center / cover no-repeat, ${grad}` } : { background: grad };
-  };
+  const thumbStyle = (artist) => artistBackground(artist, getArtistImage(artist));
   const heroImg = members.map((s) => getArtistImage(s.artist)).find(Boolean);
-  const heroStyle = heroImg
-    ? { background: `url("${heroImg}") center / cover no-repeat, ${getArtistGradient(outing.festival)}` }
-    : { background: getArtistGradient(outing.festival) };
+  const heroStyle = artistBackground(outing.festival, heroImg);
 
   const buddyColor = (name) => {
     const palette = ['#E8573A', '#F4A261', '#9B8A7E', '#6BA292', '#C05780', '#5B7DB1'];

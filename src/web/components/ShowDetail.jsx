@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { scoreText } from '../lib/ranking';
-import { getArtistGradient, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil, festivalKey } from '../store';
+import { artistBackground, formatDate, vibeStyle, isAttended, ticketmasterSearchUrl, SHOW_STATUS, getShowStatus, daysUntil, festivalKey } from '../store';
 import { fetchArtistBio, lookupVenueUrl, venueSearchUrl, venueOverrideUrl } from '../api';
 import ShowDayInfo from './ShowDayInfo';
 import { track } from '../lib/analytics';
@@ -238,7 +238,6 @@ export default function ShowDetail({ show, onClose }) {
   const upcoming = !isAttended(show) && !Number.isNaN(daysUntil(show.date)) && daysUntil(show.date) >= 0;
 
   const artistImage = getArtistImage(show.artist);
-  const gradient = getArtistGradient(show.artist);
 
   // MusicBrainz artist bio
   const [bio, setBio] = useState(null);
@@ -256,9 +255,7 @@ export default function ShowDetail({ show, onClose }) {
   // gradient. Their concert photos make the page personal — fall back
   // to the canonical artist art only when the user hasn't uploaded any.
   const heroPhoto = show.photos?.[0] || null;
-  const heroStyle = (heroPhoto || artistImage)
-    ? { backgroundImage: `url(${heroPhoto || artistImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: gradient };
+  const heroStyle = artistBackground(show.artist, heroPhoto || artistImage);
 
   const getVibeStyle = (name) => {
     const v = vibeStyle(name);
@@ -423,9 +420,7 @@ export default function ShowDetail({ show, onClose }) {
                 <button
                   className="recapready-card"
                   onClick={() => setRecapShow(show)}
-                  style={poster
-                    ? { backgroundImage: `url("${poster}")` }
-                    : { background: getArtistGradient(show.artist) }}
+                  style={artistBackground(show.artist, poster)}
                 >
                   <span className="recapready-scrim" aria-hidden="true" />
                   <span className="recapready-badge">✨ melo made you a recap</span>
@@ -670,11 +665,7 @@ export default function ShowDetail({ show, onClose }) {
                 <div className="bio-header">
                   <div
                     className="bio-avatar"
-                    style={
-                      artistImage
-                        ? { backgroundImage: `url(${artistImage})` }
-                        : { background: gradient }
-                    }
+                    style={artistBackground(show.artist, artistImage)}
                   />
                   <div>
                     <div className="bio-name">{bio.name}</div>

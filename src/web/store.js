@@ -165,22 +165,59 @@ export function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// Deterministic per-name fallback gradient for un-photographed shows,
-// avatars, and detail heroes. The hue is constrained to the warm brand
-// band (8–44°: ember red → amber → gold) so a wall of fallback posters
-// stays in-family with the cream palette instead of reading as a
-// saturated rainbow of placeholders. Saturation stays rich-but-not-neon
-// and lightness deep enough for white text + the dark scrim.
+// The eight artist colours. Every un-photographed show, avatar and detail
+// hero paints one of these.
+//
+// This used to be a hue *hash* over 8–44° — ember red through amber to gold.
+// The intent was to keep a wall of fallback posters in-family with the cream
+// palette rather than reading as a saturated rainbow, and that intent still
+// holds. But the band was so narrow that every artist in the app came out a
+// shade of the same orange-brown, so a full drawer could never have any
+// variety at all. A *curated* set gets the variety without the rainbow,
+// because the colours are chosen rather than generated: all eight are deep,
+// desaturated and share a muted, archival character.
+//
+// Hard constraint: lightness stays inside 20–42%. Every call site paints
+// cream text and/or a dark scrim on top of this, so a light swatch here
+// silently breaks legibility across seven files. Cream/bone is deliberately
+// NOT in this list — it only works where the text on it is dark, which is the
+// ticket stub, not the photo heroes.
+const ARTIST_PALETTE = [
+  { h: 355, s: 52, l: 27 }, // oxblood
+  { h: 14, s: 62, l: 36 },  // ember
+  { h: 38, s: 68, l: 34 },  // ochre
+  { h: 158, s: 38, l: 22 }, // bottle green
+  { h: 190, s: 44, l: 24 }, // deep teal
+  { h: 216, s: 44, l: 28 }, // navy
+  { h: 290, s: 30, l: 26 }, // plum
+  { h: 28, s: 34, l: 24 },  // walnut
+];
+
+// Deterministic per-name gradient. Stable forever for a given name — an
+// artist's colour must not drift between sessions or devices.
 export function getArtistGradient(name = '') {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const h1 = 8 + Math.abs(hash % 36);                 // 8–43°: ember red → gold
-  const h2 = Math.min(h1 + 8 + Math.abs((hash >> 8) % 10), 44); // warmer 2nd stop, capped before olive/yellow
-  const s1 = 46 + Math.abs((hash >> 4) % 26);         // 46–72%: rich, never neon
-  const l1 = 30 + Math.abs((hash >> 6) % 12);         // 30–42%: deep for legibility
-  return `linear-gradient(150deg, hsl(${h1} ${s1}% ${l1}%), hsl(${h2} ${Math.min(s1 + 8, 82)}% ${Math.max(l1 - 9, 20)}%))`;
+  const base = ARTIST_PALETTE[Math.abs(hash) % ARTIST_PALETTE.length];
+  // A small lightness drift so two artists sharing a swatch aren't identical,
+  // bounded at ±2 so it can never walk out of the legible band.
+  const l1 = base.l + (Math.abs(hash >> 8) % 5) - 2;
+  const l2 = Math.max(l1 - 9, 20);                    // floor, not a free fall
+  const h2 = (base.h + 6) % 360;                      // barely-there hue turn
+  return `linear-gradient(150deg, hsl(${base.h} ${base.s}% ${l1}%), hsl(${h2} ${Math.min(base.s + 8, 82)}% ${l2}%))`;
+}
+
+// Photo over the artist gradient, gradient alone when there's no photo.
+// The gradient is always the base layer so a slow or failed image never
+// leaves a blank card. Seven surfaces had their own copy of this; they all
+// call here now.
+export function artistBackground(name = '', img = '') {
+  const grad = getArtistGradient(name);
+  return img
+    ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
+    : { background: grad };
 }
 
 // Build a Ticketmaster search URL for a logged show (Wishlist or Going).

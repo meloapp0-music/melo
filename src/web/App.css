@@ -8379,12 +8379,29 @@ h4 { font-size: 17px; }
 .upnext-card-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(165deg, #1E1E1E 0%, #C34A36 100%);
+  /* Neutral only — the artist colour arrives inline. A hardcoded orange here
+     predated the palette and fought whatever colour the artist actually is. */
+  background: #241A12;
+}
+/* The photo, blended to luminosity so the artist colour below shows through
+   it. Desaturating the element outright would have dulled the colour too,
+   which is the opposite of what this card needs. */
+.upnext-card-photo {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  mix-blend-mode: luminosity;
+  opacity: 0.72;
 }
 .upnext-card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(20, 12, 6, 0.05) 0%, rgba(20, 12, 6, 0.78) 78%);
+  /* Lighter than it was (0.78 → 0.62): with the photo already knocked back,
+     the old scrim buried the colour this card exists to show. Still dark
+     enough at the foot for cream text. */
+  background: linear-gradient(180deg, rgba(20, 12, 6, 0.05) 0%, rgba(20, 12, 6, 0.62) 78%);
 }
 .upnext-card-content {
   position: relative;

@@ -3,7 +3,7 @@ import { useApp } from '../App';
 import { scoreText } from '../lib/ranking';
 import YearScopeBanner, { useYearScope } from '../components/YearScope';
 import {
-  getArtistGradient, formatDate, daysUntil,
+  artistBackground, formatDate, daysUntil,
   SHOW_STATUS, getShowStatus, isAttended, isGoing, isWishlist,
   ticketmasterSearchUrl, groupIntoOutings,
 } from '../store';
@@ -79,15 +79,7 @@ export default function MyShows() {
     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [base, search, genreFilter, favoritesOnly]);
 
-  const bgStyle = (artist) => {
-    const img = getArtistImage(artist);
-    const grad = getArtistGradient(artist);
-    // Gradient is always the base layer so a slow or failed photo never
-    // leaves a blank card; the artist photo (if any) sits on top of it.
-    return img
-      ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
-      : { background: grad };
-  };
+  const bgStyle = (artist) => artistBackground(artist, getArtistImage(artist));
 
   // Festival card imagery: a real photo from any act at the festival, else the
   // headliner's artist image, else null (→ gradient only).
@@ -95,13 +87,7 @@ export default function MyShows() {
     const photo = (o.shows || []).map((s) => (s.photos || [])[0]).find(Boolean);
     return photo || getArtistImage((o.shows || [])[0]?.artist) || null;
   };
-  const festivalBg = (o) => {
-    const grad = getArtistGradient(o.festival);
-    const img = festivalImg(o);
-    return img
-      ? { background: `url("${img}") center / cover no-repeat, ${grad}` }
-      : { background: grad };
-  };
+  const festivalBg = (o) => artistBackground(o.festival, festivalImg(o));
 
   const festivalDateLabel = (o) =>
     o.dateStart && o.dateEnd && o.dateStart !== o.dateEnd
