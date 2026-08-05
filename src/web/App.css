@@ -13,7 +13,14 @@
   --shadow-md: 0 4px 24px rgba(61, 44, 30, 0.08);
   --shadow-lg: 0 8px 40px rgba(61, 44, 30, 0.12);
   --shadow-xl: 0 16px 64px rgba(61, 44, 30, 0.16);
-  --font-heading: 'Outfit', sans-serif;
+  /* Three families, each with a size band it owns. The mockups look the way
+     they do because the serif is only ever LARGE — "Melo", "The Drawer",
+     "THE 1975". Setting a high-contrast display serif at 11px kills the thin
+     strokes and reads as a mistake, so --font-heading stays a sans for the
+     ~145 small UI rules and only the 64 display-scale rules take the serif. */
+  --font-display: 'Playfair Display', Georgia, serif;  /* >= 20px only */
+  --font-heading: 'Outfit', sans-serif;                /* UI headings, buttons, chips */
+  --font-label: 'Oswald', sans-serif;                  /* condensed uppercase metadata */
   --font-body: 'DM Sans', sans-serif;
   --nav-height: 80px;
   --green: #00A88C; /* the one "going / added" success green */
@@ -320,8 +327,8 @@ h4 { font-size: 17px; }
 }
 
 .home-greeting {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 34px;
   letter-spacing: -0.03em;
   color: var(--brown);
@@ -346,8 +353,8 @@ h4 { font-size: 17px; }
   box-shadow: 0 4px 16px rgba(232, 87, 58, 0.08);
 }
 .home-firstrun-title {
-  font-family: var(--font-heading, inherit);
-  font-weight: 800;
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
   font-size: 20px;
   letter-spacing: -0.02em;
   margin: 0 0 4px;
@@ -462,8 +469,8 @@ h4 { font-size: 17px; }
 }
 .yearscope-clear:active { opacity: 0.6; }
 .stats-tile-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 26px;
   letter-spacing: -0.02em;
   color: #2B1D12;
@@ -665,7 +672,7 @@ h4 { font-size: 17px; }
 .venue-hero-icon { position: absolute; top: 9px; right: 14px; z-index: 2; font-size: 34px; }
 .venue-hero-info { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; }
 .venue-hero-name {
-  font-family: var(--font-heading); font-weight: 800; font-size: 23px;
+  font-family: var(--font-display); font-weight: 600; font-size: 23px;
   color: #fff; letter-spacing: -0.02em; line-height: 1.05;
   text-shadow: 0 1px 10px rgba(0,0,0,0.4);
 }
@@ -760,8 +767,8 @@ h4 { font-size: 17px; }
 }
 
 .home-stat-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 26px;
   letter-spacing: -0.03em;
   background: linear-gradient(135deg, var(--amber), var(--orange));
@@ -953,8 +960,8 @@ h4 { font-size: 17px; }
 }
 
 .home-top-artist {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 28px;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -980,8 +987,8 @@ h4 { font-size: 17px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 20px;
   color: #fff;
 }
@@ -2295,8 +2302,8 @@ h4 { font-size: 17px; }
   font-size: 14px; color: #6E6055; font-weight: 600; white-space: nowrap;
 }
 .map-travel-stat b {
-  font-family: var(--font-heading);
-  font-size: 20px; font-weight: 800; color: #2B1D12;
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 600; color: #2B1D12;
   margin-right: 3px;
 }
 .map-travel-dot {
@@ -2526,8 +2533,8 @@ h4 { font-size: 17px; }
   color: #FBF6EE;
 }
 .songs-hero-title {
-  font-family: var(--font-heading, inherit);
-  font-weight: 800;
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
   font-size: 40px;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -2560,8 +2567,8 @@ h4 { font-size: 17px; }
 }
 
 .songs-stat-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 28px;
   letter-spacing: -0.03em;
   background: linear-gradient(135deg, var(--amber), var(--orange));
@@ -2683,8 +2690,8 @@ h4 { font-size: 17px; }
 }
 
 .songs-spotlight-title {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 22px;
   letter-spacing: -0.03em;
   margin-bottom: 4px;
@@ -2853,16 +2860,16 @@ h4 { font-size: 17px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 24px;
   color: #fff;
   margin: 0 auto 10px;
 }
 
 .buddy-spotlight-name {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 20px;
   letter-spacing: -0.02em;
   margin-bottom: 4px;
@@ -2951,8 +2958,8 @@ h4 { font-size: 17px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 34px;
   color: #fff;
   margin: 0 auto 14px;
@@ -3018,8 +3025,8 @@ h4 { font-size: 17px; }
 }
 
 .profile-name {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 26px;
   letter-spacing: -0.03em;
   margin-bottom: 4px;
@@ -3063,8 +3070,8 @@ h4 { font-size: 17px; }
 }
 
 .profile-stat-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 24px;
   letter-spacing: -0.03em;
   background: linear-gradient(135deg, var(--amber), var(--orange));
@@ -3443,8 +3450,8 @@ h4 { font-size: 17px; }
 }
 
 .detail-artist {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 30px;
   letter-spacing: -0.03em;
   color: #fff;
@@ -3680,9 +3687,9 @@ h4 { font-size: 17px; }
 .wrapped-year-card:active { transform: scale(0.95); }
 
 .wrapped-year-card-year {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 40px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -3888,8 +3895,8 @@ h4 { font-size: 17px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 26px;
   color: #fff;
   box-shadow: 0 4px 20px rgba(232, 87, 58, 0.3);
@@ -3938,7 +3945,7 @@ h4 { font-size: 17px; }
 }
 .detail-note-mark {
   position: absolute; top: 2px; left: 12px;
-  font-family: var(--font-heading); font-weight: 800; font-size: 46px;
+  font-family: var(--font-display); font-weight: 600; font-size: 46px;
   line-height: 1; color: rgba(232, 87, 58, 0.22); pointer-events: none;
 }
 .detail-note-body {
@@ -4753,8 +4760,8 @@ h4 { font-size: 17px; }
 }
 
 .profile-streak-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 28px;
   background: linear-gradient(135deg, var(--amber), var(--orange));
   -webkit-background-clip: text;
@@ -5006,8 +5013,8 @@ h4 { font-size: 17px; }
 }
 
 .wrapped-year-big {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 80px;
   color: rgba(255, 255, 255, 0.12);
   letter-spacing: -0.05em;
@@ -5016,8 +5023,8 @@ h4 { font-size: 17px; }
 }
 
 .wrapped-title {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 32px;
   color: #fff;
   letter-spacing: -0.03em;
@@ -5034,8 +5041,8 @@ h4 { font-size: 17px; }
 }
 
 .wrapped-count-big {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 96px;
   color: #fff;
   letter-spacing: -0.05em;
@@ -5069,8 +5076,8 @@ h4 { font-size: 17px; }
 }
 
 .wrapped-score-huge {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 100px;
   color: #fff;
   line-height: 1;
@@ -5132,8 +5139,8 @@ h4 { font-size: 17px; }
 }
 
 .wrapped-personality {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 26px;
   color: #fff;
   line-height: 1.3;
@@ -5203,8 +5210,8 @@ h4 { font-size: 17px; }
 }
 
 .wrapped-summary-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 28px;
   color: #fff;
 }
@@ -5343,8 +5350,8 @@ h4 { font-size: 17px; }
 }
 
 .compare-header h2 {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 22px;
 }
 
@@ -5410,8 +5417,8 @@ h4 { font-size: 17px; }
 }
 
 .compare-picker-score {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 20px;
   color: var(--orange);
   flex-shrink: 0;
@@ -5545,8 +5552,8 @@ h4 { font-size: 17px; }
 }
 
 .compare-winner-name {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 22px;
   color: var(--brown);
 }
@@ -5642,8 +5649,8 @@ h4 { font-size: 17px; }
 }
 
 .quicklog-header h3 {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 20px;
 }
 
@@ -5873,9 +5880,9 @@ h4 { font-size: 17px; }
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.85);
   text-align: center;
-  font-family: var(--font-heading, inherit);
+  font-family: var(--font-display, inherit);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--brown-deep, #3A2C20);
   letter-spacing: 0;
   caret-color: #E8573A;
@@ -8075,8 +8082,8 @@ h4 { font-size: 17px; }
   min-width: 110px;
 }
 .wrapped-venue-split-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 56px;
   color: #fff;
   line-height: 1;
@@ -8110,8 +8117,8 @@ h4 { font-size: 17px; }
   min-width: 100px;
 }
 .wrapped-spread-num {
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 76px;
   color: #fff;
   line-height: 1;
@@ -8423,9 +8430,9 @@ h4 { font-size: 17px; }
 }
 .upnext-artist {
   color: #fff;
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.15;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
@@ -8548,9 +8555,9 @@ h4 { font-size: 17px; }
   bottom: 18px;
   text-align: center;
   color: #fff;
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 36px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
 }
@@ -8559,9 +8566,9 @@ h4 { font-size: 17px; }
   text-align: center;
 }
 .hype-artist {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--brown);
   letter-spacing: -0.01em;
   line-height: 1.15;
@@ -8880,9 +8887,9 @@ h4 { font-size: 17px; }
 }
 .feed-score {
   flex: 0 0 auto;
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 600;
   background: linear-gradient(135deg, var(--amber), var(--orange));
   -webkit-background-clip: text;
   background-clip: text;
@@ -9408,9 +9415,9 @@ h4 { font-size: 17px; }
   text-align: center;
 }
 .app-error-title {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--brown);
   margin: 14px 0 0;
 }
@@ -9672,7 +9679,7 @@ h4 { font-size: 17px; }
   box-shadow: 0 -24px 70px rgba(0,0,0,0.45); animation: scUp .3s cubic-bezier(0.22,1,0.36,1);
 }
 .sc-grip { width: 44px; height: 5px; border-radius: 999px; background: rgba(61,44,30,0.14); margin: 2px auto 14px; }
-.sc-sheet h3 { font-family: var(--font-heading); font-weight: 800; font-size: 20px; margin: 0; color: var(--brown); }
+.sc-sheet h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; color: var(--brown); }
 .sc-sub { font-family: var(--font-body); color: var(--brown-muted); font-size: 13.5px; margin: 6px 0 0; }
 .sc-share-btn {
   margin-top: 22px; width: 100%; border: none; cursor: pointer; border-radius: 16px; padding: 16px;
@@ -9721,7 +9728,7 @@ h4 { font-size: 17px; }
 
 .sc-modal-scrim { position: absolute; inset: 0; z-index: 7; background: rgba(12,8,5,0.55); animation: scFade .2s ease; }
 .sc-modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; border-radius: 22px; overflow-y: auto; background: var(--bg); padding: 20px 22px 22px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); animation: scPop .24s cubic-bezier(0.22,1,0.36,1); }
-.sc-modal h3 { font-family: var(--font-heading); font-weight: 800; font-size: 20px; margin: 0; color: var(--brown); }
+.sc-modal h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; color: var(--brown); }
 .fs-row { display: flex; align-items: baseline; gap: 16px; padding: 12px 2px; border-top: 1px solid rgba(61,44,30,0.08); }
 .fs-row:first-child { border-top: none; }
 .fs-num { font-family: var(--font-heading); font-weight: 800; font-size: 15px; color: var(--orange); min-width: 26px; }
@@ -9754,8 +9761,8 @@ h4 { font-size: 17px; }
   position: absolute;
   right: -4px;
   bottom: 26px;
-  font-family: var(--font-heading);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: 124px;
   line-height: 0.8;
   letter-spacing: -0.04em;
@@ -10389,11 +10396,11 @@ h4 { font-size: 17px; }
   letter-spacing: 0.24em; text-transform: uppercase; color: #F4A261; line-height: 1.5;
 }
 .rc-huge {
-  font-family: var(--font-heading); font-weight: 800; font-size: 46px; line-height: 0.92;
+  font-family: var(--font-display); font-weight: 600; font-size: 46px; line-height: 0.92;
   letter-spacing: -0.03em; color: #fff;
 }
 .rc-mid {
-  font-family: var(--font-heading); font-weight: 800; font-size: 32px; line-height: 1.06;
+  font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.06;
   letter-spacing: -0.025em; color: #FBF6EE;
 }
 
@@ -10426,19 +10433,19 @@ h4 { font-size: 17px; }
 .rc-beat-wrap.lower { margin: auto auto 64px; }
 .rc-rank {
   position: absolute; top: 14px; left: 18px;
-  font-family: var(--font-heading); font-weight: 800; font-size: 78px; line-height: 0.8;
+  font-family: var(--font-display); font-weight: 600; font-size: 78px; line-height: 0.8;
   color: rgba(255,255,255,0.94); text-shadow: 0 3px 18px rgba(0,0,0,0.6);
   animation: rcIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
 }
 .rc-clock {
   position: absolute; top: 18px; left: 18px;
-  font-family: var(--font-heading); font-weight: 800; font-size: 26px;
+  font-family: var(--font-display); font-weight: 600; font-size: 26px;
   letter-spacing: -0.01em; color: #FFC75F; text-shadow: 0 2px 12px rgba(0,0,0,0.7);
   animation: rcIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
 }
 .rc-rank-label {
   position: absolute; left: 20px; right: 20px; bottom: 46px; text-align: left;
-  font-family: var(--font-heading); font-weight: 800; font-size: 29px; line-height: 1.04;
+  font-family: var(--font-display); font-weight: 600; font-size: 29px; line-height: 1.04;
   letter-spacing: -0.02em; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,0.6);
   animation: rcIn 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
 }
@@ -10502,13 +10509,13 @@ h4 { font-size: 17px; }
 }
 .rc-encore {
   display: flex; flex-direction: column; gap: 8px;
-  font-family: var(--font-heading); font-weight: 800; font-size: 32px; line-height: 1.04;
+  font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.04;
   letter-spacing: -0.025em; color: #fff;
 }
 .rc-stats { display: flex; gap: 26px; justify-content: center; }
 .rc-stat { display: flex; flex-direction: column; gap: 2px; }
 .rc-stat b {
-  font-family: var(--font-heading); font-weight: 800; font-size: 34px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1;
   letter-spacing: -0.03em; color: #FFC75F;
 }
 .rc-stat span {
@@ -10553,7 +10560,7 @@ h4 { font-size: 17px; }
 
 /* ---- WHERE IT RANKS ---- */
 .rc-rank-hero {
-  font-family: var(--font-heading); font-weight: 800; font-size: 132px; line-height: 0.85;
+  font-family: var(--font-display); font-weight: 600; font-size: 132px; line-height: 0.85;
   letter-spacing: -0.05em;
   background: linear-gradient(150deg, #FFC75F, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -10598,12 +10605,12 @@ h4 { font-size: 17px; }
   animation: rcStamp 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
 }
 @keyframes rcStamp { from { opacity: 0; transform: rotate(-11deg) scale(1.9); } to { opacity: 0.86; transform: rotate(-11deg) scale(1); } }
-.rc-po-foot { font-family: var(--font-heading); font-weight: 800; font-size: 21px; line-height: 1.28; letter-spacing: -0.02em; }
+.rc-po-foot { font-family: var(--font-display); font-weight: 600; font-size: 21px; line-height: 1.28; letter-spacing: -0.02em; }
 
 /* ---- IN YOUR WORDS ---- */
 .rc-pills { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; }
 .rc-pill {
-  font-family: var(--font-heading); font-weight: 800; font-size: 21px;
+  font-family: var(--font-display); font-weight: 600; font-size: 21px;
   border-radius: 999px; padding: 9px 18px; color: var(--c);
   background: color-mix(in srgb, var(--c) 16%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 46%, transparent);
@@ -10612,7 +10619,7 @@ h4 { font-size: 17px; }
 }
 .rc-quotemark { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 60px; line-height: 0.5; color: #E8573A; }
 .rc-quote {
-  font-family: var(--font-heading); font-weight: 700; font-size: 23px; line-height: 1.28;
+  font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.28;
   letter-spacing: -0.015em; color: #FBF6EE;
 }
 
@@ -10699,7 +10706,7 @@ h4 { font-size: 17px; }
 .rc-drawer-stub.me .rc-drawer-artist { color: #7A2E22; }
 .rc-drawer-where { font-family: var(--font-body); font-size: 9px; color: #7A5A44; }
 .rc-drawer-cap {
-  font-family: var(--font-heading); font-weight: 800; font-size: 26px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1;
   letter-spacing: -0.02em; color: #F3E8CC; text-align: center;
 }
 
@@ -10745,7 +10752,7 @@ h4 { font-size: 17px; }
 .rc-diary-hand { font-family: 'Caveat', cursive; font-weight: 700; font-size: 30px; line-height: 1.06; color: #2C1912; }
 .rc-diary-sub { font-family: 'Caveat', cursive; font-weight: 500; font-size: 22px; color: #7A5A44; }
 .rc-diary-score {
-  font-family: var(--font-heading); font-weight: 800; font-size: 62px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 62px; line-height: 1;
   background: linear-gradient(135deg, #F4A261, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
@@ -10784,7 +10791,7 @@ h4 { font-size: 17px; }
 }
 .duel-head { text-align: center; }
 .duel-title {
-  font-family: var(--font-heading); font-weight: 800; font-size: 26px;
+  font-family: var(--font-display); font-weight: 600; font-size: 26px;
   letter-spacing: -0.02em; color: #FBF6EE;
 }
 .duel-sub {
@@ -10821,7 +10828,7 @@ h4 { font-size: 17px; }
   display: flex; flex-direction: column; gap: 2px;
 }
 .duel-card-artist {
-  font-family: var(--font-heading); font-weight: 800; font-size: 21px;
+  font-family: var(--font-display); font-weight: 600; font-size: 21px;
   letter-spacing: -0.02em; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.55);
   line-height: 1.15;
 }
@@ -10843,7 +10850,7 @@ h4 { font-size: 17px; }
 /* The payoff. The number is the point, so it gets the whole screen. */
 .duel-result { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .duel-result-rank {
-  font-family: var(--font-heading); font-weight: 800; font-size: 108px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 108px; line-height: 1;
   letter-spacing: -0.04em;
   background: linear-gradient(135deg, #FFC75F, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -10869,7 +10876,7 @@ h4 { font-size: 17px; }
    number that shows up everywhere else, so it gets the size; the rank sits
    underneath as its provenance. */
 .duel-result-score {
-  font-family: var(--font-heading); font-weight: 800; font-size: 104px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 104px; line-height: 1;
   letter-spacing: -0.045em;
   background: linear-gradient(135deg, #FFC75F, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -10885,7 +10892,7 @@ h4 { font-size: 17px; }
   box-shadow: 0 12px 30px rgba(61, 44, 30, 0.3);
 }
 .backlog-head {
-  font-family: var(--font-heading); font-weight: 800; font-size: 20px;
+  font-family: var(--font-display); font-weight: 600; font-size: 20px;
   letter-spacing: -0.02em; color: #FBF6EE;
 }
 .backlog-sub {
@@ -11017,7 +11024,7 @@ h4 { font-size: 17px; }
 }
 
 .backfill-progress-num {
-  font-family: var(--font-heading); font-weight: 800; font-size: 40px;
+  font-family: var(--font-display); font-weight: 600; font-size: 40px;
   color: var(--brown-ink, #3D2C1E); text-align: center; letter-spacing: -0.03em;
 }
 .backfill-progress-num span { font-size: 20px; color: var(--brown-light-muted, #9B8A7E); }
@@ -11160,7 +11167,7 @@ h4 { font-size: 17px; }
   letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber, #F4A261);
 }
 .otd-head {
-  font-family: var(--font-heading); font-weight: 800; font-size: 24px;
+  font-family: var(--font-display); font-weight: 600; font-size: 24px;
   letter-spacing: -0.025em; color: #FBF6EE; line-height: 1.1;
   text-shadow: 0 2px 14px rgba(0,0,0,0.5);
 }
@@ -11229,7 +11236,7 @@ h4 { font-size: 17px; }
   letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85);
 }
 .wrapready-head {
-  font-family: var(--font-heading); font-weight: 800; font-size: 27px;
+  font-family: var(--font-display); font-weight: 600; font-size: 27px;
   letter-spacing: -0.03em; color: #fff; line-height: 1.08;
 }
 .wrapready-sub {
@@ -11252,7 +11259,7 @@ h4 { font-size: 17px; }
   border-radius: 16px; padding: 14px 16px; margin-bottom: 14px;
 }
 .together-count {
-  font-family: var(--font-heading); font-weight: 800; font-size: 34px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1;
   letter-spacing: -0.03em;
   background: linear-gradient(135deg, #F4A261, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
