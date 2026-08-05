@@ -27,16 +27,31 @@ export function MeloIcon({ size = 40, rounded = true, className = '' }) {
   );
 }
 
-export function MeloWordmark({ size = 28, color = 'currentColor' }) {
+// The wordmark spec, for the two renderers that CANNOT read CSS variables:
+// the share-card canvas (lib/shareCard.js draws with ctx.font) and the
+// canvas-bound share-card parts. DOM callers should use the --wordmark-*
+// tokens in App.css instead; these values must stay in step with them.
+export const WORDMARK = {
+  family: "'Outfit', sans-serif",
+  canvasFamily: 'Outfit, system-ui, sans-serif',
+  weight: 300,
+  tracking: '0.06em',
+};
+
+// The canonical wordmark. Face, weight and tracking come from the --wordmark-*
+// tokens in App.css so the brand is defined in exactly one place — it used to
+// live in five, and three of them had already drifted to a different weight.
+export function MeloWordmark({ size = 28, color = 'currentColor', style = {} }) {
   return (
     <span
       style={{
-        fontFamily: "'Outfit', sans-serif",
-        fontWeight: 300,
+        fontFamily: 'var(--font-wordmark)',
+        fontWeight: 'var(--wordmark-weight)',
         fontSize: size,
-        letterSpacing: '0.06em',
+        letterSpacing: 'var(--wordmark-tracking)',
         color,
         lineHeight: 1,
+        ...style,
       }}
     >
       melo

@@ -14,6 +14,7 @@ import { useApp } from '../App';
 import { buildCut, getCut, pickAutoCut } from '../lib/recapCuts';
 import RecapPicker from './RecapPicker';
 import RecapScene from './RecapScene';
+import { MeloWordmark } from './MeloLogo';
 import { fetchSongPreview } from '../api';
 import { canExportRecap, exportRecap } from '../lib/recapExport';
 import { shareBlob } from '../lib/shareCard';
@@ -189,7 +190,9 @@ export default function RecapReel({ show, onClose, cutId: initialCut }) {
         <RecapScene key={scene.id} scene={scene} fallback={fallbackMedia} />
 
         {/* Persistent brand watermark (handoff: MeloLockup, bottom-right). */}
-        <div className="recap-mark" aria-hidden="true">melo</div>
+        <div className="recap-mark" aria-hidden="true">
+          <MeloWordmark size={13} color="rgba(251,246,238,0.7)" />
+        </div>
 
         {/* Progress: one segment per scene, Story-style */}
         <div className="recap-progress">

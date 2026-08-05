@@ -52,6 +52,14 @@
   --font-heading: 'Outfit', sans-serif;                /* UI headings, buttons, chips */
   --font-label: 'Oswald', sans-serif;                  /* condensed uppercase metadata */
   --font-body: 'DM Sans', sans-serif;
+  /* The wordmark — its own tokens, deliberately NOT --font-heading.
+     A logo should sit outside the type system: if the mark uses the same face
+     as every page title it stops being a mark and becomes another heading.
+     Kept as three values so changing the brand face is one edit here rather
+     than a hunt through four files, which is what it used to be. */
+  --font-wordmark: 'Outfit', sans-serif;
+  --wordmark-weight: 300;
+  --wordmark-tracking: 0.06em;
   --nav-height: 80px;
   --green: #00A88C; /* the one "going / added" success green */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -10176,10 +10184,10 @@ h4 { font-size: 17px; }
   text-transform: uppercase; letter-spacing: 0.02em; color: #F4A261;
 }
 .recap-sub { font-size: 14.5px; font-weight: 600; color: rgba(251,246,238,0.82); letter-spacing: 0.01em; }
-.recap-wordmark {
-  font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 17px;
-  letter-spacing: -0.01em; color: rgba(251,246,238,0.6); margin-top: 6px;
-}
+/* Layout only — the mark itself is <MeloWordmark>, so type and colour live at
+   the call site. Was Outfit 800 / -0.01em here: a heavier, tighter "melo" than
+   the brand mark on the sign-in screen. Nobody chose that; it drifted. */
+.recap-wordmark { margin-top: 6px; }
 
 /* Story progress bars along the top (under the letterbox). */
 .recap-progress {
@@ -10305,10 +10313,14 @@ h4 { font-size: 17px; }
 .recap-stage.square .recap-letterbox.tall { height: 30px; }
 
 /* Persistent brand watermark, bottom-right on every stage. */
+/* Positioning only — the mark is <MeloWordmark>. This is the watermark burned
+   into every exported recap, so it's the one strangers see; it had the same
+   800/-0.01em drift. At 13px and weight 300 over moving footage the brand is
+   the thinnest it ever gets, hence the lifted opacity at the call site.
+   Compensate with ink, not by quietly putting the weight back. */
 .recap-mark {
   position: absolute; right: 12px; bottom: 50px; z-index: 15;
-  font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px;
-  letter-spacing: -0.01em; color: rgba(251, 246, 238, 0.5); pointer-events: none;
+  pointer-events: none;
 }
 /* The pre-16-cut paper/diary rules lived here; every theme now renders through
    components/RecapScene.jsx and the .rc-* system further down. */

@@ -3,17 +3,20 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { vibeStyle } from '../store';
+import { WORDMARK } from './MeloLogo';
 
 const OUTFIT = "'Outfit', sans-serif";
 // Same install target the existing exporter uses (lib/shareCard.js).
 export const SHARE_QR_URL = 'https://apps.apple.com/us/app/melo-concert-tracker/id6763952800';
 
-// melo wordmark — Outfit 300, lowercase, +0.06em (matches the brand wordmark).
+// melo wordmark. Explicit inline values rather than the CSS tokens, because
+// these parts get rasterised for the share card and var() doesn't survive
+// that path — driven from the shared WORDMARK spec so it can't drift.
 export function Wordmark({ size = 46, color = '#fff', style = {} }) {
   return (
     <span style={{
-      fontFamily: OUTFIT, fontWeight: 300, fontSize: size,
-      letterSpacing: '0.06em', color, lineHeight: 1, ...style,
+      fontFamily: WORDMARK.family, fontWeight: WORDMARK.weight, fontSize: size,
+      letterSpacing: WORDMARK.tracking, color, lineHeight: 1, ...style,
     }}>melo</span>
   );
 }

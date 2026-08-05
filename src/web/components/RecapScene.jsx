@@ -16,6 +16,7 @@
 
 import { beatScale } from '../lib/recap';
 import { vibeStyle } from '../store';
+import { MeloWordmark } from './MeloLogo';
 
 /** Copy in the cuts uses \n where the design breaks a line. */
 const Lines = ({ text }) => String(text || '').split('\n').map((l, i) => (
@@ -104,7 +105,7 @@ export default function RecapScene({ scene, fallback = '' }) {
                 {scene.eyebrow && <div className="rc-eyebrow">{scene.eyebrow}</div>}
                 <div className="recap-headline"><Lines text={scene.big} /></div>
                 {scene.sub && <div className="recap-sub"><Lines text={scene.sub} /></div>}
-                <div className="recap-wordmark">melo</div>
+                <div className="recap-wordmark"><MeloWordmark size={17} color="rgba(251,246,238,0.75)" /></div>
               </div>
             );
           }

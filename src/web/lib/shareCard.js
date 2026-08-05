@@ -10,6 +10,7 @@
 
 import QRCode from 'qrcode';
 import { getShowStatus, SHOW_STATUS } from '../store';
+import { WORDMARK } from '../components/MeloLogo';
 
 const W = 1080;
 const H = 1920;
@@ -91,9 +92,16 @@ export async function renderWrappedCard(data, year, mapData, handle) {
   ctx.textAlign = 'center';
 
   // --- Wordmark ---
+  // Was hardcoded '800 96px' with no tracking — the heaviest, tightest "melo"
+  // anywhere in the product, baked into the PNG people actually post, and
+  // nothing like the 300-weight mark on the sign-in screen. Driven by the
+  // shared spec now. ctx.letterSpacing is ignored on older engines, which
+  // degrades to the old zero-tracking behaviour rather than breaking.
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = '800 96px Outfit, system-ui, sans-serif';
+  ctx.font = `${WORDMARK.weight} 96px ${WORDMARK.canvasFamily}`;
+  ctx.letterSpacing = WORDMARK.tracking;
   ctx.fillText('melo', cx, 210);
+  ctx.letterSpacing = '0px';
 
   ctx.fillStyle = AMBER;
   ctx.font = '700 30px Outfit, system-ui, sans-serif';
