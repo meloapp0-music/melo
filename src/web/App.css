@@ -1,23 +1,34 @@
 :root {
-  /* Bone paper, not white-ish grey. Warmed from #FAF8F5 so the surface reads
-     as a material rather than as an absence of colour. */
-  --bg: #F7F3EA;
-  --paper: #FCFAF4;          /* a sheet laid ON the bone — cards, sheets, rows */
-  --paper-edge: rgba(61, 44, 30, 0.09);  /* the hairline that replaces elevation */
+  /* Exact values from the Sleek design-token export, not eyeballed off
+     screenshots. Their names in comments so the two stay traceable. */
+  --bg: #FDFCF6;             /* --background */
+  --paper: #F9F7F2;          /* --card — a sheet laid ON the bone */
+  --paper-edge: #E5E3DF;     /* --border — the hairline that replaces elevation */
+  --paper-sunk: #F5EFE6;     /* --secondary — recessed wells, inputs, chips */
+  /* HELD at the brand ember. Sleek's --accent is #F93827 — redder and more
+     saturated — but #E8573A is hardcoded at 268 sites (52 hex + 176 rgba in
+     this file, 40 more in JS) and is Melo's brand colour per CLAUDE.md.
+     Changing the token alone would put two embers side by side; changing all
+     268 is a brand decision, not a styling one. */
   --orange: #E8573A;
-  --amber: #F4A261;
-  --brown: #3D2C1E;
-  --brown-light: #6B5A4E;
-  /* Was #9B8A7E, which scored 3.13:1 on the old background — already under
-     the 4.5:1 AA floor, and it's used for 13px uppercase metadata, the hardest
-     thing on the page to read. Warming the paper would have pushed it to 3.00.
-     Darkened to clear AA properly. Hierarchy comes from size, weight and
-     tracking instead of from low contrast, which is what the mockups do
-     anyway — their small caps are secondary because they're small, not faint. */
-  --brown-muted: #796C63;
-  /* Ember is 3.24:1 on bone — fine for a 40px countdown, not for a 12px label.
-     This is the same hue held back for small ember text. */
-  --ember-text: #BB462F;
+  --amber: #F7A03B;          /* --chart-2 */
+  /* --foreground. Near-neutral black, not the old warm #3D2C1E: the design
+     puts crisp near-black on warm paper, and the warmth lives in the surface
+     rather than in the ink. 17.08:1. */
+  --brown: #1A1918;
+  --brown-light: #3D3A37;    /* --secondary-foreground */
+  /* --muted-foreground. Was #9B8A7E, which scored 3.13:1 on the old background
+     — already under the 4.5:1 AA floor, on 13px uppercase metadata, the hardest
+     thing on the page to read. Sleek's export independently lands within a
+     hair of the value derived here earlier (#796C63, 4.58:1), which is decent
+     confirmation the original was a bug rather than a preference. */
+  --brown-muted: #78716C;
+  /* The accent is 3.63:1 on the background — it FAILS AA for small text, and
+     the design itself uses it at 10px ("AUTO-FILLED · ROSE BOWL · 22 SONGS").
+     Fine for a 40px countdown, not for a label. This is the same hue held back
+     to 4.56:1 for small ember type. (The brand ember scores 3.49:1 here, so
+     the same fix is needed either way — this is not a Sleek-specific problem.) */
+  --ember-text: #C74B32;
   --card-radius: 20px;
   /* The glass classes are near-dead (only KineticVibe references them) and
      frosted glass is the one thing the paper language has no room for. Kept
