@@ -144,17 +144,14 @@ h4 { font-size: 17px; }
    the page background still bleeds through underneath it. */
 .page-top { padding-top: calc(env(safe-area-inset-top, 0px) + 20px); }
 
-/* The archive label — "THE ARCHIVE · VOL. 01", "38 ITEMS PRESERVED".
-   The design's metadata is much smaller and MUCH wider-tracked than this was
-   (10px/0.4em/900 against 13px/0.06em/700). The width is the whole effect:
-   it's what makes a label read as a caption on a specimen sheet rather than
-   as a small heading. Secondary because it's small and spaced, not faint —
-   the colour still clears AA at 4.67:1. */
+/* Section label. Briefly ran at the mockups' 10px/0.4em/900; reverted — at
+   that tracking real metadata ("ROSE BOWL · PASADENA · OCT 12 2023") sprawls
+   and wraps, which reads fine on a specimen sheet and badly in an app. */
 .section-label {
   font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 10px;
-  letter-spacing: 0.4em;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--brown-muted);
   margin-bottom: 12px;
@@ -385,7 +382,6 @@ h4 { font-size: 17px; }
 
 .home-greeting {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 34px;
   letter-spacing: -0.03em;
@@ -730,8 +726,7 @@ h4 { font-size: 17px; }
 .venue-hero-icon { position: absolute; top: 9px; right: 14px; z-index: 2; font-size: 34px; }
 .venue-hero-info { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; }
 .venue-hero-name {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 23px;
+  font-family: var(--font-display); font-weight: 600; font-size: 23px;
   color: #fff; letter-spacing: -0.02em; line-height: 1.05;
   text-shadow: 0 1px 10px rgba(0,0,0,0.4);
 }
@@ -1020,7 +1015,6 @@ h4 { font-size: 17px; }
 
 .home-top-artist {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 28px;
   letter-spacing: -0.03em;
@@ -1048,7 +1042,6 @@ h4 { font-size: 17px; }
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 20px;
   color: #fff;
@@ -2752,7 +2745,6 @@ h4 { font-size: 17px; }
 
 .songs-spotlight-title {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 22px;
   letter-spacing: -0.03em;
@@ -2923,7 +2915,6 @@ h4 { font-size: 17px; }
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 24px;
   color: #fff;
@@ -2932,7 +2923,6 @@ h4 { font-size: 17px; }
 
 .buddy-spotlight-name {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 20px;
   letter-spacing: -0.02em;
@@ -3023,7 +3013,6 @@ h4 { font-size: 17px; }
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 34px;
   color: #fff;
@@ -3091,7 +3080,6 @@ h4 { font-size: 17px; }
 
 .profile-name {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 26px;
   letter-spacing: -0.03em;
@@ -3517,7 +3505,6 @@ h4 { font-size: 17px; }
 
 .detail-artist {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 30px;
   letter-spacing: -0.03em;
@@ -3755,7 +3742,6 @@ h4 { font-size: 17px; }
 
 .wrapped-year-card-year {
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 40px;
   font-weight: 600;
   line-height: 1;
@@ -3964,7 +3950,6 @@ h4 { font-size: 17px; }
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 26px;
   color: #fff;
@@ -4014,8 +3999,7 @@ h4 { font-size: 17px; }
 }
 .detail-note-mark {
   position: absolute; top: 2px; left: 12px;
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 46px;
+  font-family: var(--font-display); font-weight: 600; font-size: 46px;
   line-height: 1; color: rgba(232, 87, 58, 0.22); pointer-events: none;
 }
 .detail-note-body {
@@ -5087,7 +5071,6 @@ h4 { font-size: 17px; }
 
 .wrapped-year-big {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 80px;
   color: rgba(255, 255, 255, 0.12);
@@ -5098,7 +5081,6 @@ h4 { font-size: 17px; }
 
 .wrapped-title {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 32px;
   color: #fff;
@@ -5152,7 +5134,6 @@ h4 { font-size: 17px; }
 
 .wrapped-score-huge {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 100px;
   color: #fff;
@@ -5216,7 +5197,6 @@ h4 { font-size: 17px; }
 
 .wrapped-personality {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 26px;
   color: #fff;
@@ -5428,7 +5408,6 @@ h4 { font-size: 17px; }
 
 .compare-header h2 {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 22px;
 }
@@ -5496,7 +5475,6 @@ h4 { font-size: 17px; }
 
 .compare-picker-score {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 20px;
   color: var(--orange);
@@ -5632,7 +5610,6 @@ h4 { font-size: 17px; }
 
 .compare-winner-name {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 22px;
   color: var(--brown);
@@ -5730,7 +5707,6 @@ h4 { font-size: 17px; }
 
 .quicklog-header h3 {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 20px;
 }
@@ -8512,7 +8488,6 @@ h4 { font-size: 17px; }
 .upnext-artist {
   color: #fff;
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -8649,7 +8624,6 @@ h4 { font-size: 17px; }
 }
 .hype-artist {
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 24px;
   font-weight: 600;
   color: var(--brown);
@@ -8971,7 +8945,6 @@ h4 { font-size: 17px; }
 .feed-score {
   flex: 0 0 auto;
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 20px;
   font-weight: 600;
   background: linear-gradient(135deg, var(--amber), var(--orange));
@@ -9500,7 +9473,6 @@ h4 { font-size: 17px; }
 }
 .app-error-title {
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 22px;
   font-weight: 600;
   color: var(--brown);
@@ -9764,8 +9736,7 @@ h4 { font-size: 17px; }
   box-shadow: 0 -24px 70px rgba(0,0,0,0.45); animation: scUp .3s cubic-bezier(0.22,1,0.36,1);
 }
 .sc-grip { width: 44px; height: 5px; border-radius: 999px; background: rgba(61,44,30,0.14); margin: 2px auto 14px; }
-.sc-sheet h3 { font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 20px; margin: 0; color: var(--brown); }
+.sc-sheet h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; color: var(--brown); }
 .sc-sub { font-family: var(--font-body); color: var(--brown-muted); font-size: 13.5px; margin: 6px 0 0; }
 .sc-share-btn {
   margin-top: 22px; width: 100%; border: none; cursor: pointer; border-radius: 16px; padding: 16px;
@@ -9814,8 +9785,7 @@ h4 { font-size: 17px; }
 
 .sc-modal-scrim { position: absolute; inset: 0; z-index: 7; background: rgba(12,8,5,0.55); animation: scFade .2s ease; }
 .sc-modal { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; border-radius: 22px; overflow-y: auto; background: var(--bg); padding: 20px 22px 22px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); animation: scPop .24s cubic-bezier(0.22,1,0.36,1); }
-.sc-modal h3 { font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 20px; margin: 0; color: var(--brown); }
+.sc-modal h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; color: var(--brown); }
 .fs-row { display: flex; align-items: baseline; gap: 16px; padding: 12px 2px; border-top: 1px solid rgba(61,44,30,0.08); }
 .fs-row:first-child { border-top: none; }
 .fs-num { font-family: var(--font-heading); font-weight: 800; font-size: 15px; color: var(--orange); min-width: 26px; }
@@ -9849,7 +9819,6 @@ h4 { font-size: 17px; }
   right: -4px;
   bottom: 26px;
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 600;
   font-size: 124px;
   line-height: 0.8;
@@ -10488,13 +10457,11 @@ h4 { font-size: 17px; }
   letter-spacing: 0.24em; text-transform: uppercase; color: #F4A261; line-height: 1.5;
 }
 .rc-huge {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 46px; line-height: 0.92;
+  font-family: var(--font-display); font-weight: 600; font-size: 46px; line-height: 0.92;
   letter-spacing: -0.03em; color: #fff;
 }
 .rc-mid {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 32px; line-height: 1.06;
+  font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.06;
   letter-spacing: -0.025em; color: #FBF6EE;
 }
 
@@ -10533,8 +10500,7 @@ h4 { font-size: 17px; }
 }
 .rc-clock {
   position: absolute; top: 18px; left: 18px;
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 26px;
+  font-family: var(--font-display); font-weight: 600; font-size: 26px;
   letter-spacing: -0.01em; color: #FFC75F; text-shadow: 0 2px 12px rgba(0,0,0,0.7);
   animation: rcIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
 }
@@ -10604,8 +10570,7 @@ h4 { font-size: 17px; }
 }
 .rc-encore {
   display: flex; flex-direction: column; gap: 8px;
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 32px; line-height: 1.04;
+  font-family: var(--font-display); font-weight: 600; font-size: 32px; line-height: 1.04;
   letter-spacing: -0.025em; color: #fff;
 }
 .rc-stats { display: flex; gap: 26px; justify-content: center; }
@@ -10701,14 +10666,12 @@ h4 { font-size: 17px; }
   animation: rcStamp 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
 }
 @keyframes rcStamp { from { opacity: 0; transform: rotate(-11deg) scale(1.9); } to { opacity: 0.86; transform: rotate(-11deg) scale(1); } }
-.rc-po-foot { font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 21px; line-height: 1.28; letter-spacing: -0.02em; }
+.rc-po-foot { font-family: var(--font-display); font-weight: 600; font-size: 21px; line-height: 1.28; letter-spacing: -0.02em; }
 
 /* ---- IN YOUR WORDS ---- */
 .rc-pills { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; }
 .rc-pill {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 21px;
+  font-family: var(--font-display); font-weight: 600; font-size: 21px;
   border-radius: 999px; padding: 9px 18px; color: var(--c);
   background: color-mix(in srgb, var(--c) 16%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 46%, transparent);
@@ -10717,8 +10680,7 @@ h4 { font-size: 17px; }
 }
 .rc-quotemark { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 60px; line-height: 0.5; color: #E8573A; }
 .rc-quote {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 23px; line-height: 1.28;
+  font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.28;
   letter-spacing: -0.015em; color: #FBF6EE;
 }
 
@@ -10805,8 +10767,7 @@ h4 { font-size: 17px; }
 .rc-drawer-stub.me .rc-drawer-artist { color: #7A2E22; }
 .rc-drawer-where { font-family: var(--font-body); font-size: 9px; color: #7A5A44; }
 .rc-drawer-cap {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 26px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1;
   letter-spacing: -0.02em; color: #F3E8CC; text-align: center;
 }
 
@@ -10852,8 +10813,7 @@ h4 { font-size: 17px; }
 .rc-diary-hand { font-family: 'Caveat', cursive; font-weight: 700; font-size: 30px; line-height: 1.06; color: #2C1912; }
 .rc-diary-sub { font-family: 'Caveat', cursive; font-weight: 500; font-size: 22px; color: #7A5A44; }
 .rc-diary-score {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 62px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 62px; line-height: 1;
   background: linear-gradient(135deg, #F4A261, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
@@ -10892,8 +10852,7 @@ h4 { font-size: 17px; }
 }
 .duel-head { text-align: center; }
 .duel-title {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 26px;
+  font-family: var(--font-display); font-weight: 600; font-size: 26px;
   letter-spacing: -0.02em; color: #FBF6EE;
 }
 .duel-sub {
@@ -10930,8 +10889,7 @@ h4 { font-size: 17px; }
   display: flex; flex-direction: column; gap: 2px;
 }
 .duel-card-artist {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 21px;
+  font-family: var(--font-display); font-weight: 600; font-size: 21px;
   letter-spacing: -0.02em; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.55);
   line-height: 1.15;
 }
@@ -10979,8 +10937,7 @@ h4 { font-size: 17px; }
    number that shows up everywhere else, so it gets the size; the rank sits
    underneath as its provenance. */
 .duel-result-score {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 104px; line-height: 1;
+  font-family: var(--font-display); font-weight: 600; font-size: 104px; line-height: 1;
   letter-spacing: -0.045em;
   background: linear-gradient(135deg, #FFC75F, #E8573A);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -10996,8 +10953,7 @@ h4 { font-size: 17px; }
   box-shadow: 0 12px 30px rgba(61, 44, 30, 0.3);
 }
 .backlog-head {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 20px;
+  font-family: var(--font-display); font-weight: 600; font-size: 20px;
   letter-spacing: -0.02em; color: #FBF6EE;
 }
 .backlog-sub {
@@ -11272,8 +11228,7 @@ h4 { font-size: 17px; }
   letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber, #F4A261);
 }
 .otd-head {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 24px;
+  font-family: var(--font-display); font-weight: 600; font-size: 24px;
   letter-spacing: -0.025em; color: #FBF6EE; line-height: 1.1;
   text-shadow: 0 2px 14px rgba(0,0,0,0.5);
 }
@@ -11342,8 +11297,7 @@ h4 { font-size: 17px; }
   letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85);
 }
 .wrapready-head {
-  font-family: var(--font-display);
-  font-style: italic; font-weight: 600; font-size: 27px;
+  font-family: var(--font-display); font-weight: 600; font-size: 27px;
   letter-spacing: -0.03em; color: #fff; line-height: 1.08;
 }
 .wrapready-sub {

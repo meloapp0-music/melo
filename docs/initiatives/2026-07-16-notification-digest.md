@@ -7,8 +7,8 @@ type: project
 # Notification digest — "one calm push, not a storm"
 
 - Started: 2026-07-16
-- Status: planned (captured; build after v1.6 settles — Aidan's call)
-- Last updated: 2026-07-16
+- Status: built (dev) — both phases; neither deployed
+- Last updated: 2026-08-03
 
 ## Context (Aidan, 2026-07-16, verbatim intent)
 > "Instead of notification after notification for shows in your area, it should be
@@ -86,6 +86,66 @@ public-share-pages live-updates follow-up) with **no iOS build**. Good v1.7 work
   2026-05-22-notification-expansion.md.
 - Builds directly on the taste-matched Discover surface from
   [[tonight-in-your-city]].
+
+## Changes made
+
+- 2026-08-03: **Phase 1 — the digest.** `tour-alerts/index.ts` now accumulates
+  the three discovery kinds into a per-user array and sends ONE push instead of
+  up to five. Copy matches the spec above: `"14 shows near you 🎟️"` /
+  `"Goose, Vampire Weekend + 12 more"`.
+
+  The caps split into two budgets, because they're now two delivery mechanisms:
+  `MAX_NOTIFS_PER_USER` (5) governs only the individual kinds that remain
+  (`preshow_*`, `postshow_rate`); `MAX_DIGEST_ITEMS` (20) governs collection
+  into the digest. `MAX_GENRE_NOTIFS_PER_USER` rose 2 → 8, since genre picks no
+  longer compete with pre-show reminders for push budget — the round-robin
+  across genres still decides which ones make the cut.
+
+  Nothing records to `notifications_sent` until APNs accepts the digest, and
+  then the digest row AND every event it carried are written together. A failed
+  digest re-surfaces all of them tomorrow. Losing one notification is
+  recoverable; silently swallowing twenty is not.
+
+  Open decision 3 resolved as recommended: **no push on an empty day.**
+  Open decision 1 resolved pragmatically: the push lands on the existing
+  discovery surface (`Festivals.jsx`, which owns "Tonight in {city}") rather
+  than a new For You page. A dedicated view is still the better answer; this
+  gets the relief shipped without blocking on it.
+
+  `formatDate` was deleted — its only callers were the per-event discovery
+  pushes, and the digest carries a count and two names, no dates.
+
+- 2026-08-03: **Phase 2 — `presale-watch`, a new hourly function.** Presales
+  for watched artists, individual and immediate.
+
+  The design point that makes an hourly cron affordable: it inverts the watch
+  sets into `artist -> Set<userId>` **before** querying, so an artist five
+  hundred people watch costs one Ticketmaster call rather than five hundred.
+  `tour-alerts` queries per user; at this cadence that would be impossible
+  inside the API budget. Capped at 150 lookups/run (150 × 24 = 3,600/day,
+  leaving tour-alerts its 1,000 and headroom for in-app callers).
+
+  Window is `[now − 75min, now + 60min]` against an hourly cron — 2.25× overlap,
+  verified so that every possible presale start time is seen by **at least two
+  runs**. A single failed run therefore can't drop one, and the
+  `presale|{eventId}|{presaleName}` dedup key stops the overlap double-pushing.
+  An event carries several presales (artist, venue, cardholder), each with its
+  own start, so each is separately notifiable.
+
+  `MAX_PUSHES_PER_USER` is 3: presales cluster, and an artist opening twenty
+  tour dates at once would otherwise recreate exactly the storm Phase 1 killed.
+
+  Scope decision: **newly-announced shows stayed in the digest.** A show
+  announced at 2pm loses nothing by being reported at 5pm; a presale does. The
+  original intent note asks for immediate alerts on new shows too — that's a
+  follow-up, and it would mean moving `tour_alert` out of the digest, which
+  risks leaving the digest often empty (genre alerts alone).
+
+- 2026-08-03: **App routing** (`App.jsx`). `digest` → the discovery surface.
+  `presale` → leads with a 12-second tappable toast carrying the ticket URL,
+  with the wishlist tour search opening underneath as the fallback. The link is
+  the entire point of a presale alert; making someone find it themselves wastes
+  the only thing that was time-critical.
 
 ## Open decisions (for build time)
 1. **Digest page = enhance Discover, or a dedicated "For You" screen?** Recommend

@@ -253,6 +253,36 @@ export default function App() {
     // opens Wishlist's Search view pre-searched for that artist — a real
     // screen with every upcoming date, not a toast that can vanish — while
     // still offering the direct tickets link as a fast-path toast on top.
+    // presale — time-critical, from the hourly watcher. The ticket link IS the
+    // notification's purpose, so it leads rather than sitting behind a search:
+    // a presale window is measured in minutes and "open the tour list and find
+    // it yourself" wastes the only thing that mattered. The wishlist search
+    // still opens underneath as the fallback when there's no url.
+    if (kind === 'presale') {
+      const url = pushNav.ticketUrl;
+      if (url) {
+        showToast({
+          message: `🎟️ ${pushNav.artist || 'Presale'} — tap to open the presale`,
+          onClick: () => { try { window.open(url, '_blank'); } catch { /* noop */ } },
+          durationMs: 12000,
+        });
+      }
+      if (pushNav.artist) {
+        dispatchOverlay({
+          type: 'set',
+          list: [{ type: 'log', props: { prefill: { status: SHOW_STATUS.WISHLIST, mode: 'tour', tourArtist: pushNav.artist } } }],
+        });
+      }
+      return done();
+    }
+    // digest — the once-a-day "14 shows near you" bundle that replaced the
+    // five separate discovery pushes. It deliberately carries no event list
+    // (APNs caps at ~4KB), so it lands on the discovery surface and lets that
+    // re-query live — always fresher than anything the payload could hold.
+    if (kind === 'digest') {
+      setSubPage('festivals');
+      return done();
+    }
     if (kind === 'tour_alert' || kind === 'city_match' || kind === 'genre_alert') {
       if (pushNav.artist) {
         dispatchOverlay({

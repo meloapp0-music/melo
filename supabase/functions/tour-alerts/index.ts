@@ -2,8 +2,27 @@
 // =============================================
 // Daily cron that turns Melo's wishlist from a black hole into the
 // app's main re-engagement loop. For each user with wishlisted
-// artists, it queries Ticketmaster for newly-announced shows and
-// sends an APNs push for any that haven't been notified about yet.
+// artists, it queries Ticketmaster for newly-announced shows.
+//
+// TWO DELIVERY MODES, deliberately different:
+//
+//   DIGEST (discovery) — tour_alert / city_match / genre_alert used to fire
+//   one push EACH, up to five back-to-back in the same run. That burst was
+//   the whole complaint: "it's nauseating to get notification after
+//   notification when it could be a specific time once or twice a day."
+//   They now accumulate and leave as ONE push per user per day, landing on
+//   the discovery surface which re-queries live.
+//
+//   INDIVIDUAL (personal + urgent) — preshow_* and postshow_rate still send
+//   one push each. These are about a show you already committed to, they're
+//   time-critical, and there are at most a handful. Digesting them would be
+//   the wrong trade.
+//
+// Time-critical presales are NOT handled here — a once-daily poll cannot know
+// "the second a presale opens". See the presale-watch function, which runs on
+// a much tighter interval and stays individual by design.
+//
+// docs/initiatives/2026-07-16-notification-digest.md
 //
 // Schedule (set up after deploy):
 //   supabase functions schedule create tour-alerts --cron "0 17 * * *"
@@ -32,15 +51,23 @@ const TM_KEY = Deno.env.get('TICKETMASTER_KEY');
 // headroom for the in-app callers.
 const MAX_LOOKUPS_PER_RUN = 1000;
 
-// Cap notifications per user per run so a user with 100 wishlist
-// hits doesn't get a notification storm.
+// Cap INDIVIDUAL pushes per user per run. Since the digest landed this only
+// governs the personal/urgent kinds (preshow_*, postshow_rate) — the three
+// discovery kinds no longer send one push each, so they no longer compete for
+// this budget. It stays as a backstop against a user with 100 Going shows.
 const MAX_NOTIFS_PER_USER = 5;
 
+// How many discovery hits one digest may carry. This is a COLLECTION cap, not
+// a push cap — they all arrive in a single notification, so it can be far
+// larger than the individual budget above without any change in how many times
+// the phone buzzes. Bounds the insert buffer and keeps "+N more" honest.
+const MAX_DIGEST_ITEMS = 20;
+
 // Genre-wide discovery is far more prolific than named-artist watches (one
-// query can surface dozens of shows), so it gets its own smaller sub-cap —
-// out of MAX_NOTIFS_PER_USER — so it can't crowd out the higher-signal
-// pre-show reminders and named-artist alerts above it in the run order.
-const MAX_GENRE_NOTIFS_PER_USER = 2;
+// query can surface dozens of shows), so it keeps a sub-cap within the digest
+// so a single prolific genre can't fill the whole thing and crowd out the
+// named-artist watches the user explicitly asked for.
+const MAX_GENRE_NOTIFS_PER_USER = 8;
 
 // Settings' TasteEditor stores genres as free-text labels (see
 // TASTE_GENRES in src/web/components/TasteEditor.jsx). Map the ones with a
@@ -188,7 +215,7 @@ serve(async (_req) => {
   const { data: sentRows, error: sentErr } = await admin
     .from('notifications_sent')
     .select('user_id, kind, ref')
-    .in('kind', ['tour_alert', 'genre_alert', 'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate']);
+    .in('kind', ['tour_alert', 'genre_alert', 'digest', 'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate']);
   if (sentErr) {
     console.error('[tour-alerts] sent read failed', sentErr);
     return err({ error: sentErr.message }, 500);
@@ -204,6 +231,7 @@ serve(async (_req) => {
   let lookups = 0;
   let pushed = 0;
   let recorded = 0;
+  let digests = 0;
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
 
   for (const [userId, { homeCity, artists, genres, going }] of byUser) {
@@ -212,6 +240,17 @@ serve(async (_req) => {
     const tokens = tokensByUser.get(userId) || [];
     const sent = sentByUser.get(userId) || new Set();
     let userNotifs = 0;
+
+    // The digest. The three discovery kinds (tour_alert / city_match /
+    // genre_alert) used to fire one push EACH — up to five back-to-back at
+    // ~1pm, which is the "notification after notification" storm this run
+    // exists to kill. They accumulate here instead and leave as one push.
+    //
+    // Nothing is recorded to notifications_sent until that push is accepted,
+    // so a failed digest re-surfaces every event tomorrow rather than
+    // silently swallowing the lot. Same rule the individual kinds already
+    // follow, applied to the batch.
+    const digest: Array<{ kind: string; ref: string; artist: string }> = [];
 
     // --- Show reminders for Going shows (no TM lookup needed) ---
     // Pre-show: 1 week / 1-2 days / day-of. Post-show: the day AFTER,
@@ -273,7 +312,7 @@ serve(async (_req) => {
 
     for (const artist of artists) {
       if (lookups >= MAX_LOOKUPS_PER_RUN) break;
-      if (userNotifs >= MAX_NOTIFS_PER_USER) break;
+      if (digest.length >= MAX_DIGEST_ITEMS) break;
 
       lookups++;
       // With a home city we filter TM to that metro, so every result
@@ -287,44 +326,11 @@ serve(async (_req) => {
       if (!candidates.length) continue;
       const ev = candidates[0];
 
-      const inHomeCity =
-        !!homeCity && ev.city.toLowerCase().includes(homeCity.toLowerCase());
-
-      // "Playing your city" is the higher-value alert. Fall back to the
-      // original tour-announcement copy when we can't place it locally.
-      const title = inHomeCity
-        ? `${artist} is playing ${homeCity} 🎟️`
-        : `${artist} just announced a tour 🎤`;
-      const body = inHomeCity
-        ? `${ev.venue ? ev.venue + ' · ' : ''}${formatDate(ev.date)} — tickets available`
-        : `${ev.city}${ev.state ? ', ' + ev.state : ''} · ${formatDate(ev.date)}`;
-
-      let delivered = false;
-      if (tokens.length > 0 && isApnsConfigured()) {
-        const results = await sendApnsBatch(tokens, {
-          title,
-          body,
-          data: {
-            kind: inHomeCity ? 'city_match' : 'tour_alert',
-            artist,
-            eventId: ev.id,
-            ticketUrl: ev.ticketUrl,
-          },
-        });
-        const okCount = results.filter((r) => r.ok).length;
-        pushed += okCount;
-        delivered = okCount > 0;
-        await pruneDeadTokens(admin, userId, results);
-      }
-      // Same rule as pre-show: only record once APNs accepts it, so an
-      // undeliverable alert retries instead of being permanently suppressed.
-      if (!delivered) continue;
-
-      // Single dedup namespace ('tour_alert') so the same event is
-      // never notified twice regardless of which copy fired.
-      sentInsertBuffer.push({ user_id: userId, kind: 'tour_alert', ref: ev.id });
+      // Into the digest rather than out as its own push. Dedup still uses the
+      // single 'tour_alert' namespace so an event that would have fired the
+      // "playing your city" copy is never also surfaced as a tour announcement.
+      digest.push({ kind: 'tour_alert', ref: ev.id, artist });
       sent.add(`tour_alert|${ev.id}`);
-      userNotifs++;
     }
 
     // --- Genre-wide city discovery: "notify me when ANY artist in these
@@ -352,39 +358,66 @@ serve(async (_req) => {
 
       let genreNotifs = 0;
       let progress = true;
-      while (progress && genreNotifs < MAX_GENRE_NOTIFS_PER_USER && userNotifs < MAX_NOTIFS_PER_USER) {
+      while (progress && genreNotifs < MAX_GENRE_NOTIFS_PER_USER && digest.length < MAX_DIGEST_ITEMS) {
         progress = false;
         for (const genre of shuffled) {
-          if (genreNotifs >= MAX_GENRE_NOTIFS_PER_USER || userNotifs >= MAX_NOTIFS_PER_USER) break;
+          if (genreNotifs >= MAX_GENRE_NOTIFS_PER_USER || digest.length >= MAX_DIGEST_ITEMS) break;
           const queue = perGenre.get(genre);
           if (!queue || queue.length === 0) continue;
           const ev = queue.shift()!;
           progress = true;
 
-          const title = `${ev.artist} — new ${genre} show near you 🎶`;
-          const body = `${ev.venue ? ev.venue + ' · ' : ''}${formatDate(ev.date)}`;
-
-          let delivered = false;
-          if (tokens.length > 0 && isApnsConfigured()) {
-            const results = await sendApnsBatch(tokens, {
-              title,
-              body,
-              data: { kind: 'genre_alert', genre, artist: ev.artist, eventId: ev.id, ticketUrl: ev.ticketUrl },
-            });
-            const okCount = results.filter((r) => r.ok).length;
-            pushed += okCount;
-            delivered = okCount > 0;
-            await pruneDeadTokens(admin, userId, results);
-          }
-          // Same rule as the other alert kinds: only record a delivered
-          // push, so an undeliverable one retries on a later run instead
-          // of being permanently suppressed.
-          if (!delivered) continue;
-
-          sentInsertBuffer.push({ user_id: userId, kind: 'genre_alert', ref: ev.id });
+          // Into the same digest as the named-artist watches. The round-robin
+          // above still matters: it decides WHICH genre picks make the digest
+          // when one genre has far more touring acts than another.
+          digest.push({ kind: 'genre_alert', ref: ev.id, artist: ev.artist });
           sent.add(`genre_alert|${ev.id}`);
           genreNotifs++;
-          userNotifs++;
+        }
+      }
+    }
+
+    // ---- One push, not five. ----
+    // Everything the three discovery kinds found leaves as a single
+    // notification. No digest is sent on an empty day: a digest that fires
+    // with nothing in it trains people to ignore the one that matters (same
+    // principle daily-post already follows).
+    //
+    // Deduped per user per UTC day so a manual re-invoke can't double-buzz
+    // someone. The events inside are already deduped by their own kind, so a
+    // second run the same day would find nothing new anyway — this guards the
+    // case where it does.
+    if (digest.length > 0 && tokens.length > 0 && isApnsConfigured()) {
+      const dayRef = new Date().toISOString().slice(0, 10);
+      if (!sent.has(`digest|${dayRef}`)) {
+        const names = [...new Set(digest.map((d) => d.artist))].filter(Boolean);
+        const lead = names.slice(0, 2);
+        const rest = digest.length - lead.length;
+        const title = `${digest.length} show${digest.length === 1 ? '' : 's'} near you 🎟️`;
+        const body = rest > 0 ? `${lead.join(', ')} + ${rest} more` : lead.join(', ');
+
+        const results = await sendApnsBatch(tokens, {
+          title,
+          body,
+          // No event list in the payload — APNs caps at ~4KB and the
+          // destination re-queries live on open, so it's always fresher than
+          // anything we could have stuffed in here.
+          data: { kind: 'digest', count: digest.length, artists: lead },
+        });
+        const okCount = results.filter((r) => r.ok).length;
+        pushed += okCount;
+        await pruneDeadTokens(admin, userId, results);
+
+        if (okCount > 0) {
+          digests++;
+          // The digest itself AND every event it carried, recorded together
+          // and only on acceptance. A failed digest leaves all of them
+          // unrecorded so tomorrow's run surfaces them again — losing a
+          // notification is recoverable, silently swallowing twenty is not.
+          sentInsertBuffer.push({ user_id: userId, kind: 'digest', ref: dayRef });
+          for (const d of digest) {
+            sentInsertBuffer.push({ user_id: userId, kind: d.kind, ref: d.ref });
+          }
         }
       }
     }
@@ -407,8 +440,8 @@ serve(async (_req) => {
   }
 
   const elapsedMs = Date.now() - start;
-  console.log('[tour-alerts]', { users: byUser.size, lookups, pushed, recorded, elapsedMs });
-  return ok({ users: byUser.size, lookups, pushed, recorded, elapsedMs });
+  console.log('[tour-alerts]', { users: byUser.size, lookups, pushed, digests, recorded, elapsedMs });
+  return ok({ users: byUser.size, lookups, pushed, digests, recorded, elapsedMs });
 });
 
 // -------------------- helpers --------------------
@@ -552,16 +585,10 @@ async function searchTmByGenre(genre: string, city: string): Promise<TmGenreEven
   }
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return '';
-  try {
-    return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
+// (formatDate lived here. It only ever served the per-event discovery pushes,
+// which are now one digest carrying a count and two names — no dates. Removed
+// rather than left dead; the presale watcher needs times, not calendar dates,
+// so it carries its own.)
 
 function ok(body: unknown) {
   return new Response(JSON.stringify(body), {
