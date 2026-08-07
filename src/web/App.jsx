@@ -253,17 +253,23 @@ export default function App() {
     // opens Wishlist's Search view pre-searched for that artist — a real
     // screen with every upcoming date, not a toast that can vanish — while
     // still offering the direct tickets link as a fast-path toast on top.
-    // presale — time-critical, from the hourly watcher. The ticket link IS the
-    // notification's purpose, so it leads rather than sitting behind a search:
-    // a presale window is measured in minutes and "open the tour list and find
-    // it yourself" wastes the only thing that mattered. The wishlist search
-    // still opens underneath as the fallback when there's no url.
-    if (kind === 'presale') {
+    // tour_drop / presale_live — the two time-critical kinds, from the sweep
+    // and the fire cron. The ticket link IS the point of both, so it leads
+    // rather than sitting behind a search: a presale window is measured in
+    // minutes, and "open the tour list and find it yourself" wastes the only
+    // thing that was urgent. The wishlist tour search still opens underneath,
+    // so there's somewhere to land when there's no url and somewhere to browse
+    // the other dates when there is.
+    if (kind === 'tour_drop' || kind === 'presale_live') {
       const url = pushNav.ticketUrl;
       if (url) {
         showToast({
-          message: `🎟️ ${pushNav.artist || 'Presale'} — tap to open the presale`,
+          message: kind === 'presale_live'
+            ? `🎟️ ${pushNav.artist || 'Presale'} presale is live — tap to open`
+            : `🎟️ ${pushNav.artist || 'Tickets'} — tap for tickets`,
           onClick: () => { try { window.open(url, '_blank'); } catch { /* noop */ } },
+          // Longer than the other toasts on purpose: this one is the action,
+          // not a signpost to it, and it must survive a cold start.
           durationMs: 12000,
         });
       }

@@ -1,0 +1,355 @@
+// Melo — presale-sweep Edge Function (scheduled, every 15 min)
+// =============================================================
+// Half of "be the first to know". This half DISCOVERS: it finds newly-listed
+// shows by artists people follow, and it learns when their presales open.
+// The other half (presale-fire) does the firing, off the schedule this one
+// writes, without touching Ticketmaster at all.
+//
+// WHY CITY-SWEEP AND NOT ARTIST-KEYWORD:
+// The obvious build queries TM once per watched artist. That scales with
+// ARTISTS — hundreds — so it can only run hourly inside a 5,000/day budget,
+// and hourly is not "first". This queries once per distinct HOME CITY and
+// matches artists locally. That scales with CITIES — a couple of dozen — so
+// a 15-minute cadence costs roughly a tenth as much and catches strictly more,
+// because it sees every artist in the city, not just the ones we thought to
+// ask about.
+//
+// WHY IT DOESN'T POLL FOR "PRESALE IS LIVE":
+// TM publishes `sales.presales[].startDateTime` the moment a presale is
+// announced, usually days ahead. Once that's known, firing at the right second
+// is a clock problem, not an API problem — so presale-fire reads the schedule
+// table every minute and spends nothing. Polling to catch the moment would be
+// both more expensive and less accurate.
+//
+// TWO PUSHES PER TOUR, MAXIMUM:
+//   1. "Radiohead just announced a tour — 12 dates" (+ presale time if known)
+//   2. "Radiohead presale is live now" — fired to the second by presale-fire
+// Tour dates are collapsed per artist; a 30-date announcement is one push, not
+// thirty. That is the same storm the daily digest exists to prevent.
+//
+// Schedule (Dashboard -> Integrations -> Cron):
+//   */15 * * * *
+//
+// Deploy:
+//   supabase functions deploy presale-sweep --no-verify-jwt
+//
+// docs/initiatives/2026-07-16-notification-digest.md
+
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { sendApnsBatch, isApnsConfigured } from '../_shared/apns.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const TM_KEY = Deno.env.get('TICKETMASTER_KEY');
+
+// One TM call per city per run. 25 x 96 runs/day = 2,400, leaving tour-alerts
+// its 1,000 and headroom for the app's own lookups inside the 5,000/day free
+// tier. Cities are swept most-users-first, so if this bites it bites the
+// thinnest markets.
+const MAX_CITIES_PER_RUN = 25;
+
+// Announcements per user per run. Collapsed per artist already, so this is
+// "three different artists you follow announced something in the last quarter
+// hour" — genuinely rare, and a sane ceiling if a festival lineup drops.
+const MAX_PUSHES_PER_USER = 3;
+
+const LOVED_MIN_SCORE = 7;
+
+interface TmEvt {
+  id: string;
+  artist: string;
+  venue: string;
+  city: string;
+  date: string;
+  ticketUrl: string;
+  presales: Array<{ name: string; startsAt: Date; endsAt: Date | null }>;
+}
+
+serve(async (_req) => {
+  const start = Date.now();
+  if (!TM_KEY) return ok({ skipped: true, reason: 'no-tm-key' });
+  if (!isApnsConfigured()) return ok({ skipped: true, reason: 'no-apns' });
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // ---- Watch sets + home cities, from one read.
+  // Watch derivation matches tour-alerts exactly (wishlist + going +
+  // attended-and-loved) so the three crons never disagree about who follows whom.
+  const { data: rows, error: showErr } = await admin
+    .from('shows')
+    .select('user_id, artist, city, score, status, wishlist');
+  if (showErr) return err({ error: showErr.message }, 500);
+
+  const watchers = new Map<string, Set<string>>();   // lower(artist) -> users
+  const cityCounts = new Map<string, Map<string, number>>(); // user -> city -> n
+  const addWatcher = (artist: string, userId: string) => {
+    const k = (artist || '').trim().toLowerCase();
+    if (!k) return;
+    const s = watchers.get(k) || new Set<string>();
+    s.add(userId);
+    watchers.set(k, s);
+  };
+
+  for (const r of rows || []) {
+    if (!r.artist) continue;
+    const isWishlist = r.status === 'wishlist' || r.wishlist === true;
+    const isGoing = r.status === 'going';
+    const isAttended = !isWishlist && !isGoing;
+    const score = typeof r.score === 'number' ? r.score : Number(r.score) || 0;
+    if (isWishlist || isGoing || (isAttended && score >= LOVED_MIN_SCORE)) {
+      addWatcher(r.artist, r.user_id);
+    }
+    if (isAttended && r.city) {
+      const m = cityCounts.get(r.user_id) || new Map<string, number>();
+      m.set(r.city, (m.get(r.city) || 0) + 1);
+      cityCounts.set(r.user_id, m);
+    }
+  }
+
+  const { data: profRows } = await admin
+    .from('profiles')
+    .select('id, fav_artists, home_city');
+  const explicitCity = new Map<string, string>();
+  for (const p of profRows || []) {
+    for (const a of (Array.isArray(p.fav_artists) ? p.fav_artists : [])) addWatcher(a, p.id);
+    const hc = (p.home_city || '').trim();
+    if (hc) explicitCity.set(p.id, hc);
+  }
+
+  // Distinct cities, weighted by how many users sit in each.
+  const cityUsers = new Map<string, number>();
+  for (const userId of new Set([...cityCounts.keys(), ...explicitCity.keys()])) {
+    let city = explicitCity.get(userId) || '';
+    if (!city) {
+      let best = 0;
+      for (const [c, n] of cityCounts.get(userId) || []) if (n > best) { best = n; city = c; }
+    }
+    if (city) cityUsers.set(city, (cityUsers.get(city) || 0) + 1);
+  }
+  if (cityUsers.size === 0 || watchers.size === 0) {
+    return ok({ cities: 0, artists: watchers.size, elapsedMs: Date.now() - start });
+  }
+
+  // ---- Tokens + what's already been announced.
+  const { data: tokenRows } = await admin
+    .from('device_tokens').select('user_id, token, platform');
+  const tokensByUser = new Map<string, string[]>();
+  for (const t of tokenRows || []) {
+    if (t.platform !== 'ios') continue;
+    const l = tokensByUser.get(t.user_id) || [];
+    l.push(t.token);
+    tokensByUser.set(t.user_id, l);
+  }
+
+  // Shares the 'tour_alert' namespace with tour-alerts on purpose: an event
+  // announced here is then invisible to the daily digest, so the same show can
+  // never arrive twice by two different routes.
+  const { data: sentRows } = await admin
+    .from('notifications_sent').select('user_id, ref').eq('kind', 'tour_alert');
+  const sentByUser = new Map<string, Set<string>>();
+  for (const s of sentRows || []) {
+    const set = sentByUser.get(s.user_id) || new Set<string>();
+    set.add(s.ref);
+    sentByUser.set(s.user_id, set);
+  }
+
+  // ---- Sweep the cities.
+  const cities = [...cityUsers.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_CITIES_PER_RUN);
+  const now = new Date();
+
+  // user -> artist -> events newly seen this run
+  const newByUser = new Map<string, Map<string, TmEvt[]>>();
+  const scheduleRows = new Map<string, Record<string, unknown>>();
+  let lookups = 0;
+  let matched = 0;
+
+  for (const [city] of cities) {
+    lookups++;
+    const events = await searchCity(city);
+    for (const ev of events) {
+      const key = ev.artist.trim().toLowerCase();
+      const users = watchers.get(key);
+      if (!users || users.size === 0) continue;
+      matched++;
+
+      // Every presale of a matched event goes into the schedule regardless of
+      // whether anyone gets an announcement push — presale-fire needs the row
+      // even for an event the user was told about days ago.
+      for (const p of ev.presales) {
+        scheduleRows.set(`${ev.id}|${p.name}`, {
+          event_id: ev.id,
+          presale_name: p.name,
+          artist: ev.artist,
+          venue: ev.venue,
+          city: ev.city,
+          ticket_url: ev.ticketUrl,
+          starts_at: p.startsAt.toISOString(),
+          ends_at: p.endsAt ? p.endsAt.toISOString() : null,
+        });
+      }
+
+      for (const userId of users) {
+        if ((sentByUser.get(userId) || new Set()).has(ev.id)) continue;
+        const byArtist = newByUser.get(userId) || new Map<string, TmEvt[]>();
+        const list = byArtist.get(ev.artist) || [];
+        list.push(ev);
+        byArtist.set(ev.artist, list);
+        newByUser.set(userId, byArtist);
+      }
+    }
+  }
+
+  // Write the schedule before pushing. If the push half fails, the schedule is
+  // still correct and presale-fire still works — the reverse would mean telling
+  // someone a presale is coming and then never firing it.
+  if (scheduleRows.size) {
+    const { error: schedErr } = await admin
+      .from('presale_schedule')
+      .upsert([...scheduleRows.values()], { onConflict: 'event_id,presale_name' });
+    if (schedErr) console.error('[presale-sweep] schedule upsert failed', schedErr);
+  }
+
+  // ---- Announce. One push per artist, however many dates they announced.
+  let pushed = 0;
+  const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
+
+  for (const [userId, byArtist] of newByUser) {
+    const tokens = tokensByUser.get(userId) || [];
+    if (!tokens.length) continue;
+    let userPushes = 0;
+
+    for (const [artist, evs] of byArtist) {
+      if (userPushes >= MAX_PUSHES_PER_USER) break;
+
+      const title = evs.length > 1
+        ? `${artist} just announced a tour 🎤`
+        : `${artist} just announced a show 🎤`;
+
+      // Lead with the soonest upcoming presale if there is one — it's the part
+      // that's time-critical and the reason someone opens this immediately.
+      const upcoming = evs
+        .flatMap((e) => e.presales)
+        .filter((p) => p.startsAt > now)
+        .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
+
+      const dates = evs.length > 1 ? `${evs.length} dates` : `${evs[0].venue || evs[0].city}`;
+      const body = upcoming
+        ? `${dates} · presale ${formatWhen(upcoming.startsAt)}`
+        : dates;
+
+      const results = await sendApnsBatch(tokens, {
+        title,
+        body,
+        data: { kind: 'tour_drop', artist, eventId: evs[0].id, ticketUrl: evs[0].ticketUrl },
+      });
+      const okCount = results.filter((r) => r.ok).length;
+      await pruneDeadTokens(admin, userId, results);
+      // Only record on acceptance, so an undeliverable announcement is retried
+      // by the next sweep rather than permanently suppressed.
+      if (okCount === 0) continue;
+
+      pushed += okCount;
+      userPushes++;
+      for (const e of evs) sentInsertBuffer.push({ user_id: userId, kind: 'tour_alert', ref: e.id });
+    }
+  }
+
+  if (sentInsertBuffer.length) {
+    const { error: insErr } = await admin
+      .from('notifications_sent')
+      .upsert(sentInsertBuffer, { onConflict: 'user_id,kind,ref', ignoreDuplicates: true });
+    if (insErr) console.error('[presale-sweep] sent upsert failed', insErr);
+  }
+
+  const elapsedMs = Date.now() - start;
+  console.log('[presale-sweep]', {
+    cities: cities.length, lookups, matched, scheduled: scheduleRows.size, pushed, elapsedMs,
+  });
+  return ok({ cities: cities.length, lookups, matched, scheduled: scheduleRows.size, pushed, elapsedMs });
+});
+
+// -------------------- helpers --------------------
+
+async function searchCity(city: string): Promise<TmEvt[]> {
+  try {
+    const params = new URLSearchParams({
+      apikey: TM_KEY!,
+      city,
+      classificationName: 'music',
+      sort: 'date,asc',
+      size: '200',
+    });
+    const res = await fetch(
+      `https://app.ticketmaster.com/discovery/v2/events.json?${params}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const events = data?._embedded?.events || [];
+    const out: TmEvt[] = [];
+    for (const ev of events) {
+      const attraction = ev?._embedded?.attractions?.[0];
+      const artist = (attraction?.name || '').trim();
+      if (!ev.id || !artist) continue;
+      const venue = ev?._embedded?.venues?.[0] || {};
+      const presales: TmEvt['presales'] = [];
+      for (const p of (ev?.sales?.presales || [])) {
+        const startsAt = p?.startDateTime ? new Date(p.startDateTime) : null;
+        if (!startsAt || Number.isNaN(startsAt.getTime())) continue;
+        const endsAtRaw = p?.endDateTime ? new Date(p.endDateTime) : null;
+        presales.push({
+          name: (p?.name || 'Presale').trim(),
+          startsAt,
+          endsAt: endsAtRaw && !Number.isNaN(endsAtRaw.getTime()) ? endsAtRaw : null,
+        });
+      }
+      out.push({
+        id: ev.id,
+        artist,
+        venue: venue.name || '',
+        city: venue.city?.name || city,
+        date: ev?.dates?.start?.localDate || '',
+        ticketUrl: ev.url || '',
+        presales,
+      });
+    }
+    return out;
+  } catch (e) {
+    console.warn('[presale-sweep] TM city sweep failed for', city, e);
+    return [];
+  }
+}
+
+/** "in 40 min" / "Thu 10:00" — short enough for a notification body. */
+function formatWhen(d: Date): string {
+  const mins = Math.round((d.getTime() - Date.now()) / 60_000);
+  if (mins <= 90) return `in ${Math.max(1, mins)} min`;
+  try {
+    return d.toLocaleString('en-US', {
+      weekday: 'short', hour: 'numeric', minute: '2-digit',
+    });
+  } catch {
+    return d.toISOString().slice(0, 16).replace('T', ' ');
+  }
+}
+
+async function pruneDeadTokens(
+  admin: any,
+  userId: string,
+  results: Array<{ token: string; ok: boolean; status?: number; reason?: string }>,
+) {
+  const dead = results
+    .filter((r) => !r.ok && (r.status === 410 || r.reason === 'Unregistered' || r.reason === 'BadDeviceToken'))
+    .map((r) => r.token);
+  if (dead.length) {
+    await admin.from('device_tokens').delete().eq('user_id', userId).in('token', dead);
+  }
+}
+
+function ok(body: unknown) {
+  return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
+function err(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+}

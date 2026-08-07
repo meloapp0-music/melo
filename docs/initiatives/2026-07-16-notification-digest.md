@@ -141,6 +141,58 @@ public-share-pages live-updates follow-up) with **no iOS build**. Good v1.7 work
   follow-up, and it would mean moving `tour_alert` out of the digest, which
   risks leaving the digest often empty (genre alerts alone).
 
+- 2026-08-03: **Phase 3 — "first to know", which replaced Phase 2 the same day.**
+  Aidan: *"users should be the first ones to know"* — immediate alerts for tour
+  announcements, presale announcements, and presales going live.
+
+  The hourly `presale-watch` written earlier that day could not do this and was
+  deleted. Two problems with its shape: it queried per artist, so it scaled with
+  artists (hundreds) and could only afford an hourly cadence; and it polled to
+  catch the moment a presale opened, which is both expensive and inherently
+  late.
+
+  **The insight that fixes both:** Ticketmaster publishes
+  `sales.presales[].startDateTime` when the presale is *announced*, often days
+  ahead. Once that's known, firing at the right second is a clock problem, not
+  an API problem. So:
+
+  - **`presale-sweep`** (*/15) — discovery. Queries once per distinct HOME CITY
+    and matches artists locally, so it scales with cities (a couple of dozen)
+    rather than artists. Costs about a tenth of the artist-keyword approach and
+    catches strictly more, because it sees every artist in the city rather than
+    only the ones we thought to ask about. Writes every presale it finds into
+    `presale_schedule` and sends the "just announced" push, **collapsed per
+    artist** — a 30-date tour announcement is one push, not thirty.
+  - **`presale-fire`** (* * * * *) — firing. Reads `presale_schedule` and sends
+    "presale is live" to the minute, with **zero Ticketmaster calls**. On a
+    quiet minute it is one indexed query and an early return; the work of
+    resolving watchers only happens when something is actually opening.
+  - **Migration 0022** — `public.presale_schedule`. RLS enabled with **no
+    policies**: it is server-owned, has no `user_id` to scope by, and any policy
+    would expose every row to every user. Deny-all is the intended posture, not
+    an oversight.
+
+  `first_seen` on the schedule row is load-bearing. A presale discovered
+  *after* it already opened must not fire a "live now" alert hours late — the
+  announcement push already covered it. The upsert deliberately omits
+  `first_seen` from its payload so a re-sweep can't overwrite the original
+  discovery time.
+
+  Verified: every possible presale start time is covered by **at least 5** fire
+  runs (1-min cron, 5-min lookback, 30s skew lead), so a missed invocation
+  can't drop one. Budget lands at **3,400 of 5,000** calls/day —
+  sweep 2,400 + tour-alerts 1,000 + fire 0 — leaving 1,600 for the app.
+
+  **Honest ceiling:** this makes Melo as fast as the Discovery API allows, not
+  faster. TM has its own propagation lag, and artists post to socials before
+  anything reaches an API. "First among apps polling Ticketmaster" is the real
+  claim.
+
+  Knock-on: named-artist announcements now arrive immediately rather than in
+  the digest, so the daily digest becomes genre/city discovery only. That is
+  the correct split — followed artists are urgent, ambient discovery is not —
+  but it does mean the digest is smaller than when it was built.
+
 - 2026-08-03: **App routing** (`App.jsx`). `digest` → the discovery surface.
   `presale` → leads with a 12-second tappable toast carrying the ticket URL,
   with the wishlist tour search opening underneath as the fallback. The link is
