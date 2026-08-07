@@ -24,6 +24,11 @@ create table if not exists public.presale_schedule (
   -- its own start. They're separately notifiable, so the name is part of the key.
   presale_name text        not null,
   artist       text        not null,
+  -- Melo's genre label (Rock, Hip-Hop, ...), mapped back from Ticketmaster's
+  -- classification. Stored so presale-fire can match a user's followed genres
+  -- without re-querying TM — the whole point of this table is that firing
+  -- costs nothing.
+  genre        text        not null default '',
   venue        text        not null default '',
   city         text        not null default '',
   ticket_url   text        not null default '',
@@ -42,9 +47,13 @@ create table if not exists public.presale_schedule (
 create index if not exists presale_schedule_starts_at_idx
   on public.presale_schedule(starts_at);
 
--- Matching a presale back to the users who watch that artist.
+-- Matching a presale back to the users who follow that artist, or that genre
+-- in that city.
 create index if not exists presale_schedule_artist_idx
   on public.presale_schedule(lower(artist));
+create index if not exists presale_schedule_genre_city_idx
+  on public.presale_schedule(genre, lower(city))
+  where genre <> '';
 
 alter table public.presale_schedule enable row level security;
 

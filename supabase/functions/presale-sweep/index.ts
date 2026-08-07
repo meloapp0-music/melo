@@ -54,11 +54,31 @@ const MAX_CITIES_PER_RUN = 25;
 // hour" — genuinely rare, and a sane ceiling if a festival lineup drops.
 const MAX_PUSHES_PER_USER = 3;
 
-const LOVED_MIN_SCORE = 7;
+// Melo's genre labels -> Ticketmaster's classification names. Kept in step with
+// tour-alerts' copy of the same map. Used in REVERSE here: the city sweep
+// already returns every event's classification, so an event's genre is matched
+// back to a Melo label locally, at no extra API cost.
+const GENRE_TM_MAP: Record<string, string> = {
+  'Rock': 'Rock',
+  'Pop': 'Pop',
+  'Hip-Hop': 'Hip-Hop/Rap',
+  'Country': 'Country',
+  'Electronic': 'Dance/Electronic',
+  'R&B': 'R&B',
+  'Metal': 'Metal',
+  'Latin': 'Latin',
+  'Folk': 'Folk',
+  'Jazz': 'Jazz',
+  'Alternative': 'Alternative',
+};
+const TM_TO_MELO_GENRE = new Map<string, string>(
+  Object.entries(GENRE_TM_MAP).map(([melo, tm]) => [tm.toLowerCase(), melo]),
+);
 
 interface TmEvt {
   id: string;
   artist: string;
+  genre: string;      // Melo label, '' when TM's classification doesn't map
   venue: string;
   city: string;
   date: string;
@@ -73,62 +93,75 @@ serve(async (_req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // ---- Watch sets + home cities, from one read.
-  // Watch derivation matches tour-alerts exactly (wishlist + going +
-  // attended-and-loved) so the three crons never disagree about who follows whom.
-  const { data: rows, error: showErr } = await admin
+  // ---- Who follows what. EXPLICIT TASTE ONLY.
+  //
+  // Deliberately NOT the wishlist/going/attended-and-loved set that tour-alerts
+  // derives. These are interruptive, time-critical pushes, so they fire only on
+  // signals the user actually chose: the artists and genres they entered in
+  // Music Taste. Inferring "you scored them 8, so you must want a 7am presale
+  // alert" is exactly the kind of guess that makes people disable
+  // notifications altogether.
+  const { data: profRows, error: profErr } = await admin
+    .from('profiles')
+    .select('id, fav_artists, fav_genres, home_city');
+  if (profErr) return err({ error: profErr.message }, 500);
+
+  const watchers = new Map<string, Set<string>>();       // lower(artist) -> users
+  const genreFollowers = new Map<string, Set<string>>(); // Melo genre -> users
+  const userCity = new Map<string, string>();            // user -> home city
+
+  for (const p of profRows || []) {
+    for (const a of (Array.isArray(p.fav_artists) ? p.fav_artists : [])) {
+      const k = (a || '').trim().toLowerCase();
+      if (!k) continue;
+      const s = watchers.get(k) || new Set<string>();
+      s.add(p.id);
+      watchers.set(k, s);
+    }
+    for (const g of (Array.isArray(p.fav_genres) ? p.fav_genres : [])) {
+      const k = (g || '').trim();
+      if (!k) continue;
+      const s = genreFollowers.get(k) || new Set<string>();
+      s.add(p.id);
+      genreFollowers.set(k, s);
+    }
+    const hc = (p.home_city || '').trim();
+    if (hc) userCity.set(p.id, hc);
+  }
+
+  // Home city still falls back to the most-attended city when the profile
+  // doesn't name one — that's not a taste inference, it's just where someone
+  // demonstrably goes to shows, and a genre follow is meaningless without a
+  // city to scope it to.
+  const { data: showRows } = await admin
     .from('shows')
-    .select('user_id, artist, city, score, status, wishlist');
-  if (showErr) return err({ error: showErr.message }, 500);
-
-  const watchers = new Map<string, Set<string>>();   // lower(artist) -> users
-  const cityCounts = new Map<string, Map<string, number>>(); // user -> city -> n
-  const addWatcher = (artist: string, userId: string) => {
-    const k = (artist || '').trim().toLowerCase();
-    if (!k) return;
-    const s = watchers.get(k) || new Set<string>();
-    s.add(userId);
-    watchers.set(k, s);
-  };
-
-  for (const r of rows || []) {
-    if (!r.artist) continue;
+    .select('user_id, city, status, wishlist');
+  const cityCounts = new Map<string, Map<string, number>>();
+  for (const r of showRows || []) {
     const isWishlist = r.status === 'wishlist' || r.wishlist === true;
     const isGoing = r.status === 'going';
-    const isAttended = !isWishlist && !isGoing;
-    const score = typeof r.score === 'number' ? r.score : Number(r.score) || 0;
-    if (isWishlist || isGoing || (isAttended && score >= LOVED_MIN_SCORE)) {
-      addWatcher(r.artist, r.user_id);
-    }
-    if (isAttended && r.city) {
-      const m = cityCounts.get(r.user_id) || new Map<string, number>();
-      m.set(r.city, (m.get(r.city) || 0) + 1);
-      cityCounts.set(r.user_id, m);
-    }
+    if (isWishlist || isGoing || !r.city) continue;
+    const m = cityCounts.get(r.user_id) || new Map<string, number>();
+    m.set(r.city, (m.get(r.city) || 0) + 1);
+    cityCounts.set(r.user_id, m);
+  }
+  for (const [userId, counts] of cityCounts) {
+    if (userCity.has(userId)) continue;
+    let best = 0; let city = '';
+    for (const [c, n] of counts) if (n > best) { best = n; city = c; }
+    if (city) userCity.set(userId, city);
   }
 
-  const { data: profRows } = await admin
-    .from('profiles')
-    .select('id, fav_artists, home_city');
-  const explicitCity = new Map<string, string>();
-  for (const p of profRows || []) {
-    for (const a of (Array.isArray(p.fav_artists) ? p.fav_artists : [])) addWatcher(a, p.id);
-    const hc = (p.home_city || '').trim();
-    if (hc) explicitCity.set(p.id, hc);
-  }
-
-  // Distinct cities, weighted by how many users sit in each.
+  // Distinct cities to sweep, weighted by how many users sit in each.
   const cityUsers = new Map<string, number>();
-  for (const userId of new Set([...cityCounts.keys(), ...explicitCity.keys()])) {
-    let city = explicitCity.get(userId) || '';
-    if (!city) {
-      let best = 0;
-      for (const [c, n] of cityCounts.get(userId) || []) if (n > best) { best = n; city = c; }
-    }
-    if (city) cityUsers.set(city, (cityUsers.get(city) || 0) + 1);
+  for (const city of userCity.values()) {
+    cityUsers.set(city, (cityUsers.get(city) || 0) + 1);
   }
-  if (cityUsers.size === 0 || watchers.size === 0) {
-    return ok({ cities: 0, artists: watchers.size, elapsedMs: Date.now() - start });
+  if (cityUsers.size === 0 || (watchers.size === 0 && genreFollowers.size === 0)) {
+    return ok({
+      cities: 0, artists: watchers.size, genres: genreFollowers.size,
+      elapsedMs: Date.now() - start,
+    });
   }
 
   // ---- Tokens + what's already been announced.
@@ -167,10 +200,22 @@ serve(async (_req) => {
   for (const [city] of cities) {
     lookups++;
     const events = await searchCity(city);
+    const cityKey = city.trim().toLowerCase();
     for (const ev of events) {
-      const key = ev.artist.trim().toLowerCase();
-      const users = watchers.get(key);
-      if (!users || users.size === 0) continue;
+      // Two ways to qualify, both explicit choices the user made:
+      //   1. they named this artist in Music Taste
+      //   2. they follow this genre AND this is their home city
+      // The genre half is city-scoped because "any Rock show anywhere" is not
+      // a thing anyone wants pushed to their lock screen.
+      const users = new Set<string>(
+        watchers.get(ev.artist.trim().toLowerCase()) || [],
+      );
+      if (ev.genre) {
+        for (const uid of genreFollowers.get(ev.genre) || []) {
+          if ((userCity.get(uid) || '').trim().toLowerCase() === cityKey) users.add(uid);
+        }
+      }
+      if (users.size === 0) continue;
       matched++;
 
       // Every presale of a matched event goes into the schedule regardless of
@@ -181,6 +226,7 @@ serve(async (_req) => {
           event_id: ev.id,
           presale_name: p.name,
           artist: ev.artist,
+          genre: ev.genre,
           venue: ev.venue,
           city: ev.city,
           ticket_url: ev.ticketUrl,
@@ -304,9 +350,17 @@ async function searchCity(city: string): Promise<TmEvt[]> {
           endsAt: endsAtRaw && !Number.isNaN(endsAtRaw.getTime()) ? endsAtRaw : null,
         });
       }
+      // TM's classification comes back on the event we already fetched, so
+      // mapping it to a Melo genre label costs nothing. Unmapped genres (TM's
+      // taxonomy is wider than Melo's list) fall through as '' and simply
+      // never match a genre follow — better than guessing.
+      const tmGenre = (ev?.classifications?.[0]?.genre?.name || '').trim().toLowerCase();
+      const genre = TM_TO_MELO_GENRE.get(tmGenre) || '';
+
       out.push({
         id: ev.id,
         artist,
+        genre,
         venue: venue.name || '',
         city: venue.city?.name || city,
         date: ev?.dates?.start?.localDate || '',

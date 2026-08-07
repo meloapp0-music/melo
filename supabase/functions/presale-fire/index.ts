@@ -40,8 +40,6 @@ const LOOKBACK_MIN = 5;
 // systematically 30s late on the one alert where late is the same as never.
 const SKEW_SEC = 30;
 
-const LOVED_MIN_SCORE = 7;
-
 serve(async (_req) => {
   const start = Date.now();
   if (!isApnsConfigured()) return ok({ skipped: true, reason: 'no-apns' });
@@ -54,7 +52,7 @@ serve(async (_req) => {
   // ---- The only query that runs on a quiet minute.
   const { data: due, error: dueErr } = await admin
     .from('presale_schedule')
-    .select('event_id, presale_name, artist, venue, city, ticket_url, starts_at, ends_at, first_seen')
+    .select('event_id, presale_name, artist, genre, venue, city, ticket_url, starts_at, ends_at, first_seen')
     .gte('starts_at', from.toISOString())
     .lte('starts_at', to.toISOString());
   if (dueErr) {
@@ -77,38 +75,65 @@ serve(async (_req) => {
     return ok({ due: 0, pushed: 0, elapsedMs: Date.now() - start });
   }
 
-  // ---- Something is opening. Now it's worth resolving watchers.
-  // Same derivation as tour-alerts and presale-sweep — wishlist + going +
-  // attended-and-loved, plus explicit favourites — so all three agree on who
-  // follows whom.
+  // ---- Something is opening. Now it's worth resolving who asked for it.
+  //
+  // EXPLICIT TASTE ONLY, matching presale-sweep: the artists and genres the
+  // user entered in Music Taste. Not the wishlist/going/attended-and-loved set
+  // tour-alerts derives — this is an interruptive push at whatever hour the
+  // presale happens to open, and it should only ever fire on a signal someone
+  // actually chose.
   const wanted = new Set(live.map((r) => (r.artist || '').trim().toLowerCase()));
-  const watchers = new Map<string, Set<string>>();
-  const addWatcher = (artist: string, userId: string) => {
-    const k = (artist || '').trim().toLowerCase();
-    if (!k || !wanted.has(k)) return;
-    const s = watchers.get(k) || new Set<string>();
-    s.add(userId);
-    watchers.set(k, s);
-  };
+  const wantedGenres = new Set(live.map((r) => (r.genre || '').trim()).filter(Boolean));
 
-  const { data: rows } = await admin
-    .from('shows')
-    .select('user_id, artist, score, status, wishlist');
-  for (const r of rows || []) {
-    if (!r.artist) continue;
-    const isWishlist = r.status === 'wishlist' || r.wishlist === true;
-    const isGoing = r.status === 'going';
-    const isAttended = !isWishlist && !isGoing;
-    const score = typeof r.score === 'number' ? r.score : Number(r.score) || 0;
-    if (isWishlist || isGoing || (isAttended && score >= LOVED_MIN_SCORE)) {
-      addWatcher(r.artist, r.user_id);
+  const watchers = new Map<string, Set<string>>();
+  const genreFollowers = new Map<string, Set<string>>();
+  const userCity = new Map<string, string>();
+
+  const { data: profRows } = await admin
+    .from('profiles')
+    .select('id, fav_artists, fav_genres, home_city');
+  for (const p of profRows || []) {
+    for (const a of (Array.isArray(p.fav_artists) ? p.fav_artists : [])) {
+      const k = (a || '').trim().toLowerCase();
+      if (!k || !wanted.has(k)) continue;
+      const s = watchers.get(k) || new Set<string>();
+      s.add(p.id);
+      watchers.set(k, s);
+    }
+    for (const g of (Array.isArray(p.fav_genres) ? p.fav_genres : [])) {
+      const k = (g || '').trim();
+      if (!k || !wantedGenres.has(k)) continue;
+      const s = genreFollowers.get(k) || new Set<string>();
+      s.add(p.id);
+      genreFollowers.set(k, s);
+    }
+    const hc = (p.home_city || '').trim();
+    if (hc) userCity.set(p.id, hc);
+  }
+
+  // Home-city fallback, only for the genre followers who need one. Not a taste
+  // inference — just where someone demonstrably goes to shows.
+  if (genreFollowers.size > 0) {
+    const { data: showRows } = await admin
+      .from('shows')
+      .select('user_id, city, status, wishlist');
+    const cityCounts = new Map<string, Map<string, number>>();
+    for (const r of showRows || []) {
+      const isWishlist = r.status === 'wishlist' || r.wishlist === true;
+      if (isWishlist || r.status === 'going' || !r.city) continue;
+      const m = cityCounts.get(r.user_id) || new Map<string, number>();
+      m.set(r.city, (m.get(r.city) || 0) + 1);
+      cityCounts.set(r.user_id, m);
+    }
+    for (const [userId, counts] of cityCounts) {
+      if (userCity.has(userId)) continue;
+      let best = 0; let city = '';
+      for (const [c, n] of counts) if (n > best) { best = n; city = c; }
+      if (city) userCity.set(userId, city);
     }
   }
-  const { data: profRows } = await admin.from('profiles').select('id, fav_artists');
-  for (const p of profRows || []) {
-    for (const a of (Array.isArray(p.fav_artists) ? p.fav_artists : [])) addWatcher(a, p.id);
-  }
-  if (watchers.size === 0) {
+
+  if (watchers.size === 0 && genreFollowers.size === 0) {
     return ok({ due: live.length, pushed: 0, elapsedMs: Date.now() - start });
   }
 
@@ -136,8 +161,16 @@ serve(async (_req) => {
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
 
   for (const r of live) {
-    const users = watchers.get((r.artist || '').trim().toLowerCase());
-    if (!users) continue;
+    // Same two routes as the sweep: the artist is in your Music Taste, or the
+    // genre is AND it's your city.
+    const users = new Set<string>(watchers.get((r.artist || '').trim().toLowerCase()) || []);
+    const rowCity = (r.city || '').trim().toLowerCase();
+    if (r.genre && rowCity) {
+      for (const uid of genreFollowers.get(r.genre.trim()) || []) {
+        if ((userCity.get(uid) || '').trim().toLowerCase() === rowCity) users.add(uid);
+      }
+    }
+    if (users.size === 0) continue;
     const ref = `${r.event_id}|${r.presale_name}`;
 
     for (const userId of users) {
