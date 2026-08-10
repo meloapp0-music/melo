@@ -26,6 +26,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { sendApnsBatch, isApnsConfigured } from '../_shared/apns.ts';
+import { sentRefsByUser } from '../_shared/sent.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -147,14 +148,13 @@ serve(async (_req) => {
     tokensByUser.set(t.user_id, l);
   }
 
-  const { data: sentRows } = await admin
-    .from('notifications_sent').select('user_id, ref').eq('kind', 'presale_live');
-  const sentByUser = new Map<string, Set<string>>();
-  for (const s of sentRows || []) {
-    const set = sentByUser.get(s.user_id) || new Set<string>();
-    set.add(s.ref);
-    sentByUser.set(s.user_id, set);
-  }
+  // Restricted to the refs actually due this minute. This was an unbounded
+  // select, which PostgREST caps at 1,000 rows — as the table grew, the dedup
+  // set would have started coming back truncated and presales would re-fire.
+  // It hadn't bitten here yet only because `due` is almost always 0.
+  const sentByUser = await sentRefsByUser(
+    admin, 'presale_live', live.map((r) => `${r.event_id}|${r.presale_name}`),
+  );
 
   // ---- Fire.
   let pushed = 0;

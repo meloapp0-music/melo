@@ -41,6 +41,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { sendApnsBatch, isApnsConfigured } from '../_shared/apns.ts';
+import { allSentByUser } from '../_shared/sent.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -212,19 +213,20 @@ serve(async (_req) => {
   // Pull what we've already notified so we don't repeat. We manage
   // several kinds here; key the per-user set as `${kind}|${ref}` so
   // each kind dedups in its own namespace.
-  const { data: sentRows, error: sentErr } = await admin
-    .from('notifications_sent')
-    .select('user_id, kind, ref')
-    .in('kind', ['tour_alert', 'genre_alert', 'digest', 'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate']);
-  if (sentErr) {
-    console.error('[tour-alerts] sent read failed', sentErr);
-    return err({ error: sentErr.message }, 500);
-  }
-  const sentByUser = new Map<string, Set<string>>();
-  for (const s of sentRows || []) {
-    const set = sentByUser.get(s.user_id) || new Set();
-    set.add(`${s.kind}|${s.ref}`);
-    sentByUser.set(s.user_id, set);
+  // Paged. This was a plain select, which PostgREST caps at 1,000 rows — so
+  // once this table outgrew that (months ago), the dedup set came back
+  // truncated and already-sent alerts looked unsent. Same defect that was
+  // re-pushing 29 announcements every 15 minutes in presale-sweep; it has been
+  // silently costing duplicate notifications here for far longer.
+  let sentByUser: Map<string, Set<string>>;
+  try {
+    sentByUser = await allSentByUser(admin, [
+      'tour_alert', 'genre_alert', 'digest',
+      'preshow_week', 'preshow_day', 'preshow_today', 'postshow_rate',
+    ]);
+  } catch (e) {
+    console.error('[tour-alerts] sent read failed', e);
+    return err({ error: String(e) }, 500);
   }
 
   // ---- For each user, look up their wishlist artists and diff.

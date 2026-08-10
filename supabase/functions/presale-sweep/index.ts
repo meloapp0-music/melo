@@ -38,6 +38,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { sendApnsBatch, isApnsConfigured } from '../_shared/apns.ts';
+import { sentRefsByUser } from '../_shared/sent.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -185,17 +186,11 @@ serve(async (_req) => {
     tokensByUser.set(t.user_id, l);
   }
 
-  // Shares the 'tour_alert' namespace with tour-alerts on purpose: an event
-  // announced here is then invisible to the daily digest, so the same show can
-  // never arrive twice by two different routes.
-  const { data: sentRows } = await admin
-    .from('notifications_sent').select('user_id, ref').eq('kind', 'tour_alert');
-  const sentByUser = new Map<string, Set<string>>();
-  for (const s of sentRows || []) {
-    const set = sentByUser.get(s.user_id) || new Set<string>();
-    set.add(s.ref);
-    sentByUser.set(s.user_id, set);
-  }
+  // The dedup read moved BELOW the sweep. It used to run here as a plain
+  // select over the whole 'tour_alert' namespace, which PostgREST silently
+  // caps at 1,000 rows — so the set came back truncated, almost everything
+  // looked unsent, and the same events re-pushed on every single run. Now the
+  // sweep collects candidates first and we look up only those refs.
 
   // ---- Choose this run's cities: hot ones always, the tail on rotation.
   const ranked = [...cityUsers.entries()].sort((a, b) => b[1] - a[1]);
@@ -265,8 +260,9 @@ serve(async (_req) => {
         });
       }
 
+      // Collected unfiltered — the sent-check happens after the sweep, once we
+      // know which refs to ask about.
       for (const userId of users) {
-        if ((sentByUser.get(userId) || new Set()).has(ev.id)) continue;
         const byArtist = newByUser.get(userId) || new Map<string, TmEvt[]>();
         const list = byArtist.get(ev.artist) || [];
         list.push(ev);
@@ -308,17 +304,31 @@ serve(async (_req) => {
     else pruned = (gone || []).length;
   }
 
+  // ---- Now the dedup lookup, restricted to the events this run actually
+  // found. Bounded by `matched` rather than by the size of the table, so it
+  // stays correct as notifications_sent grows — which is exactly what the
+  // unbounded select got wrong.
+  const candidateIds = [...new Set(
+    [...newByUser.values()].flatMap((m) => [...m.values()].flat()).map((e) => e.id),
+  )];
+  const sentByUser = await sentRefsByUser(admin, 'tour_alert', candidateIds);
+
   // ---- Announce. One push per artist, however many dates they announced.
   let pushed = 0;
+  let suppressed = 0;
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
 
   for (const [userId, byArtist] of newByUser) {
     const tokens = tokensByUser.get(userId) || [];
     if (!tokens.length) continue;
+    const sent = sentByUser.get(userId) || new Set<string>();
     let userPushes = 0;
 
-    for (const [artist, evs] of byArtist) {
+    for (const [artist, evsAll] of byArtist) {
       if (userPushes >= MAX_PUSHES_PER_USER) break;
+      const evs = evsAll.filter((e) => !sent.has(e.id));
+      suppressed += evsAll.length - evs.length;
+      if (!evs.length) continue;
 
       const title = evs.length > 1
         ? `${artist} just announced a tour 🎤`
@@ -368,7 +378,7 @@ serve(async (_req) => {
     totalCities: ranked.length,
     cities: cities.length,
     rotationRuns: tail.length ? Math.ceil(tail.length / ROTATING_CITIES_PER_RUN) : 0,
-    lookups, matched, scheduled: scheduleRows.size, pruned, pushed, elapsedMs,
+    lookups, matched, scheduled: scheduleRows.size, pruned, suppressed, pushed, elapsedMs,
   };
   console.log('[presale-sweep]', stats);
   return ok(stats);
