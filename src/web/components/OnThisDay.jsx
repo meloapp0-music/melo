@@ -11,7 +11,10 @@
 
 import { useMemo } from 'react';
 import { useApp } from '../App';
-import { isAttended, getArtistGradient, formatDate } from '../store';
+// The gradient fallback and the formatted date both went with the old card —
+// the ported block shows the year alone, and omits the print entirely rather
+// than filling it with a generated gradient that isn't a photograph.
+import { isAttended } from '../store';
 import { pickAnniversary, agoLabel } from '../lib/anniversary';
 import { track } from '../lib/analytics';
 
@@ -29,10 +32,8 @@ export default function OnThisDay() {
 
   if (!hit) return null;
   const { show, years } = hit;
-  const img = getArtistImage(show.artist);
-  const bg = img
-    ? { backgroundImage: `url("${img}")` }
-    : { background: getArtistGradient(show.artist) };
+  const img = (show.photos || [])[0] || getArtistImage(show.artist);
+  const year = String(show.date || '').slice(0, 4);
 
   const open = () => {
     track('anniversary_opened', { years, source: 'home_card' });
@@ -42,18 +43,38 @@ export default function OnThisDay() {
     openOverlay('recap', { show, cutId: 'anniversary' });
   };
 
+  // Ported from the Sleek design's "One year ago" block. It was a full-bleed
+  // photo card with a scrim; the design makes it a line of the user's own
+  // writing with the photograph beside it as a small tilted print. The note
+  // leads because the note is the memory — the photo is evidence.
   return (
-    <button className="otd-card" onClick={open} style={bg}>
-      <span className="otd-scrim" aria-hidden="true" />
-      <span className="otd-body">
-        <span className="otd-eyebrow">On this day</span>
-        <span className="otd-head">{agoLabel(years)} tonight</span>
-        <span className="otd-sub">
-          You saw <b>{show.artist}</b>
-          {show.venue ? ` at ${show.venue}` : ''} · {formatDate(show.date)}
-        </span>
-        <span className="otd-cta">▶  Relive it</span>
-      </span>
-    </button>
+    <section className="px-8">
+      <p className="font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground mb-8 italic">
+        {agoLabel(years)}
+      </p>
+      <button
+        type="button"
+        onClick={open}
+        className="w-full flex items-center gap-8 text-left active:scale-95 transition-transform"
+      >
+        <div className="flex-1 space-y-4 min-w-0">
+          <p className="font-serif italic text-3xl text-foreground">{year}</p>
+          <p className="font-serif italic text-xl leading-snug text-foreground line-clamp-2">
+            {/* The note if they wrote one, otherwise the fact of the night.
+                A blank quote mark would be worse than no quote at all. */}
+            {show.notes?.trim()
+              ? `“${show.notes.trim()}”`
+              : <>You saw <b>{show.artist}</b>{show.venue ? ` at ${show.venue}` : ''}</>}
+          </p>
+        </div>
+        {img && (
+          <div className="shrink-0">
+            <div className="bg-white p-1.5 shadow-md border border-border rotate-3">
+              <img src={img} alt="" className="size-20 object-cover" />
+            </div>
+          </div>
+        )}
+      </button>
+    </section>
   );
 }

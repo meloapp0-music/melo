@@ -1,438 +1,159 @@
-import { useState, useEffect, useMemo } from 'react';
+// Home — ported from the Sleek design (project e0ITdp4pfIU, "Home" v29).
+// ======================================================================
+// Markup carried across from the export rather than reinterpreted, then bound
+// to real data. Earlier this session the design was hand-translated from
+// screenshots and had to be reverted; the utility classes ARE the design, so
+// they travel verbatim and only the content becomes dynamic.
+//
+// The design is three sections — Upcoming, One year ago, The Circle — where
+// this page used to carry eight. What that dropped is listed at the bottom of
+// this comment, because a port that quietly deletes features is worse than one
+// that says so.
+//
+// Two deliberate deviations from the export, both for reasons the export
+// couldn't know about:
+//
+//   * THE GRAIN. The export overlays a paper texture from Sleek's CDN. A
+//     remote image on every screen is unacceptable in a Capacitor app that has
+//     to work in a venue with no signal — App.css already applies an inline
+//     SVG grain to <body>, which is the same effect with no request.
+//   * THE WORDMARK. The export sets "melo" in italic Playfair. The shipped
+//     mark is <MeloWordmark> (Outfit 300) and CLAUDE.md requires using that
+//     component rather than typesetting wordmark text. The face is still an
+//     open decision — if the serif wins, it's three values in :root
+//     (--font-wordmark / --wordmark-weight / --wordmark-tracking), not an edit
+//     here.
+//
+// DROPPED relative to the old Home, all recoverable from git:
+//   * "Up Next" hero cards — collapsed into the single Upcoming row the design
+//     specifies. Co-attendee avatars ("Going with Sam") went with them.
+//   * "You're Going" rail — shows more than a week out have no home in the
+//     design.
+//   * "Upcoming Shows" — the Ticketmaster discovery rail. This is a real
+//     feature loss; Festivals still owns discovery.
+//   * The greeting hero, the streak chip, and the taste bell.
+
+import { useMemo } from 'react';
 import { useApp } from '../App';
-import {
-  getArtistGradient, artistBackground, getGreeting, formatDate, daysUntil,
-  calculateStreak,
-  isAttended, isGoing, SHOW_STATUS, ticketmasterSearchUrl, festivalKey,
-} from '../store';
-import { fetchAllUpcomingEvents } from '../api';
-import { attendeesForShows, friendsMatchingShows } from '../lib/db/shows';
-import { getProfilesByIds } from '../lib/db/profiles';
-import { MeloIcon } from '../components/MeloLogo';
+import { isGoing, daysUntil, festivalKey } from '../store';
+import { MeloWordmark } from '../components/MeloLogo';
+import Icon from '../components/Icon';
 import FriendsFeed from '../components/FriendsFeed';
 import GetStarted from '../components/GetStarted';
 import WrappedReady from '../components/WrappedReady';
 import OnThisDay from '../components/OnThisDay';
 import TasteNudge from '../components/TasteNudge';
 
-// Day-precision local midnight; safer than `new Date()` for relative
-// "is this date in the past" comparisons against `YYYY-MM-DD` strings.
-const today = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "22 Oct" / "2026" from a YYYY-MM-DD string, split because the design sets
+// them at different sizes. Parsed by parts rather than through Date() — a
+// `new Date('2026-10-22')` is UTC midnight, which renders as the 21st for
+// anyone west of Greenwich.
+function splitDate(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return { day: '', year: '' };
+  return { day: `${d} ${MONTHS[m - 1]}`, year: String(y) };
+}
 
 export default function Home() {
-  const { shows, dayStamp, setSelectedShow, navigate, getArtistImage, prefetchImages, addShow, setLogEditTarget, showToast, profile } = useApp();
+  const { shows, dayStamp, setSelectedShow, navigate } = useApp();
 
-  const attended = shows.filter(isAttended);
-
-  // Going shows split by date — future ones get a countdown card,
-  // past ones get a "How was it?" CTA that converts them to Attended
-  // and opens the score editor pre-filled.
-  //
-  // Shows within the next 7 days graduate out of the rail into the
-  // full-width "Up Next" hero section at the top of the page.
-  // dayStamp in the deps re-buckets everything when the date rolls over
-  // while the webview stays alive in the iOS app switcher overnight.
-  const upNext = useMemo(() => {
-    return shows
+  // The design shows ONE upcoming show, so this is the soonest one you're
+  // going to at any distance — not the within-a-week bucket the old hero used.
+  const next = useMemo(() => {
+    return (shows || [])
       .filter(isGoing)
-      .filter((s) => {
-        const d = daysUntil(s.date);
-        return d >= 0 && d <= 7;
-      })
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 3);
+      .filter((s) => daysUntil(s.date) >= 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shows, dayStamp]);
 
-  // Tagged co-attendees for the Up Next shows → "Going with …" on each card.
-  const [upNextWith, setUpNextWith] = useState({}); // showId → [{userId,name,avatarUrl,avatarColor}]
-  useEffect(() => {
-    const ids = upNext.map((s) => s.id);
-    if (!ids.length) { setUpNextWith({}); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        // "Going with" = tagged co-attendees ∪ friends who logged the SAME
-        // artist+date as going (independent match, like the feed's group card).
-        const pairs = upNext.map((s) => ({ artist: s.artist, date: s.date, festival: s.festival }));
-        const [tagMap, indMap] = await Promise.all([
-          attendeesForShows(ids).catch(() => new Map()),
-          friendsMatchingShows(pairs, 'going').catch(() => new Map()),
-        ]);
-        // Festival acts match at the festival level (any day); else exact show.
-        const key = (s) => festivalKey(s) || `${(s.artist || '').toLowerCase().trim()}|${s.date}`;
-        const uids = [...new Set([
-          ...[...tagMap.values()].flat(),
-          ...[...indMap.values()].flat(),
-        ].filter((id) => id && id !== profile?.id))];
-        const profs = uids.length ? await getProfilesByIds(uids).catch(() => new Map()) : new Map();
-        if (cancelled) return;
-        const out = {};
-        for (const s of upNext) {
-          const merged = [...new Set([...(tagMap.get(s.id) || []), ...(indMap.get(key(s)) || [])])]
-            .filter((id) => id && id !== profile?.id);
-          if (!merged.length) continue;
-          out[s.id] = merged.map((id) => {
-            const p = profs.get(id);
-            return { userId: id, name: p?.displayName || p?.username || 'Friend', avatarUrl: p?.avatarUrl, avatarColor: p?.avatarColor };
-          });
-        }
-        setUpNextWith(out);
-      } catch { if (!cancelled) setUpNextWith({}); }
-    })();
-    return () => { cancelled = true; };
-  }, [upNext, profile?.id]);
-
-  const withLabel = (people) => {
-    const names = people.map((p) => p.name);
-    return names.length <= 2 ? names.join(' & ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
-  };
-
-  const goingFuture = useMemo(() => {
-    return shows
-      .filter(isGoing)
-      .filter((s) => daysUntil(s.date) > 7)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 3);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shows, dayStamp]);
-
-  const goingPast = useMemo(() => {
-    const t = today();
-    return shows
-      .filter(isGoing)
-      .filter((s) => new Date(s.date + 'T00:00:00') < t)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 3);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shows, dayStamp]);
-
-  // Streak
-  const streak = useMemo(() => calculateStreak(shows), [shows]);
-
-  // Upcoming shows from Bandsintown
-  const [upcoming, setUpcoming] = useState([]);
-  const [upcomingLoading, setUpcomingLoading] = useState(false);
-
-  useEffect(() => {
-    if (attended.length === 0) return;
-    const artistNames = [...new Set(attended.map((s) => s.artist))];
-    setUpcomingLoading(true);
-    fetchAllUpcomingEvents(artistNames)
-      .then((events) => {
-        const sliced = events.slice(0, 12);
-        setUpcoming(sliced);
-        // Kick off Deezer photo lookups for any artists we don't already
-        // have cached — replaces the gradient placeholder once images arrive.
-        prefetchImages(sliced.map((e) => e.artist).filter(Boolean));
-      })
-      .catch(() => {})
-      .finally(() => setUpcomingLoading(false));
-  }, [attended.length]);
-
-  const bgStyle = (artist) => artistBackground(artist, getArtistImage(artist));
-
-  const [addedIds, setAddedIds] = useState(() => new Set());
-  // Ticketmaster events have no stable id, so key on the same
-  // artist|date|venue composite already used to dedupe them elsewhere.
-  const wishlistKey = (ev) => `${ev.artist}|${ev.date}|${ev.venue}`;
-
-  const handleAddWishlist = (ev, e) => {
-    e.stopPropagation();
-    const key = wishlistKey(ev);
-    if (addedIds.has(key)) return;
-    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    addShow({
-      id, artist: ev.artist, date: ev.date, venue: ev.venue, city: ev.city,
-      genre: '', score: 0, vibes: [], notes: '', setlist: [], buddies: [],
-      status: SHOW_STATUS.WISHLIST, wishlist: true,
-      createdAt: new Date().toISOString(),
-    });
-    setAddedIds((prev) => new Set(prev).add(key));
-    showToast?.({ message: `🎟️ Added ${ev.artist} to your wishlist` });
-  };
+  const nextDate = splitDate(next?.date);
+  const days = next ? daysUntil(next.date) : null;
 
   return (
-    <div className="page">
-      <div className="home-hero">
-        <div className="home-brand-row">
-          <MeloIcon size={32} />
-          <div className="home-brand-actions">
-            {streak.current > 0 && (
-              <span className="home-streak-chip" title="Your logging streak">🔥 {streak.current}</span>
-            )}
-            <button
-              className="home-taste-btn"
-              onClick={() => navigate('music-taste')}
-              aria-label="Music taste & alerts"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            </button>
+    <div className="min-h-screen bg-background pb-56 relative overflow-y-auto selection:bg-accent/30">
+      {/* The warm top wash. Present on every screen in the design and the one
+          place ember appears without being an action — it's what stops bone
+          paper reading as flat white at the head of a page. */}
+      <div className="fixed inset-x-0 top-0 h-64 bg-gradient-to-b from-accent/15 via-accent/5 to-transparent pointer-events-none z-[60]" />
+
+      <div className="relative z-10">
+        <header className="px-8 pt-20 flex justify-between items-baseline relative">
+          <div>
+            <MeloWordmark size={44} color="var(--foreground)" />
+            <p className="font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground mt-2">
+              The Archive · Vol. 01
+            </p>
           </div>
-        </div>
-        <h1 className="home-greeting">{getGreeting()}</h1>
-        <p className="home-greeting-sub">
-          {shows.length === 0
-            ? 'Let’s get your first show in the books.'
-            : 'Every show you’ve ever seen, in one place.'}
-        </p>
-      </div>
+          <button
+            type="button"
+            onClick={() => navigate('festivals')}
+            aria-label="Find shows"
+            className="size-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground border border-border active:scale-95 transition-transform"
+          >
+            <Icon name="ph:magnifying-glass" size={20} />
+          </button>
+        </header>
 
-      {/* First-run "starting navigation" — a 3-step activation checklist
-          that ticks off against real state and vanishes once complete.
-          Subsumes the old zero-show block + the music-taste prompt. */}
-      {/* The season announcement outranks the anniversary: it's two weeks a
-          year and it's the synchronised moment the whole thing exists for. */}
-      <WrappedReady />
-      {/* Renders only on an actual anniversary — absent almost every day. */}
-      <OnThisDay />
-      <GetStarted />
+        <main className="space-y-16 mt-16">
+          {/* Conditional surfaces the design never drew a state for. They
+              render nothing on an ordinary day, so they can't disturb it. */}
+          <WrappedReady />
+          <GetStarted />
+          <TasteNudge />
 
-      {/* Second chance at "turn on alerts" for anyone who got past
-          GetStarted without ever setting a taste — only shows in that gap
-          (see TasteNudge's own gating), so it never doubles up with the
-          GetStarted step above. */}
-      <TasteNudge />
-
-      {/* Up Next — going shows within the week. Full-width hero cards,
-          countdown-first, with Tickets + Details. The imminent shows
-          earn the top of the page; everything further out stays in the
-          "You're Going" rail below. */}
-      {upNext.length > 0 && (
-        <div className="upnext-section fade-in">
-          <div className="home-section-title">
-            <h3>Up Next</h3>
-          </div>
-          {upNext.map((show) => {
-            const d = daysUntil(show.date);
-            const countdown =
-              d === 0 ? 'Tonight' :
-                d === 1 ? 'Tomorrow' :
-                  `In ${d} days`;
-            return (
-              <button
-                key={show.id}
-                type="button"
-                className="upnext-card"
-                onClick={() => setSelectedShow(show)}
-                aria-label={`${show.artist} ${countdown.toLowerCase()} — view details`}
-              >
-                {/* Three layers, not one: the artist colour underneath at full
-                    strength, the photo over it blended to luminosity so it
-                    reads as a tinted ghost rather than a photograph. A show
-                    you haven't been to yet is a promise, not a memory — the
-                    archive keeps full-colour photographs for nights that
-                    actually happened. */}
-                <div className="upnext-card-bg" style={{ background: getArtistGradient(show.artist) }} />
-                {getArtistImage(show.artist) && (
-                  <div
-                    className="upnext-card-photo"
-                    style={{ backgroundImage: `url("${getArtistImage(show.artist)}")` }}
-                  />
-                )}
-                <div className="upnext-card-overlay" />
-                <div className="upnext-card-content">
-                  <div className="upnext-countdown">{countdown}</div>
-                  <div className="upnext-artist">{show.artist}</div>
-                  <div className="upnext-meta">
-                    {[show.venue, show.city].filter(Boolean).join(', ')}
-                    {show.date ? ` · ${formatDate(show.date)}` : ''}
-                  </div>
-                  {upNextWith[show.id]?.length > 0 && (
-                    <div className="upnext-with">
-                      <div className="upnext-with-avatars">
-                        {upNextWith[show.id].slice(0, 3).map((f) => (
-                          <span
-                            key={f.userId}
-                            className="upnext-with-avatar"
-                            style={f.avatarUrl ? { backgroundImage: `url(${f.avatarUrl})` } : { background: f.avatarColor || '#E8573A' }}
-                          >
-                            {!f.avatarUrl && f.name[0].toUpperCase()}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="upnext-with-text">Going with {withLabel(upNextWith[show.id])}</span>
-                    </div>
-                  )}
-                  <div className="upnext-btns">
-                    <a
-                      className="upnext-btn upnext-btn-tickets"
-                      href={ticketmasterSearchUrl(show)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      🎟️ Tickets
-                    </a>
-                    <span className="upnext-btn upnext-btn-details" aria-hidden="true">
-                      Details →
-                    </span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* "How was [show]?" — past Going shows that need a score */}
-      {goingPast.length > 0 && (
-        <div className="going-recap fade-in">
-          {goingPast.map((show) => (
-            <button
-              key={show.id}
-              className="going-recap-card"
-              onClick={() => setLogEditTarget(show)}
-            >
-              <div className="going-recap-thumb" style={bgStyle(show.artist)} />
-              <div className="going-recap-body">
-                <div className="going-recap-title">
-                  How was {show.artist}?
-                </div>
-                <div className="going-recap-meta">
-                  {show.venue ? `${show.venue} · ` : ''}{formatDate(show.date)} — tap to score
+          {next && (
+            <section className="px-8">
+              <div className="flex justify-between items-center mb-6">
+                <p className="font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground italic">
+                  Upcoming
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="font-sans font-extrabold text-xs text-foreground tabular-nums">
+                    {days}
+                  </span>
+                  <span className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground">
+                    {days === 0 ? 'Tonight' : days === 1 ? 'Day to go' : 'Days to go'}
+                  </span>
                 </div>
               </div>
-              <span className="going-recap-arrow">→</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Stats + Wrapped moved: Home leads with what's next + who's going.
-          A slim 3-stat glance sits lower (below), and the full stat set +
-          Wrapped live in Profile. See the v1.5 home-declutter initiative. */}
-
-      {/* Friends activity feed — "Claire went to Mumford & Sons".
-          Renders nothing until the user has friends with visible shows. */}
-      <FriendsFeed />
-
-      {/* Going — upcoming shows the user has tickets for, with countdown */}
-      {goingFuture.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="home-section-title">
-            <h3>You're Going</h3>
-            <button className="home-see-all" onClick={() => navigate('shows')}>See All</button>
-          </div>
-          <div className="home-scroll">
-            {goingFuture.map((show) => {
-              // Everything here is >7 days out (the Up Next section owns
-              // the rest of this week), so days → weeks → months.
-              const d = daysUntil(show.date);
-              const countdown =
-                d < 14 ? `in ${d} days` :
-                  d < 30 ? `in ${Math.round(d / 7)} weeks` :
-                    `in ${Math.round(d / 30)} months`;
-              return (
-                <div
-                  key={show.id}
-                  className="upcoming-card"
-                  onClick={() => setSelectedShow(show)}
-                >
-                  <div className="upcoming-card-img" style={bgStyle(show.artist)}>
-                    <div className="upcoming-card-date">{countdown}</div>
-                  </div>
-                  <div className="upcoming-card-body">
-                    <div className="upcoming-card-artist">{show.artist}</div>
-                    <div className="upcoming-card-venue">
-                      {show.venue}{show.city ? `, ${show.city}` : ''}
-                    </div>
-                    <div className="upcoming-card-btns">
-                      <div className="upcoming-btn upcoming-btn-going">
-                        🎟️ {formatDate(show.date)}
-                      </div>
-                      <a
-                        className="upcoming-btn upcoming-btn-tickets"
-                        href={ticketmasterSearchUrl(show)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Tickets
-                      </a>
-                    </div>
-                  </div>
+              <button
+                type="button"
+                onClick={() => setSelectedShow(next)}
+                className="w-full py-8 border-y border-border flex justify-between items-center text-left active:scale-[0.98] transition-transform"
+              >
+                <div className="min-w-0">
+                  <h2 className="font-serif italic text-3xl tracking-tight text-foreground truncate">
+                    {next.artist}
+                  </h2>
+                  <p className="font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground mt-1 italic truncate">
+                    {[next.venue, next.city].filter(Boolean).join(' · ')}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Stats live on their own Stats tab now — Home stays feed-first
-          (Up Next + Friends). See v1.5 home-declutter initiative. */}
-
-      {/* Streak nudge — only when the streak is about to lapse. */}
-      {streak.atRisk && (
-        <div className="streak-nudge fade-in">
-          🔥 Keep your streak alive — log a show this month!
-        </div>
-      )}
-
-      {/* Discover CTA — opens the Discover page (city shows + festivals) */}
-      <div
-        className="home-festival-cta"
-        onClick={() => navigate('festivals')}
-      >
-        <div className="home-festival-cta-text">
-          <span className="home-festival-cta-title">Discover shows</span>
-          <span className="home-festival-cta-sub">
-            See who's playing in any city — concerts, festivals, tickets
-          </span>
-        </div>
-        <span className="home-festival-cta-arrow">→</span>
-      </div>
-
-      {/* Home is feed-first now: Recent Shows (→ Shows tab), Top Rated
-          (→ Rankings/Stats), and the genre "You Might Like" rail were pulled
-          to keep the bottom from piling up. One discovery rail stays below. */}
-
-      {/* Upcoming Shows */}
-      {(upcoming.length > 0 || upcomingLoading) && (
-        <div style={{ marginBottom: 28 }}>
-          <div className="home-section-title"><h3>Upcoming Shows</h3></div>
-          {upcomingLoading && upcoming.length === 0 ? (
-            <div className="upcoming-loading">Finding upcoming shows...</div>
-          ) : (
-            <div className="home-scroll">
-              {upcoming.map((ev, i) => {
-                const wishlisted = addedIds.has(wishlistKey(ev));
-                return (
-                <div key={i} className="upcoming-card">
-                  <div className="upcoming-card-img" style={bgStyle(ev.artist)}>
-                    <div className="upcoming-card-date">{formatDate(ev.date)}</div>
-                  </div>
-                  <div className="upcoming-card-body">
-                    <div className="upcoming-card-artist">{ev.artist}</div>
-                    <div className="upcoming-card-venue">{ev.venue}{ev.city ? `, ${ev.city}` : ''}</div>
-                    <div className="upcoming-card-btns">
-                      <button
-                        className={`upcoming-btn upcoming-btn-wishlist ${wishlisted ? 'added' : ''}`}
-                        onClick={(e) => handleAddWishlist(ev, e)}
-                        disabled={wishlisted}
-                      >
-                        {wishlisted ? '✓ Wishlisted' : '+ Wishlist'}
-                      </button>
-                      {ev.ticketUrl && (
-                        <a className="upcoming-btn upcoming-btn-tickets" href={ev.ticketUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>Tickets</a>
-                      )}
-                    </div>
-                  </div>
+                <div className="text-right shrink-0 pl-4">
+                  <p className="font-serif italic text-xl text-foreground">{nextDate.day}</p>
+                  <p className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground mt-1">
+                    {nextDate.year}
+                  </p>
                 </div>
-                );
-              })}
-            </div>
+              </button>
+            </section>
           )}
-        </div>
-      )}
 
+          {/* "One year ago" — OnThisDay owns its own anniversary matching and
+              renders nothing on the ~360 days that aren't one. */}
+          <OnThisDay />
+
+          <section className="px-8 pb-40">
+            <p className="font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground mb-8 italic">
+              The Circle
+            </p>
+            <FriendsFeed />
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
