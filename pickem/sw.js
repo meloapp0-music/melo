@@ -3,7 +3,7 @@
    thing work with no signal at all. CACHE is stamped by the build, so a new
    deploy installs a fresh worker and drops the old cache. */
 
-const CACHE = "pickem-d3ac8464cd32";
+const CACHE = "pickem-551dc5af6aed";
 const ASSETS = [
   "./",
   "./index.html",
@@ -39,6 +39,22 @@ self.addEventListener("fetch", function(e){
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  /* results.json changes on its own schedule and must never be served stale
+     from an install-time precache — always try the network, fall back to the
+     last copy so an installed app still grades with no signal */
+  if (url.pathname.endsWith("/results.json")){
+    e.respondWith(
+      fetch(req).then(function(res){
+        if (res && res.status === 200){
+          const copy = res.clone();
+          caches.open(CACHE).then(function(c){ c.put(req, copy); });
+        }
+        return res;
+      }).catch(function(){ return caches.match(req); })
+    );
+    return;
+  }
 
   /* navigations go to the network first so a deploy is picked up promptly,
      and fall back to the cached shell when there is nothing to reach */

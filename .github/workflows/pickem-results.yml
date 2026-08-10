@@ -1,0 +1,66 @@
+# Pulls final scores into pickem/results.json so the app can grade picks.
+#
+# Only commits when something actually changed, so a quiet week costs nothing
+# and does not trigger a redeploy. Runs through the season and the postseason;
+# outside those months there is nothing to fetch.
+#
+# NOTE: GitHub disables scheduled workflows after 60 days with no repo activity.
+# If the season starts and results stop arriving, check that first.
+name: Pick 'Em results
+
+on:
+  schedule:
+    # Mon/Tue catch the weekend and Monday night; Fri catches Thursday night.
+    # Times are UTC — deliberately well clear of any kickoff.
+    - cron: '0 13 * * 1'
+    - cron: '0 13 * * 2'
+    - cron: '0 13 * * 5'
+    - cron: '0 13 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pickem-results
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch results
+        run: python3 .github/scripts/build-results.py
+
+      - name: Sanity-check the payload
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open('pickem/results.json'))
+          assert d['season'] == 2026, d['season']
+          assert isinstance(d['r'], dict)
+          assert 0 <= d['through'] <= 18, d['through']
+          assert d['played'] == len(d['r']), (d['played'], len(d['r']))
+          for k, v in d['r'].items():
+              w, away, home = k.split('-')
+              assert 1 <= int(w) <= 18 and len(away) <= 3 and len(home) <= 3, k
+              assert len(v) == 2 and all(isinstance(x, int) and 0 <= x < 200 for x in v), (k, v)
+          print("ok:", d['played'], "games, through week", d['through'])
+          PY
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- pickem/results.json; then
+            echo "no new results"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pickem/results.json
+          git commit -m "Pick 'Em: refresh results
+
+          Automated. Source: nflverse/nfldata data/games.csv."
+          git push

@@ -285,6 +285,39 @@ input{font:inherit;color:inherit}
 .totrow.locked .nm::after{content:" ·";color:var(--brass)}
 .totrow .lock{font:600 9px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--brass);white-space:nowrap}
 
+/* ─── the season answering back ─────────────────────────────── */
+.gradebar{
+  display:flex;align-items:stretch;gap:1px;margin:16px 0 4px;overflow:hidden;
+  border:1px solid var(--rule-soft);border-radius:12px;background:var(--rule-soft);
+}
+.gradebar > div{background:var(--deck);padding:13px 17px;flex:1;min-width:0}
+.gradebar .k{font:600 9.5px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--chalk4)}
+.gradebar .v{font:700 clamp(21px,3.4vw,27px)/1 var(--display);letter-spacing:.02em;margin-top:8px;color:var(--chalk)}
+.gradebar .v.good{color:var(--win)}
+.gradebar .v.bad{color:var(--loss)}
+.gradebar .s{font:400 11.5px/1.4 var(--body);color:var(--chalk4);margin-top:6px}
+.gradebar .s b{color:var(--chalk3);font-weight:600}
+@media (max-width:680px){.gradebar{flex-wrap:wrap}.gradebar > div{flex:1 1 45%}}
+
+.grow.played{background:var(--deck)}
+.grow.played.realwin{background:linear-gradient(90deg,color-mix(in srgb,var(--win) 10%,var(--deck)),var(--deck) 46%)}
+.grow.played.realloss{background:linear-gradient(90deg,color-mix(in srgb,var(--loss) 10%,var(--deck)),var(--deck) 46%)}
+.final{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.final .sc-real{
+  font:700 20px/1 var(--display);letter-spacing:.03em;color:var(--chalk);
+  min-width:74px;text-align:center;
+}
+.final .sc-real em{font-style:normal;color:var(--chalk4);font-size:15px}
+.callchip{
+  font:600 9px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;
+  border-radius:99px;padding:6px 10px;white-space:nowrap;border:1px solid transparent;
+}
+.callchip.hit{color:var(--win);border-color:color-mix(in srgb,var(--win) 45%,transparent);background:color-mix(in srgb,var(--win) 11%,transparent)}
+.callchip.miss{color:var(--loss);border-color:color-mix(in srgb,var(--loss) 45%,transparent);background:color-mix(in srgb,var(--loss) 11%,transparent)}
+.callchip.none{color:var(--chalk4);border-color:var(--rule)}
+.callchip.fill{color:var(--chalk3);border-color:var(--rule);background:rgba(255,255,255,.03)}
+.slab.played .at .fin{font:700 13px/1 var(--display);color:var(--chalk);letter-spacing:.03em}
+
 /* ─── your club ─────────────────────────────────────────────── */
 .club{
   display:flex;align-items:center;gap:9px;flex-shrink:0;padding:5px 11px 5px 6px;
@@ -1208,6 +1241,68 @@ function blank(){
   return {name:"", fav:"", picks:{}, po:{}, order:{AFC:[], NFC:[]}};
 }
 let storageOK = true;
+let RES = {};             // gameIndex -> [awayScore, homeScore], real results
+let RESMETA = null;       // {gen, through, played}
+const RESKEY = "pickem26.results.v2";
+
+/* what actually happened, as opposed to what you called */
+function truthOf(i){
+  const s = RES[i];
+  if (!s) return null;
+  return s[0] === s[1] ? "T" : (s[0] > s[1] ? "A" : "H");
+}
+function isPlayed(i){ return !!RES[i]; }
+
+function applyResults(j){
+  const byKey = {};
+  SCHEDULE.forEach(function(g){ byKey[g.week + "-" + g.away + "-" + g.home] = g.i; });
+  const next = {};
+  for (const k in j.r){
+    const i = byKey[k];                    // unknown keys are ignored, never guessed at
+    const v = j.r[k];
+    if (i !== undefined && v && v.length === 2) next[i] = v;
+  }
+  RES = next;
+  RESMETA = {gen:j.gen || "", through:j.through || 0, played:Object.keys(next).length};
+}
+
+/* cached copy first so an installed app grades with no signal, then the network */
+async function loadResults(){
+  try {
+    const raw = localStorage.getItem(RESKEY);
+    if (raw) applyResults(JSON.parse(raw));
+  } catch(e){}
+  try {
+    const r = await fetch("results.json", {cache:"no-cache"});
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || typeof j.r !== "object") return;
+    applyResults(j);
+    try { localStorage.setItem(RESKEY, JSON.stringify(j)); } catch(e){}
+  } catch(e){}
+}
+
+/* Grades only games you actually called. A real tie is a push — dropped from
+   the denominator rather than counted against you. Hand-called and filled
+   games are counted separately and never merged into one headline number. */
+function grade(week){
+  const g = {hw:0, hl:0, fw:0, fl:0, push:0, uncalled:0};
+  SCHEDULE.forEach(function(x){
+    const t = truthOf(x.i);
+    if (!t) return;
+    if (week && x.week !== week) return;
+    const call = resultOf(x.i);
+    if (!call){ g.uncalled++; return; }
+    if (t === "T"){ g.push++; return; }
+    const hit = call === t;
+    if (isAuto(x.i)){ hit ? g.fw++ : g.fl++; } else { hit ? g.hw++ : g.hl++; }
+  });
+  return g;
+}
+function pctStr(w, l){
+  const n = w + l;
+  return n ? (w / n).toFixed(3).replace(/^0/, "") : "—";
+}
 
 /* Editing someone else's shared sheet used to be silently discarded: the W/L
    buttons still responded and the screen still updated, but save() bailed out
@@ -1293,6 +1388,7 @@ function resultOf(i){
 }
 
 function setWinner(i, side){
+  if (isPlayed(i)) return;                 // settled; the result is the result
   const p = state.picks[i] || {w:null, as:null, hs:null};
   if (p.w === side && !p.a && !(p.as != null && p.hs != null)){
     delete state.picks[i];                    // second tap un-picks
@@ -1310,6 +1406,7 @@ function setWinner(i, side){
 }
 
 function setScore(i, side, val){
+  if (isPlayed(i)) return;
   const p = state.picks[i] || {w:null, as:null, hs:null};
   const n = val === "" ? null : Math.max(0, Math.min(199, parseInt(val, 10)));
   delete p.a;
@@ -1375,7 +1472,7 @@ function projectedWinner(g){
 function fillRest(){
   let n = 0;
   SCHEDULE.forEach(function(g){
-    if (resultOf(g.i)) return;
+    if (resultOf(g.i) || isPlayed(g.i)) return;
     state.picks[g.i] = {w:projectedWinner(g), as:null, hs:null, a:1};
     n++;
   });
@@ -1393,9 +1490,11 @@ function solveTotals(targets){
 
   SCHEDULE.forEach(function(g){
     const r = resultOf(g.i);
-    if (r && !isAuto(g.i)){
-      if (r === "T"){ manualW[g.away] += 0.5; manualW[g.home] += 0.5; }
-      else if (r === "A") manualW[g.away]++;
+    /* a played game is a fact — the solver may not reassign it */
+    if (isPlayed(g.i) || (r && !isAuto(g.i))){
+      const fixed = isPlayed(g.i) ? truthOf(g.i) : r;
+      if (fixed === "T"){ manualW[g.away] += 0.5; manualW[g.home] += 0.5; }
+      else if (fixed === "A") manualW[g.away]++;
       else manualW[g.home]++;
     } else {
       free.push(g); remain[g.away]++; remain[g.home]++;
@@ -1945,6 +2044,8 @@ function seasonView(S){
   if (lane === "mine" && !hasClub) lane = "team";
   if (lane === "mine") team = state.fav;
 
+  const gb = gradeBar();
+  if (gb) wrap.appendChild(gb);
   wrap.appendChild(laneBar());
   if (lane === "totals"){
     wrap.appendChild(el("div", {"class":"season solo"}, [totalsPanel()]));
@@ -1957,6 +2058,45 @@ function seasonView(S){
     wrap.appendChild(el("div", {"class":"season"}, [railEl(), teamPanel(S)]));
   }
   return wrap;
+}
+
+/* the reason to open this in October */
+function gradeBar(){
+  if (!RESMETA || !RESMETA.played) return null;
+  const wk = RESMETA.through;
+  const season = grade(null), thisWeek = wk ? grade(wk) : null;
+  const bar = el("div", {"class":"gradebar"});
+
+  function cell(k, v, cls, sub){
+    return el("div", {}, [
+      el("div", {"class":"k"}, [k]),
+      el("div", {"class":"v" + (cls ? " " + cls : "")}, [v]),
+      sub ? el("div", {"class":"s", html:sub}) : null
+    ]);
+  }
+
+  if (thisWeek && (thisWeek.hw + thisWeek.hl)){
+    bar.appendChild(cell("Week " + wk, thisWeek.hw + "–" + thisWeek.hl,
+      thisWeek.hw >= thisWeek.hl ? "good" : "bad",
+      "on the games you called" + (thisWeek.push ? " · " + thisWeek.push + " tied" : "")));
+  } else if (wk){
+    bar.appendChild(cell("Week " + wk, "—", "", "you called none of these"));
+  }
+
+  bar.appendChild(cell("Season", season.hw + "–" + season.hl,
+    season.hw >= season.hl ? "good" : "bad",
+    pctStr(season.hw, season.hl) + " on <b>" + (season.hw + season.hl) +
+    "</b> games you called by hand"));
+
+  if (season.fw + season.fl){
+    bar.appendChild(cell("Filled in for you", season.fw + "–" + season.fl, "",
+      pctStr(season.fw, season.fl) + " — not counted as yours"));
+  }
+
+  const left = NGAMES - RESMETA.played;
+  bar.appendChild(cell("Still to play", String(left), "",
+    RESMETA.gen ? "results through week <b>" + wk + "</b>" : ""));
+  return bar;
 }
 
 function laneBar(){
@@ -2178,7 +2318,8 @@ function totalsPanel(){
 
 /* offered wherever you can see how much is left */
 function fillBtn(label){
-  const open = NGAMES - decidedCount();
+  let open = 0;
+  SCHEDULE.forEach(function(g){ if (!resultOf(g.i) && !isPlayed(g.i)) open++; });
   if (!open) return null;
   return el("button", {"class":"btn btn-key", onclick:function(){
     const n = fillRest();
@@ -2302,7 +2443,22 @@ function teamPanel(S){
       meta("Conference", recStr({w:r.cw, l:r.cl, t:r.ct})),
       meta("Points", r.pf || r.pa ? r.pf + " / " + r.pa + " (" + (netPts(team) >= 0 ? "+" : "") + netPts(team) + ")" : "—"),
       meta("Seed", me && !me.outside ? "#" + me.seed + (me.div ? " · division" : " · wild card") : "Out (" + ordinal(me ? me.seed : 16) + " in " + t.conf + ")"),
-      meta("Bye", "Week " + BYE[team])
+      meta("Bye", "Week " + BYE[team]),
+      (function(){
+        if (!RESMETA || !RESMETA.played) return null;
+        let w = 0, l = 0, tt = 0, pl = 0;
+        BY_TEAM[team].forEach(function(g){
+          const real = truthOf(g.i);
+          if (!real) return;
+          pl++;
+          const isHome = g.home === team;
+          if (real === "T") tt++;
+          else if ((real === "H") === isHome) w++;
+          else l++;
+        });
+        if (!pl) return null;
+        return meta("Real so far", recStr({w:w, l:l, t:tt}) + " · " + pl + " played");
+      })()
     ])
   ]));
 
@@ -2323,7 +2479,7 @@ function teamPanel(S){
         ? " Scores are optional &mdash; fill them in and they decide the game (level scores = a tie)."
         : " Turn on <b>Scores</b> above to predict them too.")}),
     el("button", {"class":"btn", onclick:function(){
-      BY_TEAM[team].forEach(function(g){ delete state.picks[g.i]; });
+      BY_TEAM[team].forEach(function(g){ if (!isPlayed(g.i)) delete state.picks[g.i]; });
       save(); render();
     }}, ["Clear " + t.nick]),
     lane === "team" ? el("button", {"class":"btn", onclick:nextUnpicked}, ["Next club with gaps"]) : null,
@@ -2378,14 +2534,20 @@ function growEl(g){
   const home = g.home === team;
   const opp = TEAMS[home ? g.away : g.home];
   const res = resultOf(g.i);
+  const real = truthOf(g.i), played = !!real;
   const mine = home ? "H" : "A";
-  const won = res === mine, lost = res && res !== mine && res !== "T", tied = res === "T";
+  /* once a game is played the row reports reality; whether you called it right
+     moves to its own chip, so the schedule reads as a schedule */
+  const shown = played ? real : res;
+  const won = shown === mine, lost = shown && shown !== mine && shown !== "T";
+  const tied = shown === "T";
   slabGames.push(g.i);
 
   const edge = won ? "var(--win)" : lost ? "var(--loss)" : tied ? "var(--brass)" : "transparent";
-  const auto = isAuto(g.i);
+  const auto = !played && isAuto(g.i);
   const row = el("div", {
-    "class":"grow" + (won ? " won" : "") + (lost ? " lost" : "") + (tied ? " tied" : "") +
+    "class":"grow" + (played ? " played" + (won ? " realwin" : lost ? " realloss" : "") : "") +
+      (!played && won ? " won" : "") + (!played && lost ? " lost" : "") + (tied ? " tied" : "") +
       (auto ? " auto" : ""),
     "data-i":String(g.i),
     style:"--edge:" + edge
@@ -2403,6 +2565,16 @@ function growEl(g){
 
   if (tied) row.appendChild(el("span", {"class":"tiechip"}, ["TIE"]));
 
+  if (played){
+    const sc = RES[g.i], mine = home ? sc[1] : sc[0], theirs = home ? sc[0] : sc[1];
+    row.appendChild(el("span", {"class":"final"}, [
+      el("span", {"class":"sc-real", html:(mine > theirs ? "W" : mine < theirs ? "L" : "T") +
+        " <em>" + mine + "–" + theirs + "</em>"}),
+      callChip(g.i, real)
+    ]));
+    return row;
+  }
+
   if (auto) row.appendChild(el("span", {"class":"fillmark",
     title:"Filled in from last season — tap W or L to make it yours"}, ["filled"]));
 
@@ -2418,6 +2590,21 @@ function growEl(g){
     ]));
   }
   return row;
+}
+
+/* did you call it, and was it yours to begin with */
+function callChip(i, real){
+  const call = resultOf(i);
+  if (!call) return el("span", {"class":"callchip none", title:"You never called this one"}, ["no call"]);
+  if (real === "T") return el("span", {"class":"callchip none", title:"A tie — dropped from your record"}, ["tied"]);
+  const hit = call === real;
+  if (isAuto(i)){
+    return el("span", {"class":"callchip fill",
+      title:"Filled in for you — " + (hit ? "it was right" : "it was wrong") + ", but not counted as your call"},
+      [hit ? "fill ✓" : "fill ✗"]);
+  }
+  return el("span", {"class":"callchip " + (hit ? "hit" : "miss")},
+    [hit ? "called it" : "missed"]);
 }
 
 function wlBtn(g, kind, on, home, auto){
@@ -2454,29 +2641,39 @@ function scoreFor(g, side, t){
 
 function slabEl(g, compact){
   const res = resultOf(g.i);
+  const settled = truthOf(g.i) || res;
   const ta = TEAMS[g.away], th = TEAMS[g.home];
-  const edge = res === "A" ? ta.pop : res === "H" ? th.pop : res === "T" ? "var(--brass)" : "transparent";
+  const edge = settled === "A" ? ta.pop : settled === "H" ? th.pop
+             : settled === "T" ? "var(--brass)" : "transparent";
   slabGames.push(g.i);
 
   const slab = el("div", {
-    "class":"slab" + (res ? " decided" : "") + (isAuto(g.i) ? " auto" : ""),
+    "class":"slab" + (res || truthOf(g.i) ? " decided" : "") +
+      (truthOf(g.i) ? " played" : isAuto(g.i) ? " auto" : ""),
     "data-i":String(g.i),
     style:"--edge:" + edge
   });
 
+  const real = truthOf(g.i);
   slab.appendChild(el("div", {"class":"slab-in"}, [
-    el("div", {"class":"half away"}, [sideEl(g, "A", ta, res), showScores ? scoreEl(g, "A", ta) : null]),
+    el("div", {"class":"half away"}, [sideEl(g, "A", ta, real || res),
+      real ? el("span", {"class":"sc", style:"color:var(--chalk)"}, [String(RES[g.i][0])])
+           : (showScores ? scoreEl(g, "A", ta) : null)]),
     el("div", {"class":"at"}, [
-      res === "T" ? el("span", {"class":"tie"}, ["TIE"]) : null,
+      real ? el("span", {"class":"fin"}, ["FT"])
+           : (res === "T" ? el("span", {"class":"tie"}, ["TIE"]) : null),
       el("span", {}, [g.neutral ? "VS" : "AT"])
     ]),
-    el("div", {"class":"half home"}, [sideEl(g, "H", th, res), showScores ? scoreEl(g, "H", th) : null])
+    el("div", {"class":"half home"}, [sideEl(g, "H", th, real || res),
+      real ? el("span", {"class":"sc", style:"color:var(--chalk)"}, [String(RES[g.i][1])])
+           : (showScores ? scoreEl(g, "H", th) : null)])
   ]));
 
   slab.appendChild(el("div", {"class":"slab-foot"}, [
     el("span", {"class":"when", html:(compact ? timeLabel(g.time) : longDate(g.date, g.time)) +
       (g.neutral ? ' &middot; <span class="intl">' + esc(g.neutral) + "</span>" : "")}),
-    el("span", {"class":"nudge-hint"}, [isAuto(g.i) ? "filled" : res ? "" : "Tap a side"])
+    real ? callChip(g.i, real)
+         : el("span", {"class":"nudge-hint"}, [isAuto(g.i) ? "filled" : res ? "" : "Tap a side"])
   ]));
   return slab;
 }
@@ -2526,7 +2723,7 @@ document.addEventListener("keydown", function(e){
     paintCursor(true);
   } else if (k === "Backspace" || k === "Delete"){
     e.preventDefault();
-    if (cursor >= 0){
+    if (cursor >= 0 && !isPlayed(slabGames[cursor])){
       delete state.picks[slabGames[cursor]];
       save();
       const at = cursor;
@@ -2539,6 +2736,20 @@ document.addEventListener("keydown", function(e){
 
 function sideEl(g, side, t, res){
   const won = res === side, lost = res && res !== side && res !== "T";
+  if (isPlayed(g.i)){
+    return el("span", {
+      "class":"side " + (side === "A" ? "away" : "home") + (won ? " won" : "") + (lost ? " lost" : ""),
+      style:"--c:" + t.pop
+    }, [
+      crest(t.abbr, "xs"),
+      el("span", {"class":"who"}, [
+        el("span", {"class":"ab", style:"display:block"}, [t.abbr]),
+        el("span", {"class":"fn", style:"display:block"}, [
+          el("span", {"class":"nk"}, [t.nick + " "]), recStr(R[t.abbr])
+        ])
+      ])
+    ]);
+  }
   return el("button", {
     "class":"side " + (side === "A" ? "away" : "home") + (won ? " won" : "") + (lost ? " lost" : "") +
       (won && isAuto(g.i) ? " auto" : ""),
@@ -3835,12 +4046,19 @@ window.addEventListener("resize", function(){
   if (lastTeam && TEAMS[lastTeam]) team = lastTeam;
   else if (state.fav && TEAMS[state.fav]) team = state.fav;
 
+  await loadResults();
+
   render();
   renderInstall();
     if ("serviceWorker" in navigator){
-    window.addEventListener("load", function(){
+    /* boot() awaits the results fetch before reaching this line, so the load
+       event has usually already fired by now — waiting for it again would mean
+       the worker never registers at all, silently killing offline and install. */
+    const registerWorker = function(){
       navigator.serviceWorker.register("sw.js").catch(function(){});
-    });
+    };
+    if (document.readyState === "complete") registerWorker();
+    else window.addEventListener("load", registerWorker);
     let refreshed = false;
     navigator.serviceWorker.addEventListener("controllerchange", function(){
       if (refreshed) return;

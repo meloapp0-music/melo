@@ -430,6 +430,50 @@ storage until "Use as my starting point" is pressed.
   suite. Everything the app needs now comes from one reproducible generator, and
   the 2025 champion is derived from the data rather than hardcoded.
 
+- 2026-07-24: **Phase 1 of the weekly loop — the season answers back.** Designed
+  via a multi-agent pass (five angles, two adversarial checks); full plan and the
+  refuted claim recorded below under "The weekly loop".
+
+  The app held 272 opinions and no facts. It now fetches facts.
+
+  - `.github/scripts/build-results.py` pulls nflverse `games.csv` and writes
+    `pickem/results.json` — **keyed by `week-away-home`, never by row index**,
+    for exactly the reason the flex-scheduling fix above documents. A full season
+    is ~5 KB; pre-season it is 74 bytes. It refuses to write on a schema change,
+    a game count that is not 272, a duplicate matchup key, or a *shrinking*
+    result set (results only accumulate) — a bad upstream should fail loudly,
+    not blank out everyone's season. It caught its own test fixture during
+    development, which is how I know the guard works.
+  - `.github/workflows/pickem-results.yml` runs it Mon/Tue/Wed/Fri, validates the
+    payload, and commits **only when something changed** — so a quiet week costs
+    nothing and the site redeploys roughly a dozen times a season rather than
+    eight times a day.
+  - `through` is derived from data completeness, never from a clock. The app has
+    no timezone handling anywhere and the season straddles a DST change.
+  - The service worker serves `results.json` **network-first and never
+    precaches it**; a copy is mirrored to `localStorage` so an installed app
+    still grades with no signal. Verified by reloading with the network cut.
+  - Grading counts **only games you called by hand** in the headline. Filled
+    games are graded on their own line and explicitly "not counted as yours".
+    A real tie is a push, dropped from the denominator.
+  - Played games are settled: the row shows the real score and a *called it /
+    missed / fill / no call* chip instead of W-L buttons. Enforced in the
+    **model**, not the UI — `setWinner`, `setScore`, the keyboard delete path
+    (which bypasses `setWinner` entirely), the clear-club button, `fillRest()`
+    and the totals solver all refuse to touch a played game.
+  - Standings, bracket and sharing are deliberately untouched. That is what kept
+    this phase small.
+
+  **Regression found and fixed while building it:** moving `await loadResults()`
+  before the service-worker registration meant the `load` event now fired
+  *during* that await, so the `load` listener was attached too late to ever run
+  and the worker silently never registered — killing offline support and
+  installability. Registration now checks `document.readyState` instead of
+  trusting an event that may already have fired.
+
+  Test fixtures live in an isolated copy of `pickem/` under the scratchpad, so
+  fake results can never be committed.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
