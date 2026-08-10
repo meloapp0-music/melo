@@ -193,6 +193,36 @@ public-share-pages live-updates follow-up) with **no iOS build**. Good v1.7 work
   the correct split — followed artists are urgent, ambient discovery is not —
   but it does mean the digest is smaller than when it was built.
 
+- 2026-08-03: **Deployed, and two defects the first live run exposed.**
+  Run 1: `cities 25 · lookups 25 · matched 1335 · scheduled 3428 · pushed 71`.
+
+  **City starvation.** 25 of 25 meant the cap was binding — and the real total
+  turned out to be **46**, so 21 cities were never swept at all. Worse than it
+  sounds: an unswept city never gets its presales into the schedule, so
+  `presale-fire` could never fire for anyone living there. Raising the cap would
+  have broken the API budget, so the 25 now splits — 15 hot cities every run,
+  10 rotating through the tail on a clock-derived offset (no stored state, self-
+  corrects after a missed run). Full coverage of 46 cities every 4 runs = one
+  hour, with calls/day unchanged at 2,400. Coverage degrades gracefully: even
+  100 cities would still cost 2,400/day, just at 135-minute discovery latency,
+  which is fine when presales are announced days ahead. `totalCities` is now in
+  the response so the signal is measured rather than guessed.
+
+  **No retention.** 3,428 rows written and nothing ever removed them, under the
+  one index `presale-fire` hits 1,440 times a day. Added a prune of anything
+  with `starts_at` older than a week — far outside fire's 5-minute lookback, so
+  it can never be selected again. It ran after the upsert (a prune failure must
+  never cost the schedule write) and immediately removed **3,515** rows, which
+  says most of what run 1 stored was already-expired presales.
+
+  Run 2, post-fix: `totalCities 46 · rotationRuns 4 · matched 967 ·
+  scheduled 2754 · pruned 3515 · pushed 56`.
+
+  **One-time cost worth recording:** the 71 + 56 pushes are backlog, not steady
+  state — every matching event is "new" the first time a city is swept. Expect
+  a few more elevated runs while the rotation completes its first full cycle,
+  then it should go quiet. Capped at 3/user/run throughout.
+
 - 2026-08-03: **App routing** (`App.jsx`). `digest` → the discovery surface.
   `presale` → leads with a 12-second tappable toast carrying the ticket URL,
   with the wishlist tour search opening underneath as the fallback. The link is

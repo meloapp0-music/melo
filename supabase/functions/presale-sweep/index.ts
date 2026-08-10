@@ -43,11 +43,21 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const TM_KEY = Deno.env.get('TICKETMASTER_KEY');
 
-// One TM call per city per run. 25 x 96 runs/day = 2,400, leaving tour-alerts
-// its 1,000 and headroom for the app's own lookups inside the 5,000/day free
-// tier. Cities are swept most-users-first, so if this bites it bites the
-// thinnest markets.
-const MAX_CITIES_PER_RUN = 25;
+// One TM call per city per run, and the budget fixes the total at 25 (25 x 96
+// runs/day = 2,400, leaving tour-alerts its 1,000 and headroom for the app
+// inside the 5,000/day free tier).
+//
+// The first live run swept 25 of 25 — i.e. it hit the cap, so cities beyond
+// the top 25 were never swept AT ALL. That's worse than it sounds: a city
+// that's never swept never gets its presales into the schedule, so
+// presale-fire can never fire for anyone living there. Simply raising the cap
+// would break the budget.
+//
+// So the 25 splits: the busiest markets every single run, and the long tail on
+// rotation. Total calls unchanged; coverage goes from "top 25 only, forever"
+// to "everywhere, within a few runs".
+const HOT_CITIES_PER_RUN = 15;
+const ROTATING_CITIES_PER_RUN = 10;
 
 // Announcements per user per run. Collapsed per artist already, so this is
 // "three different artists you follow announced something in the last quarter
@@ -187,8 +197,28 @@ serve(async (_req) => {
     sentByUser.set(s.user_id, set);
   }
 
-  // ---- Sweep the cities.
-  const cities = [...cityUsers.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_CITIES_PER_RUN);
+  // ---- Choose this run's cities: hot ones always, the tail on rotation.
+  const ranked = [...cityUsers.entries()].sort((a, b) => b[1] - a[1]);
+  const hot = ranked.slice(0, HOT_CITIES_PER_RUN);
+  const tail = ranked.slice(HOT_CITIES_PER_RUN);
+
+  // The offset advances one slice per 15-minute slot, so consecutive runs pick
+  // up where the last left off and the whole tail is covered every
+  // ceil(tail / ROTATING) runs. Derived from the clock rather than stored,
+  // which means it needs no state and self-corrects after a missed run.
+  let rotating: typeof tail = [];
+  if (tail.length > 0) {
+    const slices = Math.ceil(tail.length / ROTATING_CITIES_PER_RUN);
+    const slot = Math.floor(Date.now() / (15 * 60_000)) % slices;
+    const from = slot * ROTATING_CITIES_PER_RUN;
+    rotating = tail.slice(from, from + ROTATING_CITIES_PER_RUN);
+    // Wrap, so the last (short) slice still gets a full budget rather than
+    // wasting calls on a partial run.
+    if (rotating.length < ROTATING_CITIES_PER_RUN) {
+      rotating = rotating.concat(tail.slice(0, ROTATING_CITIES_PER_RUN - rotating.length));
+    }
+  }
+  const cities = [...hot, ...rotating];
   const now = new Date();
 
   // user -> artist -> events newly seen this run
@@ -256,6 +286,28 @@ serve(async (_req) => {
     if (schedErr) console.error('[presale-sweep] schedule upsert failed', schedErr);
   }
 
+  // ---- Retention. The first live run wrote 3,428 rows and nothing ever
+  // removed them. presale-fire reads this table 1,440 times a day off the
+  // starts_at index, so letting it grow forever slowly taxes the one query
+  // that has to stay fast.
+  //
+  // Keyed on starts_at because that's the indexed column and it's the only one
+  // fire cares about — anything that started more than a week ago is far
+  // outside fire's five-minute lookback and can never be selected again.
+  // Cleanup runs after the upsert so a failure here can never cost us the
+  // schedule write, which is the part that actually matters.
+  let pruned = 0;
+  {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
+    const { data: gone, error: pruneErr } = await admin
+      .from('presale_schedule')
+      .delete()
+      .lt('starts_at', cutoff)
+      .select('event_id');
+    if (pruneErr) console.error('[presale-sweep] prune failed', pruneErr);
+    else pruned = (gone || []).length;
+  }
+
   // ---- Announce. One push per artist, however many dates they announced.
   let pushed = 0;
   const sentInsertBuffer: Array<{ user_id: string; kind: string; ref: string }> = [];
@@ -308,11 +360,18 @@ serve(async (_req) => {
     if (insErr) console.error('[presale-sweep] sent upsert failed', insErr);
   }
 
+  // totalCities vs cities is the coverage check: if totalCities keeps climbing
+  // past what the rotation covers in a reasonable number of runs, the budget
+  // needs revisiting — that's the signal, not a guess.
   const elapsedMs = Date.now() - start;
-  console.log('[presale-sweep]', {
-    cities: cities.length, lookups, matched, scheduled: scheduleRows.size, pushed, elapsedMs,
-  });
-  return ok({ cities: cities.length, lookups, matched, scheduled: scheduleRows.size, pushed, elapsedMs });
+  const stats = {
+    totalCities: ranked.length,
+    cities: cities.length,
+    rotationRuns: tail.length ? Math.ceil(tail.length / ROTATING_CITIES_PER_RUN) : 0,
+    lookups, matched, scheduled: scheduleRows.size, pruned, pushed, elapsedMs,
+  };
+  console.log('[presale-sweep]', stats);
+  return ok(stats);
 });
 
 // -------------------- helpers --------------------
