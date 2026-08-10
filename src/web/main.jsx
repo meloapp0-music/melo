@@ -1,6 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+// Tailwind + the Sleek design tokens first, App.css second, so the app's
+// existing rules still win wherever the two overlap. Screens move onto
+// utilities one at a time; until then nothing should change appearance.
+import './theme.css';
 import './App.css';
 import { initAnalytics, track } from './lib/analytics';
 
