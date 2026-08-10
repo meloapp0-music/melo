@@ -3,7 +3,7 @@
    thing work with no signal at all. CACHE is stamped by the build, so a new
    deploy installs a fresh worker and drops the old cache. */
 
-const CACHE = "pickem-e873c5215478";
+const CACHE = "pickem-d3ac8464cd32";
 const ASSETS = [
   "./",
   "./index.html",

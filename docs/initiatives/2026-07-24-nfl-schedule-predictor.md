@@ -403,6 +403,33 @@ storage until "Use as my starting point" is pressed.
   adopts and persists; browsing one does not; blocked storage warns and stays
   usable.
 
+- 2026-07-24: **Schedule ordering made flex-proof** — a latent data-corruption
+  bug, found while scoping a weekly-results feature and fixed before launch.
+
+  Picks are stored by a game's *position* in `SCHEDULE`, and `gendata.py` sorted
+  that list by `(week, gameday, gametime)`. The league flexes kickoff times from
+  week 5 onward. Simulating one realistic flex — CHI at DET moved from Sunday
+  1:00pm to Sunday night in week 12 — shifted two indices, so a pick stored at
+  index 164 silently pointed at PHI at DAL instead. Any future regeneration of
+  the schedule to pick up flexed times would have quietly rewritten users' picks.
+
+  Matchups never change once a schedule is released; only dates and times do. The
+  generator now sorts on `(week, away, home)`, which cannot drift — re-verified by
+  simulating two flexes and confirming zero indices move. Chronological order is
+  now a display concern, applied in the week lane at render time.
+
+  Because this reassigns indices, old data would decode against the wrong games,
+  which is worse than losing it. So: storage key bumped to `pickem26.v2` (and
+  rivals to `pickem26.rivals.v2`), and the share payload version bumped to `2`
+  with v1 payloads **refused outright** and an explanation shown, rather than
+  silently mangled.
+
+  Also folded last season's records into `gendata.py`. They had been appended by
+  a separate one-off script, so re-running the generator silently dropped
+  `LAST_YEAR`/`LY_FIELD`/`LY_CHAMP` and broke the receipts screen — caught by the
+  suite. Everything the app needs now comes from one reproducible generator, and
+  the 2025 champion is derived from the data rather than hardcoded.
+
 ## Open questions / follow-ups
 
 - No way for friends to compare picks side by side — that needs a backend. The
