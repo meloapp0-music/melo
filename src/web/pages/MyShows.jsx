@@ -106,8 +106,13 @@ export default function MyShows() {
   const total = displayItems.length;
 
   return (
-    <div className="min-h-screen bg-background pb-56 relative overflow-x-hidden selection:bg-accent/30">
-      <div className="fixed inset-x-0 top-0 h-64 bg-gradient-to-b from-accent/15 via-accent/5 to-transparent pointer-events-none z-[60]" />
+    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background pb-12 relative selection:bg-accent/30">
+      {/* absolute, not fixed. `.app` is a 430px-max column centred on wide
+          screens, so a fixed inset-x-0 wash spans the whole VIEWPORT and bleeds
+          ember across the letterbox either side of the app. Absolute keeps it
+          inside the column; it scrolls with the page, which is what the header
+          wash does on Home too. */}
+      <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-accent/15 via-accent/5 to-transparent pointer-events-none z-0" />
 
       <div className="relative z-10">
         <header className="px-8 pt-20 flex justify-between items-baseline relative">

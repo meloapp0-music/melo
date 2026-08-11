@@ -127,7 +127,7 @@ export default function Home() {
   );
 
   const shell = (children) => (
-    <div className="min-h-screen bg-background pb-56 relative overflow-y-auto selection:bg-accent/30">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-background pb-12 relative selection:bg-accent/30">
       {Header}
       {/* Conditional surfaces the design never drew a state for. They render
           nothing on an ordinary day, so they can't disturb it. */}
@@ -358,7 +358,7 @@ export default function Home() {
 
       <OnThisDay />
 
-      <section className="px-8 pb-40">
+      <section className="px-8">
         <p className={`${LABEL} mb-8 italic`}>The Circle</p>
         <FriendsFeed />
       </section>
