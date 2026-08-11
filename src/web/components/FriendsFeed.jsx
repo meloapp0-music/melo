@@ -4,7 +4,11 @@ import { listFriends } from '../lib/db/friendships';
 import { listFriendsShows, attendeesForShows, friendsShowStats } from '../lib/db/shows';
 import { reactionSummary, commentCounts, setReaction, notifyInteraction } from '../lib/db/social';
 import { getProfilesByIds } from '../lib/db/profiles';
-import { artistBackground, formatDate, isAttended, isGoing, isWishlist, daysUntil, SHOW_STATUS, generateId } from '../store';
+// getArtistGradient, not artistBackground: the ported rows use the artist's
+// colour as a thin spine in the gutter rather than as a photo backdrop, so the
+// gradient is wanted on its own.
+import { getArtistGradient, formatDate, isAttended, isGoing, isWishlist, daysUntil, SHOW_STATUS, generateId } from '../store';
+import Icon from './Icon';
 
 // Session-lived cache so the feed renders synchronously on every Home
 // remount (no layout pop-in above the fold) and refreshes in the
@@ -293,284 +297,244 @@ export default function FriendsFeed() {
   const visibleItems = expanded ? list : list.slice(0, FEED_VISIBLE);
   const hiddenCount = list.length - visibleItems.length;
 
+  // The design gives every entry a spine in the artist's colour, bleeding into
+  // the page's 32px gutter. It's the one place per-artist colour appears off a
+  // ticket stub, and it's what stops a long feed reading as undifferentiated
+  // text. Requires the parent section to have px-8.
+  const Spine = ({ artist }) => (
+    <div
+      className="absolute left-[-32px] top-0 bottom-0 w-1.5"
+      style={{ background: getArtistGradient(artist) }}
+      aria-hidden="true"
+    />
+  );
+
+  // Avatars are photos in the design, greyscaled so the page's only colour
+  // stays the artist spines. Melo's fall back to a colour + initial.
+  const Avatar = ({ friend, onOpen }) => {
+    const n = friend.displayName || friend.username || '?';
+    return (
+      <button
+        type="button"
+        aria-label={`View ${n}`}
+        onClick={(e) => { e.stopPropagation(); onOpen(friend.userId); }}
+        className="size-10 rounded-full grayscale border border-border shrink-0 bg-cover bg-center flex items-center justify-center text-white text-sm font-bold"
+        style={friend.avatarUrl
+          ? { backgroundImage: `url(${friend.avatarUrl})` }
+          : { background: friend.avatarColor || 'var(--accent)' }}
+      >
+        {!friend.avatarUrl && n[0].toUpperCase()}
+      </button>
+    );
+  };
+
+  const META = 'font-sans uppercase tracking-[0.4em] text-[9px] font-black text-muted-foreground';
+  const PRINT = 'bg-white p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.06)] border border-border inline-block';
+
   return (
-    <div className="feed-section fade-in">
-      <div className="home-section-title"><h3>Friends</h3></div>
-      <div className="feed-list">
-        {visibleItems.map((item) => {
-          // Year-recap card ("Claire's 2026 so far").
-          if (item.type === 'recap') {
-            const rn = item.friend.displayName || item.friend.username;
-            return (
-              <button
-                key={`recap-${item.friend.userId}`}
-                type="button"
-                className="feed-recap"
-                onClick={() => setSelectedUserId(item.friend.userId)}
-              >
-                <div className="feed-recap-icon" aria-hidden="true">🎉</div>
-                <div className="feed-recap-body">
-                  <div className="feed-recap-title">{rn}’s {item.year} so far</div>
-                  <div className="feed-recap-sub">
+    <div className="space-y-0 fade-in">
+      {visibleItems.map((item, idx) => {
+        // Alternating tilt, so a run of prints looks laid down by hand rather
+        // than pasted. Keyed on index so it's stable across renders.
+        const tilt = ['rotate-3', '-rotate-2', 'rotate-1', '-rotate-3'][idx % 4];
+
+        // Year-recap card — the one ember element the feed is allowed.
+        if (item.type === 'recap') {
+          const rn = item.friend.displayName || item.friend.username;
+          return (
+            <div key={`recap-${item.friend.userId}`} className="py-10 border-t border-border">
+              <div className="flex items-center gap-6">
+                <div className="size-12 rounded-full bg-accent flex items-center justify-center text-white shrink-0">
+                  <Icon name="ph:sparkle-fill" size={24} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-sans font-black text-accent uppercase tracking-[0.2em] leading-tight">
+                    {rn}’s {item.year} so far
+                  </p>
+                  <p className="font-sans text-[11px] text-muted-foreground mt-1">
                     {item.count} shows{item.cities > 0 ? ` · ${item.cities} ${item.cities === 1 ? 'city' : 'cities'}` : ''}
-                  </div>
+                  </p>
                 </div>
-                <span className="feed-recap-arrow" aria-hidden="true">→</span>
-              </button>
-            );
-          }
-
-          // Grouped "going" card — 2+ friends going to the same upcoming show.
-          if (item.type === 'goingGroup') {
-            const rep = item.members[0]; // most recent (feed is recency-ordered)
-            const gshow = rep.show;
-            const gfriends = item.members.map((m) => m.friend);
-            const gnames = gfriends.map((f) => f.displayName || f.username);
-            const userGoing = myGoing.has(item.key);
-            const alreadyHave = myShowKeys.has(item.key);
-            const gadded = addedIds.has(gshow.id);
-            const shownNames = gnames.slice(0, 3);
-            const extra = gnames.length - shownNames.length;
-            const label = (userGoing ? ['You', ...shownNames] : shownNames).join(' + ')
-              + (extra > 0 ? ` +${extra} more` : '');
-
-            const gHeroPhoto = gshow.photos?.[0] || null;
-            const gArtistImg = getArtistImage(gshow.artist);
-            const gHeroStyle = artistBackground(gshow.artist, gHeroPhoto || gArtistImg);
-            const gd = daysUntil(gshow.date);
-            const gcountdown = gd === 0 ? 'Tonight' : gd === 1 ? 'Tomorrow' : `In ${gd} days`;
-            const gliked = rep.reactions?.mine === '❤️';
-            const glikeCount = rep.reactions?.count || 0;
-            const canGo = !userGoing && !alreadyHave && !gadded;
-
-            return (
-              <div
-                key={`grp-${item.key}`}
-                className="feed-card-v2"
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedShow(gshow)}
-                onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(gshow); }}
-              >
-                <div className="feedv2-hero" style={gHeroStyle}>
-                  <div className="feedv2-hero-overlay" />
-                  <div className="feedv2-countdown">{gcountdown}</div>
-                  <div className="feedv2-together">
-                    🎟️ {userGoing ? 'Going together' : `${item.members.length} friends going`}
-                  </div>
-                </div>
-
-                <div className="feedv2-foot">
-                  <div className="feed-avatar-stack">
-                    {gfriends.slice(0, 3).map((f) => {
-                      const fn = f.displayName || f.username || '?';
-                      return (
-                        <button
-                          key={f.userId}
-                          className="feed-avatar"
-                          aria-label={`View ${fn}`}
-                          onClick={(e) => { e.stopPropagation(); setSelectedUserId(f.userId); }}
-                          style={f.avatarUrl
-                            ? { backgroundImage: `url(${f.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                            : { background: f.avatarColor || '#E8573A' }}
-                        >
-                          {!f.avatarUrl && fn[0].toUpperCase()}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="feed-body">
-                    <div className="feed-text">{label} are going to <b>{gshow.artist}</b></div>
-                    <div className="feed-meta-row">
-                      <span className="feed-meta">
-                        {[gshow.venue, gshow.city].filter(Boolean).join(', ')}
-                        {gshow.date ? ` · ${formatDate(gshow.date)}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="feedv2-bar">
-                  <button
-                    className={`feedv2-like ${gliked ? 'active' : ''}`}
-                    onClick={(e) => toggleLike(e, rep)}
-                    aria-label={gliked ? 'Remove your like' : 'Like this show'}
-                  >
-                    <span className="feedv2-like-emoji">{gliked ? '❤️' : '🤍'}</span>
-                    {glikeCount > 0 && <span>{glikeCount}</span>}
-                  </button>
-                  <button
-                    className="feedv2-cmt"
-                    onClick={(e) => { e.stopPropagation(); setSelectedShow(gshow); }}
-                    aria-label="Comment"
-                  >
-                    💬{rep.comments > 0 ? ` ${rep.comments}` : ''}
-                  </button>
-                  {(canGo || gadded) && (
-                    <button
-                      className={`feed-gotoo ${gadded ? 'added' : ''}`}
-                      onClick={(e) => goToo(e, gshow)}
-                      disabled={gadded}
-                    >
-                      {gadded ? '✓ Going' : "+ I'm going too"}
-                    </button>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserId(item.friend.userId)}
+                  className="px-6 py-2.5 bg-accent text-background rounded-full font-sans font-black uppercase tracking-[0.4em] text-[8px] shadow-lg shadow-accent/20 active:scale-95 transition-transform shrink-0"
+                >
+                  View
+                </button>
               </div>
-            );
-          }
+            </div>
+          );
+        }
 
-          const { show, friend, reactions, comments, coAttendees, coAnon, milestone } = item;
-          const name = friend.displayName || friend.username;
-          const attended = isAttended(show);
-          const verb = attended ? 'went to' : 'is going to';
-          const together = attended && mine.has(showKey(show));
-          const alreadyHave = myShowKeys.has(showKey(show));
-          const upcoming = isGoing(show) && daysUntil(show.date) >= 0 && !alreadyHave;
-          // Friend is going to a show you're ALSO going to → merge it into a
-          // "you + them" plan instead of a card that just repeats your Up Next.
-          const goingTogether = isGoing(show) && alreadyHave && daysUntil(show.date) >= 0;
-          const added = addedIds.has(show.id);
-
-          // Hero is photo-first: the friend's own concert photo (the
-          // show-photos bucket is public), else the artist image, else a
-          // gradient. Always visual.
-          const heroPhoto = show.photos?.[0] || null;
-          const artistImg = getArtistImage(show.artist);
-          const heroStyle = artistBackground(show.artist, heroPhoto || artistImg);
-
-          const liked = reactions?.mine === '❤️';
-          const likeCount = reactions?.count || 0;
-          const noteText = attended ? snippet(show.notes) : '';
-          const vibeList = attended ? (show.vibes || []).slice(0, 3) : [];
-          const d = daysUntil(show.date);
-          const countdown = d === 0 ? 'Tonight' : d === 1 ? 'Tomorrow' : `In ${d} days`;
+        // 2+ friends going to the same upcoming show.
+        if (item.type === 'goingGroup') {
+          const rep = item.members[0];
+          const gshow = rep.show;
+          const gfriends = item.members.map((m) => m.friend);
+          const gnames = gfriends.map((f) => f.displayName || f.username);
+          const userGoing = myGoing.has(item.key);
+          const shown = gnames.slice(0, 2);
+          const extra = gnames.length - shown.length;
+          const lead = (userGoing ? ['You', ...shown] : shown).join(' with ');
 
           return (
             <div
+              key={`grp-${item.key}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedShow(gshow)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(gshow); }}
+              className="py-12 border-t border-border flex gap-8 relative overflow-visible active:scale-[0.99] transition-transform"
+            >
+              <Spine artist={gshow.artist} />
+              <div className="shrink-0 flex flex-col -space-y-6">
+                {gfriends.slice(0, 2).map((f) => (
+                  <Avatar key={f.userId} friend={f} onOpen={setSelectedUserId} />
+                ))}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] text-foreground leading-tight">
+                  {lead}{extra > 0 ? ` & ${extra} others` : ''} are going to{' '}
+                  <span className="font-serif italic font-semibold">{gshow.artist}</span>
+                </p>
+                <p className={`${META} mt-1`}>
+                  {[gshow.venue, gshow.city].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        const { show, friend, coAttendees, coAnon, milestone } = item;
+        const name = friend.displayName || friend.username;
+        const attended = isAttended(show);
+        const upcoming = isGoing(show) && daysUntil(show.date) >= 0;
+        const note = attended ? snippet(show.notes) : '';
+        const photo = show.photos?.[0] || null;
+        const d = daysUntil(show.date);
+
+        // Milestone gets its own compact row rather than a badge inside a card.
+        if (milestone) {
+          return (
+            <div
               key={show.id}
-              className="feed-card-v2"
               role="button"
               tabIndex={0}
               onClick={() => setSelectedShow(show)}
               onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(show); }}
+              className="py-10 border-t border-border flex items-center gap-8"
             >
-              <div className="feedv2-hero" style={heroStyle}>
-                <div className="feedv2-hero-overlay" />
-                {attended && show.score > 0 && (
-                  <div className="feedv2-score">
-                    {/* Deliberately the RAW entered score, not the derived one. `rankings`
-                    is RLS self-only, so a friend's order is invisible to us by
-                    design — showing our own scale on their show would be wrong,
-                    and we couldn't compute theirs anyway. */}
-                    {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
-                  </div>
-                )}
-                {upcoming && <div className="feedv2-countdown">{countdown}</div>}
-                {together && <div className="feedv2-together">🎸 You were there too</div>}
-                {goingTogether && <div className="feedv2-together">🎟️ Going together</div>}
-              </div>
-
-              <div className="feedv2-foot">
-                <button
-                  className="feed-avatar"
-                  aria-label={`View ${name}`}
-                  onClick={(e) => { e.stopPropagation(); setSelectedUserId(friend.userId); }}
-                  style={
-                    friend.avatarUrl
-                      ? { backgroundImage: `url(${friend.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                      : { background: friend.avatarColor || '#E8573A' }
-                  }
-                >
-                  {!friend.avatarUrl && (name || '?')[0].toUpperCase()}
-                </button>
-
-                <div className="feed-body">
-                  <div className="feed-text">
-                    {goingTogether
-                      ? <>You + <b>{name}</b> are going to <b>{show.artist}</b></>
-                      : <><b>{name}</b> {verb} <b>{show.artist}</b></>}
-                  </div>
-                  <div className="feed-meta-row">
-                    <span className="feed-meta">
-                      {[show.venue, show.city].filter(Boolean).join(', ')}
-                      {show.date ? ` · ${formatDate(show.date)}` : ''}
-                    </span>
-                    {show.createdAt && <span className="feed-when">{relTime(show.createdAt)}</span>}
-                  </div>
-
-                  {milestone && <div className="feed-milestone">🎉 Their {milestone}th show!</div>}
-
-                  {(coAttendees.length > 0 || coAnon > 0) && (() => {
-                    const shownNames = Math.min(coAttendees.length, 2);
-                    const hidden = (coAttendees.length + coAnon) - shownNames;
-                    if (shownNames === 0) {
-                      return <div className="feed-with">with {coAnon} {coAnon === 1 ? 'other' : 'others'}</div>;
-                    }
-                    return (
-                      <div className="feed-with">
-                        with{' '}
-                        {coAttendees.slice(0, shownNames).map((c, i) => (
-                          <span key={c.userId}>
-                            <button className="feed-with-name" onClick={(e) => { e.stopPropagation(); setSelectedUserId(c.userId); }}>
-                              {c.name}
-                            </button>
-                            {i < shownNames - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                        {hidden > 0 && ` +${hidden}`}
-                      </div>
-                    );
-                  })()}
-
-                  {(noteText || vibeList.length > 0) && (
-                    <div className="feedv2-take">
-                      {noteText && <span className="feedv2-note">“{noteText}”</span>}
-                      {vibeList.length > 0 && (
-                        <span className="feedv2-vibes">
-                          {vibeList.map((v) => <span key={v} className="feedv2-vibe">{v}</span>)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="feedv2-bar">
-                <button
-                  className={`feedv2-like ${liked ? 'active' : ''}`}
-                  onClick={(e) => toggleLike(e, item)}
-                  aria-label={liked ? 'Remove your like' : 'Like this show'}
-                >
-                  <span className="feedv2-like-emoji">{liked ? '❤️' : '🤍'}</span>
-                  {likeCount > 0 && <span>{likeCount}</span>}
-                </button>
-                <button
-                  className="feedv2-cmt"
-                  onClick={(e) => { e.stopPropagation(); setSelectedShow(show); }}
-                  aria-label="Comment"
-                >
-                  💬{comments > 0 ? ` ${comments}` : ''}
-                </button>
-                {(upcoming || added) && (
-                  <button
-                    className={`feed-gotoo ${added ? 'added' : ''}`}
-                    onClick={(e) => goToo(e, show)}
-                    disabled={added}
-                  >
-                    {added ? '✓ Going' : "+ I'm going too"}
-                  </button>
-                )}
+              <Avatar friend={friend} onOpen={setSelectedUserId} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground">
+                  <span className="font-bold">{name}</span> logged their{' '}
+                  <span className="font-sans font-extrabold tabular-nums">{milestone}</span>th show.
+                </p>
+                <p className={`${META} mt-1`}>Milestone achieved</p>
               </div>
             </div>
           );
-        })}
-      </div>
+        }
+
+        // An upcoming show with nothing written yet is a plan, not a memory —
+        // compact row, no quote, no print.
+        if (upcoming) {
+          return (
+            <div
+              key={show.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedShow(show)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(show); }}
+              className="py-10 border-t border-border flex items-center gap-8"
+            >
+              <Avatar friend={friend} onOpen={setSelectedUserId} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground">
+                  <span className="font-bold">{name}</span> is going to{' '}
+                  <span className="font-serif italic font-semibold">{show.artist}</span>
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-sans font-extrabold text-[10px] text-foreground tabular-nums">
+                    {d === 0 ? '' : d}
+                  </span>
+                  <span className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground">
+                    {d === 0 ? 'Tonight' : d === 1 ? 'Day to go' : 'Days to go'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // The main event: a logged show.
+        return (
+          <div
+            key={show.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedShow(show)}
+            onKeyDown={(e) => { if (e.key === 'Enter') setSelectedShow(show); }}
+            className="py-12 border-t border-border flex gap-8 relative overflow-visible active:scale-[0.99] transition-transform"
+          >
+            <Spine artist={show.artist} />
+            <Avatar friend={friend} onOpen={setSelectedUserId} />
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline gap-4 mb-1">
+                <p className="text-[15px] text-foreground leading-none min-w-0 truncate">
+                  {name} preserved{' '}
+                  <span className="font-serif italic font-semibold">{show.artist}</span>
+                </p>
+                {show.score > 0 && (
+                  // The RAW entered score, not the derived one. `rankings` is
+                  // RLS self-only, so a friend's order is invisible by design —
+                  // showing our own scale on their show would be wrong.
+                  <span className="font-serif italic text-xl text-muted-foreground/40 shrink-0">
+                    {Number.isInteger(show.score) ? show.score : show.score.toFixed(1)}
+                  </span>
+                )}
+              </div>
+              <p className={META}>
+                {[show.venue, show.city].filter(Boolean).join(' · ')}
+                {show.date ? ` · ${formatDate(show.date)}` : ''}
+              </p>
+
+              {(coAttendees.length > 0 || coAnon > 0) && (
+                <p className={`${META} mt-2`}>
+                  with {coAttendees.slice(0, 2).map((c) => c.name).join(', ')}
+                  {(coAttendees.length + coAnon) > 2 ? ` +${(coAttendees.length + coAnon) - 2}` : ''}
+                </p>
+              )}
+
+              {note && (
+                <blockquote className="mt-6 font-serif italic text-2xl text-foreground leading-snug">
+                  “{note}”
+                </blockquote>
+              )}
+
+              {photo && (
+                <div className="mt-8">
+                  <div className={`${PRINT} ${tilt} transform`}>
+                    <img src={photo} alt="" className="h-40 w-56 object-cover" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
       {hiddenCount > 0 && (
-        <button type="button" className="feed-see-more" onClick={() => setExpanded(true)}>
-          See {hiddenCount} more
-        </button>
+        <div className="py-16 border-t border-border flex justify-center">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="font-sans font-black uppercase tracking-[0.4em] text-[10px] text-muted-foreground active:scale-95 transition-transform"
+          >
+            See More Records
+          </button>
+        </div>
       )}
     </div>
   );
