@@ -46,7 +46,10 @@ let fail = 0;
 const ok = (n, c, x = '') => { console.log(`  ${c ? '✓' : '✗'} ${n}${c ? '' : `  ${x}`}`); if (!c) fail++; };
 
 console.log('TABS');
-ok('four slots: three tabs + the FAB', TABS.length === 3 && navTabIds.length === 3, JSON.stringify(navTabIds));
+// Five slots since the Sleek port: four tabs + the FAB. Leaderboard was
+// promoted out of You (leaderboard.html lights ph:chart-bar-fill), so this is
+// the new shape, not a regression.
+ok('five slots: four tabs + the FAB', TABS.length === 4 && navTabIds.length === 4, JSON.stringify(navTabIds));
 ok('NavBar ids match App TABS', navTabIds.every((t) => TABS.includes(t)), JSON.stringify({ navTabIds, TABS }));
 ok('every tab renders something', TABS.every((t) => switchTabs.has(t) || t === 'home'), JSON.stringify([...switchTabs]));
 

@@ -854,7 +854,6 @@ export default function App() {
   }
 
   const renderPage = () => {
-    if (subPage === 'rankings') return <Rankings />;
     if (subPage === 'festivals') return <Festivals />;
     if (subPage === 'artists') return <Artists />;
     if (subPage === 'settings') return <Settings />;
