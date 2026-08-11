@@ -69,7 +69,10 @@ const localDayKey = () => {
 };
 
 // Four tabs. Everything else is a subPage reached from one of them.
-const TABS = ['home', 'shows', 'you'];
+// 'rankings' is a top-level tab as of the NavBar port — the Sleek design gives
+// Leaderboard its own slot (leaderboard.html lights ph:chart-bar-fill), which
+// reverses the IA collapse that had made it a drill-in under You.
+const TABS = ['home', 'shows', 'rankings', 'you'];
 // Legacy page names kept working rather than renamed across every call site.
 const PAGE_ALIAS = { stats: 'you', profile: 'you' };
 
@@ -871,6 +874,7 @@ export default function App() {
     if (subPage === 'songs') return <Songs />;
     switch (tab) {
       case 'shows': return <MyShows />;
+      case 'rankings': return <Rankings />;
       case 'you': return <You />;
       default: return <Home />;
     }

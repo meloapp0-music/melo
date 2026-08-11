@@ -60,7 +60,10 @@
   --font-wordmark: 'Outfit', sans-serif;
   --wordmark-weight: 300;
   --wordmark-tracking: 0.06em;
-  --nav-height: 80px;
+  /* h-28 in the design (112px), plus the home-indicator inset the bar adds
+     below it. Drives the bottom padding of every scrolling page, so an
+     out-of-date value here hides content behind the bar. */
+  --nav-height: 112px;
   --green: #00A88C; /* the one "going / added" success green */
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -218,13 +221,19 @@ body {
    ============================================ */
 /* Not position:fixed — a flex-shrink:0 sibling at the bottom of the .app column.
    It can't detach/scroll on iOS because it isn't positioned, just laid out. */
+/* Reduced to only what the ported NavBar can't express in utilities.
+   ---------------------------------------------------------------------------
+   Background, border, height, padding-inline and z-index are Tailwind classes
+   on the element now. They had to come OUT of here: this is an unlayered class
+   rule, so it beats every layered utility no matter the specificity, and
+   leaving `background` and `padding` here would have silently overridden
+   bg-background and px-8 — the same trap that collapsed the first Home port.
+   What's left is the bit utilities handle badly: the iOS home-indicator inset.
+   It's padding-bottom rather than part of the height so the bar grows on a
+   notched phone instead of squashing its icons into the safe area. */
 .nav-bar {
-  flex-shrink: 0;
   width: 100%;
-  padding: 8px 16px calc(var(--safe-bottom) + 8px);
-  z-index: 100;
-  background: rgba(250, 248, 245, 0.96);
-  border-top: 1px solid rgba(61, 44, 30, 0.06);
+  padding-bottom: var(--safe-bottom);
 }
 
 .nav-tabs {

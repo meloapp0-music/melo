@@ -1,50 +1,47 @@
-import { useApp } from '../App';
+// NavBar — ported from the Sleek design (project e0ITdp4pfIU).
+// ============================================================
+// The bar is drawn identically on every export, so it's taken from the newest
+// (Home v29) and confirmed against Shows, You and Leaderboard.
+//
+// FIVE SLOTS, not four. Which screen each one owns was read off the exports
+// rather than guessed — each screen lights its own icon:
+//
+//   shows.html       -> ph:ticket-fill      Shows / The Drawer
+//   you.html         -> ph:user-fill        You
+//   leaderboard.html -> ph:chart-bar-fill   Leaderboard
+//
+// So the design promotes Leaderboard to a top-level tab. That reverses part of
+// the IA work, which deliberately collapsed to three tabs plus the FAB and made
+// rankings a drill-in under You. It's a deliberate reversal on the design's
+// part, not an accident: it's consistent across every screen, and the ranking
+// system became a headline feature after that collapse was decided.
+//
+// NOT position:fixed, and this is the one place the port must not be faithful.
+// The export uses `fixed bottom-0 ... backdrop-blur-xl`, but iOS WKWebView kept
+// detaching the fixed bar on scroll — even portaled to <body> with the blur
+// removed. This stays a flex-shrink:0 sibling at the bottom of the .app column,
+// which physically cannot scroll away. The design's LOOK is ported; its
+// positioning is not.
+//
+// The blur goes with it: backdrop-filter on a non-fixed bar has nothing
+// scrolling underneath to blur, and it was a measurable scroll cost on iOS.
 
-const tabs = [
-  {
-    id: 'home',
-    label: 'Home',
-    icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
-        <polyline points="9 21 9 14 15 14 15 21" />
-      </svg>
-    ),
-  },
-  {
-    id: 'shows',
-    label: 'Shows',
-    icon: (
-      <svg viewBox="0 0 24 24">
-        <rect x="3" y="3" width="7" height="7" rx="1.5" />
-        <rect x="14" y="3" width="7" height="7" rx="1.5" />
-        <rect x="3" y="14" width="7" height="7" rx="1.5" />
-        <rect x="14" y="14" width="7" height="7" rx="1.5" />
-      </svg>
-    ),
-  },
+import { useApp } from '../App';
+import Icon from './Icon';
+
+const TABS = [
+  { id: 'home', label: 'Home', icon: 'ph:house-simple', active: 'ph:house-simple-fill' },
+  { id: 'shows', label: 'Drawer', icon: 'ph:ticket', active: 'ph:ticket-fill' },
   { id: 'plus' },
-  {
-    id: 'you',
-    label: 'You',
-    icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
+  { id: 'rankings', label: 'Ranks', icon: 'ph:chart-bar', active: 'ph:chart-bar-fill' },
+  { id: 'you', label: 'You', icon: 'ph:user', active: 'ph:user-fill' },
 ];
 
-// Which tab stays lit while you're inside a drill-in page.
-//
-// This replaces TAB_ALIAS, which solved the opposite problem — it mapped
-// orphan TABS (map/songs/buddies) onto a visible tab. Those are subPages now,
-// so the mapping runs the other way. The old `activeKey = subPage || …` was
-// also a live bug: on any subPage it resolved to a value matching no tab, so
-// the whole bar went dark. See docs/initiatives/2026-07-28-ia-simplification.md.
+// Which tab stays lit while you're inside a drill-in page. `rankings` has left
+// this map — it's a tab in its own right now, so mapping it to `you` would
+// light the wrong icon on its own screen.
 const SUBPAGE_PARENT = {
-  rankings: 'you', artists: 'you', venues: 'you', songs: 'you',
+  artists: 'you', venues: 'you', songs: 'you',
   map: 'you', buddies: 'you', 'music-taste': 'you',
   settings: 'you', legal: 'you',
   festivals: 'home',
@@ -53,41 +50,52 @@ const SUBPAGE_PARENT = {
 export default function NavBar() {
   const { tab, subPage, navigate, openOverlay, shows } = useApp();
   const activeKey = (subPage ? SUBPAGE_PARENT[subPage] : null) || tab;
-  // First-run nudge: gently pulse the + until the user logs their first show.
+  // First-run nudge: gently pulse the + until the first show is logged.
   const firstTime = (shows?.length || 0) === 0;
 
-  // The bar is a normal flex-column sibling of the scrolling .page (.app is a
-  // 100dvh flex column; .page is flex:1 / overflow-auto; this bar is flex-shrink:0
-  // at the bottom) — NOT position:fixed. iOS WKWebView kept detaching the fixed bar
-  // on scroll even when portaled to <body> with the blur removed; a flex item at
-  // the bottom of the column physically cannot scroll away.
   return (
-    <nav className="nav-bar">
-      <div className="nav-tabs">
-        {tabs.map((t) =>
-          t.id === 'plus' ? (
-            <div key="plus" className="nav-plus-slot">
-              <button className={`nav-plus${firstTime ? ' nav-plus-pulse' : ''}`} onClick={() => openOverlay('quicklog', {})} aria-label="Log a show">
-                <svg viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </button>
-            </div>
-          ) : (
+    <nav className="nav-bar min-h-28 bg-background border-t border-border flex items-center justify-around px-8 shrink-0 relative z-[100]">
+      {TABS.map((t) => {
+        if (t.id === 'plus') {
+          return (
             <button
-              key={t.id}
-              className={`nav-tab ${activeKey === t.id ? 'active' : ''}`}
-              onClick={() => navigate(t.id)}
-              aria-label={t.label}
+              key="plus"
+              type="button"
+              onClick={() => openOverlay('quicklog', {})}
+              aria-label="Log a show"
+              className="flex-1 flex justify-center -mt-12 active:scale-95 transition-transform"
             >
-              {t.icon}
-              <span className="nav-tab-label">{t.label}</span>
-              <span className="nav-dot" />
+              <div
+                // NOTE the space before ${…}. Tailwind scans raw source text,
+                // so a class butted straight against an interpolation is read
+                // as `border-[var(--background)]${` and silently dropped — the
+                // ring then falls through to currentColor (white) instead of
+                // paper. Nothing warns; it just renders the wrong colour.
+                className={`size-16 bg-accent rounded-full flex items-center justify-center text-white shadow-2xl shadow-accent/40 border-4 border-[var(--background)] ${
+                  firstTime ? 'nav-plus-pulse' : ''
+                }`}
+              >
+                <Icon name="ph:plus-bold" size={28} />
+              </div>
             </button>
-          )
-        )}
-      </div>
+          );
+        }
+        const on = activeKey === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => navigate(t.id)}
+            aria-label={t.label}
+            aria-current={on ? 'page' : undefined}
+            className={`flex-1 flex justify-center active:scale-95 transition-transform ${
+              on ? 'text-accent' : 'text-foreground opacity-20'
+            }`}
+          >
+            <Icon name={on ? t.active : t.icon} size={28} />
+          </button>
+        );
+      })}
     </nav>
   );
 }
