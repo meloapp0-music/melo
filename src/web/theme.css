@@ -12,6 +12,12 @@
    Imported BEFORE App.css so the app's own rules can still win during the
    port — Tailwind utilities and App.css coexist until every screen is moved.
 */
+/* Registered FIRST so it sorts below every Tailwind layer. Layer order is set
+   by first appearance, so declaring it here — before the import — is what
+   makes utilities able to beat anything App.css puts inside `legacy`.
+   Declaring it after would order it last and it would win instead, which is
+   the opposite of the point. */
+@layer legacy;
 @import 'tailwindcss';
 
 

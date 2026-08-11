@@ -65,7 +65,22 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* The margin/padding reset that used to live here has moved to Tailwind's
+   preflight, which applies exactly the same thing.
+   ---------------------------------------------------------------------------
+   It had to move. Tailwind v4 emits its utilities inside @layer utilities, and
+   this file is UNLAYERED — and unlayered CSS beats every layered rule no matter
+   the specificity. So `* { margin: 0; padding: 0 }` here silently won against
+   .px-8, .mt-16, .gap-8 and every other spacing utility on the ported screens.
+   The result looked styled but collapsed: type, colour and borders all correct,
+   because those aren't set universally, and not a single margin or padding
+   anywhere.
+   Preflight sets `box-sizing: border-box; margin: 0; padding: 0` on *, ::before
+   and ::after in @layer base, so behaviour for the un-ported screens is
+   unchanged — the rule just now sits somewhere utilities can override it.
+   box-sizing is kept here as a belt-and-braces default; it's the one property
+   nothing in the port needs to override. */
+*, *::before, *::after { box-sizing: border-box; }
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -106,19 +121,30 @@ body {
   background: var(--bg);
 }
 
-/* Typography */
-h1, h2, h3, h4 {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--brown);
-  line-height: 1.15;
-}
+/* Typography.
+   ---------------------------------------------------------------------------
+   Inside `legacy` (declared in theme.css BEFORE the Tailwind import, so it
+   sorts lowest) because these are bare element selectors, and an unlayered
+   element rule beats a layered utility class no matter the specificity. A
+   ported screen writing <h2 className="text-7xl font-serif italic"> was losing
+   its size and face to `h2 { font-size: 24px }` — the heading rendered at 24px
+   in the wrong family and the screen looked broken rather than restyled.
+   Un-ported screens are unaffected: nothing else competes for these, so the
+   layer only decides who wins where a Tailwind class is also present. */
+@layer legacy {
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--brown);
+    line-height: 1.15;
+  }
 
-h1 { font-size: 32px; }
-h2 { font-size: 24px; }
-h3 { font-size: 20px; }
-h4 { font-size: 17px; }
+  h1 { font-size: 32px; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 20px; }
+  h4 { font-size: 17px; }
+}
 
 /* Base .page — also used by the sign-in screen, which renders OUTSIDE .app (no
    flex parent), so it keeps a full-height block layout. */
