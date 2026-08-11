@@ -65,6 +65,20 @@ const ROTATING_CITIES_PER_RUN = 10;
 // hour" — genuinely rare, and a sane ceiling if a festival lineup drops.
 const MAX_PUSHES_PER_USER = 3;
 
+// How far into the past a presale is still worth storing.
+//
+// Ticketmaster returns every presale an event ever had, so the first version
+// wrote all of them and then pruned ~99% straight back out: 2,795 rows
+// upserted, 2,771 deleted, every 15 minutes, for about 24 useful rows. Pure
+// churn against the one index presale-fire reads 1,440 times a day.
+//
+// presale-fire only ever looks at `starts_at` within [now - 5min, now + 30s],
+// so anything older than that can never be selected. The grace is wider than
+// fire's own lookback so a slow or skipped sweep can't drop a presale that
+// opened between runs. The 7-day prune stays as the ageing-out path for rows
+// written legitimately and since passed.
+const STORE_GRACE_MIN = 20;
+
 // Melo's genre labels -> Ticketmaster's classification names. Kept in step with
 // tour-alerts' copy of the same map. Used in REVERSE here: the city sweep
 // already returns every event's classification, so an event's genre is matched
@@ -408,16 +422,20 @@ async function searchCity(city: string): Promise<TmEvt[]> {
       const artist = (attraction?.name || '').trim();
       if (!ev.id || !artist) continue;
       const venue = ev?._embedded?.venues?.[0] || {};
+      // Only presales that can still matter. TM hands back every presale an
+      // event ever had — storing the historical ones meant writing thousands
+      // of rows a run and pruning them straight back out.
+      const floor = Date.now() - STORE_GRACE_MIN * 60_000;
       const presales: TmEvt['presales'] = [];
       for (const p of (ev?.sales?.presales || [])) {
         const startsAt = p?.startDateTime ? new Date(p.startDateTime) : null;
         if (!startsAt || Number.isNaN(startsAt.getTime())) continue;
+        if (startsAt.getTime() < floor) continue;
         const endsAtRaw = p?.endDateTime ? new Date(p.endDateTime) : null;
-        presales.push({
-          name: (p?.name || 'Presale').trim(),
-          startsAt,
-          endsAt: endsAtRaw && !Number.isNaN(endsAtRaw.getTime()) ? endsAtRaw : null,
-        });
+        const endsAt = endsAtRaw && !Number.isNaN(endsAtRaw.getTime()) ? endsAtRaw : null;
+        // Already closed — nothing to tell anyone, and fire would skip it too.
+        if (endsAt && endsAt.getTime() < Date.now()) continue;
+        presales.push({ name: (p?.name || 'Presale').trim(), startsAt, endsAt });
       }
       // TM's classification comes back on the event we already fetched, so
       // mapping it to a Melo genre label costs nothing. Unmapped genres (TM's
