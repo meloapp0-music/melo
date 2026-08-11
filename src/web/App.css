@@ -135,11 +135,16 @@ body {
    Un-ported screens are unaffected: nothing else competes for these, so the
    layer only decides who wins where a Tailwind class is also present. */
 @layer legacy {
+  /* No `color` here. It set --brown on every heading unconditionally, which
+     beat INHERITANCE — so a ported <h2> inside a dark ticket stub rendered
+     near-black on oxblood instead of white, because the stub puts its text
+     colour on the container and the heading had no utility of its own to win
+     with. Dropping it is safe: `body` already sets color: var(--brown), so
+     un-ported headings inherit exactly the same value they were being given. */
   h1, h2, h3, h4 {
     font-family: var(--font-heading);
     font-weight: 800;
     letter-spacing: -0.03em;
-    color: var(--brown);
     line-height: 1.15;
   }
 
