@@ -9,7 +9,7 @@ function fromRow(row) {
     id: row.id,
     username: row.username,
     displayName: row.display_name || '',
-    avatarColor: row.avatar_color || '#E8573A',
+    avatarColor: row.avatar_color || '#F93827',
     avatarUrl: row.avatar_url || '',
     // Opt-in publication of melo.show/@username. Defaults false in the db.
     publicProfile: !!row.public_profile,
@@ -67,7 +67,7 @@ export async function updateMyProfile(patch) {
   const row = {};
   if ('username' in patch) row.username = String(patch.username || '').trim().toLowerCase();
   if ('displayName' in patch) row.display_name = patch.displayName || '';
-  if ('avatarColor' in patch) row.avatar_color = patch.avatarColor || '#E8573A';
+  if ('avatarColor' in patch) row.avatar_color = patch.avatarColor || '#F93827';
   if ('avatarUrl' in patch) row.avatar_url = patch.avatarUrl || '';
   if ('publicProfile' in patch) row.public_profile = !!patch.publicProfile;
   if ('bio' in patch) row.bio = patch.bio || '';
@@ -143,7 +143,7 @@ export async function searchUsers(query) {
     id: p.id,
     username: p.username || '',
     displayName: p.display_name || '',
-    avatarColor: p.avatar_color || '#E8573A',
+    avatarColor: p.avatar_color || '#F93827',
     avatarUrl: p.avatar_url || '',
     bio: p.bio || '',
   }));

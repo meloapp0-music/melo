@@ -96,7 +96,7 @@ export default function ConcertMap() {
         const size = Math.min(24 + count * 4, 40);
         const icon = L.divIcon({
           className: 'map-pin',
-          html: `<div style="width:${size}px;height:${size}px;background:linear-gradient(135deg,#F4A261,#E8573A);border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px rgba(232,87,58,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${count > 1 ? 12 : 0}px;font-family:Outfit,sans-serif;">${count > 1 ? count : ''}</div>`,
+          html: `<div style="width:${size}px;height:${size}px;background:linear-gradient(135deg,#F4A261,#F93827);border-radius:50%;border:3px solid #fff;box-shadow:0 2px 12px rgba(249,56,39,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${count > 1 ? 12 : 0}px;font-family:Outfit,sans-serif;">${count > 1 ? count : ''}</div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
         });

@@ -26,7 +26,7 @@ const STYLES = [
 ];
 const THEMES = [
   { key: 'vibe', name: 'Vibe', sw: 'linear-gradient(135deg,#4B7BE5,#D65DB1)' },
-  { key: 'ember', name: 'Ember', sw: 'linear-gradient(135deg,#F4A261,#E8573A)' },
+  { key: 'ember', name: 'Ember', sw: 'linear-gradient(135deg,#F4A261,#F93827)' },
   { key: 'artist', name: 'Artist', sw: 'linear-gradient(135deg,#7a4bd8,#2A1D13)' },
   { key: 'midnight', name: 'Midnight', sw: 'linear-gradient(135deg,#3a2718,#140C07)' },
 ];

@@ -21,7 +21,7 @@ const VIBE_STYLES = {
   Dreamy: { color: '#A98FE7', bg: '#F5F0FF' },
   Chaotic: { color: '#FF4757', bg: '#FFEDED' },
   Spiritual: { color: '#7EC8E3', bg: '#EFF8FC' },
-  Legendary: { color: '#E8573A', bg: '#FFF0EC' },
+  Legendary: { color: '#F93827', bg: '#FFF0EC' },
 };
 
 // The vibes offered when logging a show. Trimmed 15 → 9 in v1.0.5 to

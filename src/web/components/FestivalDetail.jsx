@@ -141,7 +141,7 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
   const heroStyle = artistBackground(outing.festival, heroImg);
 
   const buddyColor = (name) => {
-    const palette = ['#E8573A', '#F4A261', '#9B8A7E', '#6BA292', '#C05780', '#5B7DB1'];
+    const palette = ['#F93827', '#F4A261', '#9B8A7E', '#6BA292', '#C05780', '#5B7DB1'];
     let h = 0;
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
     return palette[h % palette.length];
@@ -213,7 +213,7 @@ export default function FestivalDetail({ outing, onClose, onOpenShow }) {
                     className="detail-goingwith-avatar"
                     onClick={() => setSelectedUserId?.(f.userId)}
                     aria-label={`View ${f.name}`}
-                    style={f.avatarUrl ? { backgroundImage: `url(${f.avatarUrl})` } : { background: f.avatarColor || '#E8573A' }}
+                    style={f.avatarUrl ? { backgroundImage: `url(${f.avatarUrl})` } : { background: f.avatarColor || '#F93827' }}
                   >
                     {!f.avatarUrl && f.name[0].toUpperCase()}
                   </button>

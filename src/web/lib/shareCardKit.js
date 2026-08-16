@@ -34,7 +34,7 @@ export function fmtDateShort(iso) {
 // theme → { base } CSS background field. theme: 'ember' | 'artist' | 'vibe' | 'midnight'.
 export function themeField(theme, show) {
   const vibes = show.vibes || [];
-  const v1 = vibeStyle(vibes[0]).color || '#E8573A';
+  const v1 = vibeStyle(vibes[0]).color || '#F93827';
   const v2 = (vibes[1] ? vibeStyle(vibes[1]).color : v1) || '#F4A261';
   const stops = nameStops(show.artist || '');
   switch (theme) {
@@ -49,13 +49,13 @@ export function themeField(theme, show) {
       return {
         base: `radial-gradient(90% 70% at 15% 10%, ${v1} 0%, transparent 55%),
                radial-gradient(95% 75% at 90% 30%, ${v2} 0%, transparent 50%),
-               radial-gradient(120% 90% at 60% 110%, #E8573A 0%, transparent 55%),
+               radial-gradient(120% 90% at 60% 110%, #F93827 0%, transparent 55%),
                linear-gradient(160deg, #241a2e 0%, #2A1D13 100%)`,
         onDark: true,
       };
     case 'midnight':
       return {
-        base: `radial-gradient(120% 80% at 80% 8%, rgba(232,87,58,0.45) 0%, transparent 50%),
+        base: `radial-gradient(120% 80% at 80% 8%, rgba(249,56,39,0.45) 0%, transparent 50%),
                radial-gradient(100% 70% at 10% 100%, rgba(244,162,97,0.25) 0%, transparent 55%),
                linear-gradient(165deg, #2A1D13 0%, #160F09 100%)`,
         onDark: true,
@@ -65,7 +65,7 @@ export function themeField(theme, show) {
       return {
         base: `radial-gradient(120% 80% at 80% 0%, #F4A261 0%, transparent 55%),
                radial-gradient(120% 90% at 10% 110%, #C9402A 0%, transparent 55%),
-               linear-gradient(160deg, #E8573A 0%, #B23A22 120%)`,
+               linear-gradient(160deg, #F93827 0%, #B23A22 120%)`,
         onDark: true,
       };
   }

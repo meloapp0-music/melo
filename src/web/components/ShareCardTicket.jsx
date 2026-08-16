@@ -29,13 +29,13 @@ export default function ShareCardTicket({ show, theme = 'ember', format = '9x16'
                     borderRadius: 44, overflow: 'hidden', display: 'flex', flexDirection: 'column',
                     padding: tall ? '58px 56px 48px' : '40px 46px 36px' }}>
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.5,
-          background: 'radial-gradient(120% 60% at 50% -10%, rgba(232,87,58,0.10), rgba(232,87,58,0) 60%),'
+          background: 'radial-gradient(120% 60% at 50% -10%, rgba(249,56,39,0.10), rgba(249,56,39,0) 60%),'
                     + 'radial-gradient(80% 50% at 110% 110%, rgba(244,162,97,0.10), rgba(244,162,97,0) 60%)' }} />
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Wordmark size={tall ? 44 : 38} color="#3D2C1E" />
             <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: 20, letterSpacing: '0.16em',
-                           color: '#E8573A', border: '2.5px solid #E8573A', borderRadius: 999, padding: '8px 18px' }}>I WAS THERE</span>
+                           color: '#F93827', border: '2.5px solid #F93827', borderRadius: 999, padding: '8px 18px' }}>I WAS THERE</span>
           </div>
 
           <div style={{ position: 'relative', width: '100%', height: tall ? 548 : 340,
@@ -62,7 +62,7 @@ export default function ShareCardTicket({ show, theme = 'ember', format = '9x16'
                           marginTop: 16, lineHeight: 1.25 }}>{show.venue}{show.city ? ` · ${show.city}` : ''}</div>
           )}
           {flags.date && show.date && (
-            <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 32 : 26, color: '#E8573A', marginTop: 8 }}>{fmtDate(show.date)}</span>
+            <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 32 : 26, color: '#F93827', marginTop: 8 }}>{fmtDate(show.date)}</span>
           )}
           {flags.vibes && (show.vibes || []).length > 0 && (
             <VibeRow vibes={show.vibes} solid={false} size={tall ? 30 : 24} style={{ marginTop: tall ? 24 : 16 }} />
@@ -78,7 +78,7 @@ export default function ShareCardTicket({ show, theme = 'ember', format = '9x16'
                              borderTop: i ? '1px solid rgba(61,44,30,0.10)' : 'none',
                              animationDelay: (0.05 * i + 0.1) + 's' }}>
                   <span style={{ fontFamily: OUTFIT, fontWeight: 800, fontSize: tall ? 24 : 19,
-                                 color: '#E8573A', minWidth: tall ? 42 : 32 }}>{String(i + 1).padStart(2, '0')}</span>
+                                 color: '#F93827', minWidth: tall ? 42 : 32 }}>{String(i + 1).padStart(2, '0')}</span>
                   <span style={{ fontFamily: OUTFIT, fontWeight: 700, fontSize: tall ? 37 : 27,
                                  color: '#3D2C1E', lineHeight: 1.08 }}>{t}</span>
                 </div>

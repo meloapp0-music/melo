@@ -720,7 +720,7 @@ export default function App() {
   // Phase 2 (see docs/initiatives/). Expose a derived list so the Buddies
   // page keeps working.
   const buddies = [...new Set(shows.flatMap((s) => s.buddies || []))]
-    .map((name) => ({ id: `label:${name}`, name, color: '#E8573A' }));
+    .map((name) => ({ id: `label:${name}`, name, color: '#F93827' }));
   const setBuddies = () => {
     // no-op in Phase 1 — buddies are derived from shows
   };

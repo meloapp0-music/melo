@@ -9,7 +9,7 @@ import TasteEditor from '../../components/TasteEditor';
 // restoring this import + the `step === 'calendar'` branch below.
 
 const AVATAR_COLORS = [
-  '#E8573A', '#FF6B6B', '#FF9671', '#FFC75F', '#C4E538',
+  '#F93827', '#FF6B6B', '#FF9671', '#FFC75F', '#C4E538',
   '#00C9A7', '#00D2FC', '#4B7BE5', '#845EC2', '#D65DB1',
 ];
 

@@ -345,7 +345,7 @@ export default function Settings() {
             <div className="settings-integration-badge active">Active</div>
           </div>
           <div className="settings-integration-row">
-            <div className="settings-integration-icon" style={{ background: 'linear-gradient(135deg, #E8573A, #C34A36)' }}>
+            <div className="settings-integration-icon" style={{ background: 'linear-gradient(135deg, #F93827, #C34A36)' }}>
               <span style={{ fontSize: 18 }}>&#9836;</span>
             </div>
             <div className="settings-integration-info">

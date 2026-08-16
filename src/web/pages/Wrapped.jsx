@@ -18,13 +18,13 @@ import {
 // Each slide picks a tonal overlay so the artist photo behind it stays
 // readable but the slide still has its own personality.
 const SLIDE_OVERLAYS = [
-  'linear-gradient(180deg, rgba(26,5,51,0.55) 0%, rgba(232,87,58,0.85) 100%)',
+  'linear-gradient(180deg, rgba(26,5,51,0.55) 0%, rgba(249,56,39,0.85) 100%)',
   'linear-gradient(180deg, rgba(10,22,40,0.45) 0%, rgba(0,0,0,0.85) 100%)',
   'linear-gradient(180deg, rgba(13,40,24,0.55) 0%, rgba(45,138,86,0.8) 100%)',
-  'linear-gradient(180deg, rgba(45,17,23,0.5) 0%, rgba(232,87,58,0.85) 100%)',
+  'linear-gradient(180deg, rgba(45,17,23,0.5) 0%, rgba(249,56,39,0.85) 100%)',
   'linear-gradient(180deg, rgba(10,25,48,0.55) 0%, rgba(37,99,235,0.78) 100%)',
   'linear-gradient(180deg, rgba(45,17,69,0.5) 0%, rgba(217,70,168,0.78) 100%)',
-  'linear-gradient(180deg, rgba(26,26,46,0.55) 0%, rgba(232,87,58,0.85) 100%)',
+  'linear-gradient(180deg, rgba(26,26,46,0.55) 0%, rgba(249,56,39,0.85) 100%)',
   'linear-gradient(180deg, rgba(10,5,25,0.65) 0%, rgba(26,5,51,0.92) 100%)',
 ];
 

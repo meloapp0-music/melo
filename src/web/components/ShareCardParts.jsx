@@ -23,7 +23,7 @@ export function Wordmark({ size = 46, color = '#fff', style = {} }) {
 
 // Equalizer-M soundbars — static heights form an M-ish wave; animates when `anim`.
 export function Equalizer({ bars = 7, w = 13, gap = 9, h = 120, anim = false,
-                            grad = 'linear-gradient(180deg,#fbb040,#ef4136)', style = {} }) {
+                            grad = 'linear-gradient(180deg,#fbb040,#F93827)', style = {} }) {
   const pattern = [0.45, 0.78, 0.55, 1.0, 0.55, 0.78, 0.45];
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap, height: h, ...style }}>
@@ -82,7 +82,7 @@ export function VibeRow({ vibes, solid, size = 30, style = {} }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, ...style }}>
       {(vibes || []).map((v) => {
         const s = vibeStyle(v);
-        const color = s.color || '#E8573A';
+        const color = s.color || '#F93827';
         return (
           <span key={v} style={{
             fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: size,

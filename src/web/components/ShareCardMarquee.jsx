@@ -16,14 +16,14 @@ export default function ShareCardMarquee({ show, format = '9x16', flags, anim, h
                   justifyContent: 'space-between', ...(vert ? { height: '100%' } : { width: '100%' }) }}>
       {Array.from({ length: n }).map((_, i) => (
         <span key={i} className={anim ? 'mc-bulb' : ''} style={{ width: tall ? 14 : 11, height: tall ? 14 : 11,
-          borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #fff, #FFC75F 55%, #E8573A)',
+          borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #fff, #FFC75F 55%, #F93827)',
           boxShadow: '0 0 11px rgba(255,199,95,0.9)', animationDelay: (i * 0.11) + 's' }} />
       ))}
     </div>
   );
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden',
-      background: 'radial-gradient(110% 55% at 50% 0%, rgba(232,87,58,0.4), rgba(232,87,58,0) 55%), linear-gradient(165deg,#2A1D13,#140C07)' }}>
+      background: 'radial-gradient(110% 55% at 50% 0%, rgba(249,56,39,0.4), rgba(249,56,39,0) 55%), linear-gradient(165deg,#2A1D13,#140C07)' }}>
       <div style={{ position: 'absolute', inset: tall ? 40 : 30, border: `3px solid ${amber}`, borderRadius: 30,
         boxShadow: '0 0 45px rgba(244,162,97,0.4), inset 0 0 55px rgba(244,162,97,0.12)' }} />
       <div style={{ position: 'absolute', left: tall ? 72 : 56, right: tall ? 72 : 56, top: tall ? 56 : 44 }}><Bulbs n={tall ? 15 : 11} /></div>

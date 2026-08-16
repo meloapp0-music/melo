@@ -151,9 +151,9 @@ function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle, hasShareUrl })
   const ptw = spacedWidth(ctx, 'I WAS THERE', pls);
   const pPadX = 18, pillH = 48, pillW = ptw + pPadX * 2;
   const pillX = cx1 - pillW, pillY = y + 6;
-  ctx.strokeStyle = '#E8573A'; ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#F93827'; ctx.lineWidth = 2.5;
   rrPath(ctx, pillX, pillY, pillW, pillH, pillH / 2); ctx.stroke();
-  ctx.fillStyle = '#E8573A';
+  ctx.fillStyle = '#F93827';
   fillSpaced(ctx, 'I WAS THERE', pillX + pPadX, pillY + 31, pls);
 
   y += 52;
@@ -203,7 +203,7 @@ function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle, hasShareUrl })
   // date
   if (flags.date && show.date) {
     y += 18;
-    ctx.fillStyle = '#E8573A';
+    ctx.fillStyle = '#F93827';
     ctx.font = `700 32px ${OUTFIT}`;
     ctx.fillText(fmtDate(show.date), cx0, y + 26);
     y += 26;
@@ -218,7 +218,7 @@ function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle, hasShareUrl })
     ctx.textBaseline = 'middle';
     for (const v of vibes) {
       const st = vibeStyle(v);
-      const c = st.color || '#E8573A';
+      const c = st.color || '#F93827';
       const tw2 = ctx.measureText(v).width;
       const padX = 24, chipW = tw2 + padX * 2;
       if (chx + chipW > cx1) break;
@@ -304,7 +304,7 @@ function drawTicket(ctx, show, { flags, photoImgs, qrImg, handle, hasShareUrl })
       const rowH2 = 64;
       const midY = y + rowH2 / 2;
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#E8573A';
+      ctx.fillStyle = '#F93827';
       ctx.font = `800 24px ${OUTFIT}`;
       ctx.fillText(String(i + 1).padStart(2, '0'), cx0, midY + 1);
       ctx.fillStyle = '#3D2C1E';
@@ -490,10 +490,10 @@ function drawMarquee(ctx, show, { flags, qrImg, handle }) {
   const amber = '#F4A261';
   const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#2A1D13'); bg.addColorStop(1, '#140C07');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const rad = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.7); rad.addColorStop(0, 'rgba(232,87,58,0.4)'); rad.addColorStop(1, 'transparent');
+  const rad = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.7); rad.addColorStop(0, 'rgba(249,56,39,0.4)'); rad.addColorStop(1, 'transparent');
   ctx.fillStyle = rad; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = amber; ctx.lineWidth = 3; rrPath(ctx, 40, 40, W - 80, H - 80, 30); ctx.stroke();
-  const bulb = (x, y) => { const g = ctx.createRadialGradient(x - 3, y - 3, 1, x, y, 9); g.addColorStop(0, '#fff'); g.addColorStop(0.55, '#FFC75F'); g.addColorStop(1, '#E8573A'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill(); };
+  const bulb = (x, y) => { const g = ctx.createRadialGradient(x - 3, y - 3, 1, x, y, 9); g.addColorStop(0, '#fff'); g.addColorStop(0.55, '#FFC75F'); g.addColorStop(1, '#F93827'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill(); };
   const bl = 72, brr = W - 72, bt = 64, bb = H - 64, nH = 15, nV = 26;
   for (let i = 0; i < nH; i++) { const x = bl + (brr - bl) * i / (nH - 1); bulb(x, bt); bulb(x, bb); }
   for (let i = 0; i < nV; i++) { const yy = bt + 14 + (bb - bt - 28) * i / (nV - 1); bulb(56, yy); bulb(W - 56, yy); }
@@ -543,7 +543,7 @@ function drawPlayer(ctx, show, { flags, photoImgs, qrImg, handle }) {
   const vibes = show.vibes || [];
   const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#241A14'); bg.addColorStop(1, '#120C08');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const rad = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, W); rad.addColorStop(0, 'rgba(232,87,58,0.18)'); rad.addColorStop(1, 'transparent');
+  const rad = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, W); rad.addColorStop(0, 'rgba(249,56,39,0.18)'); rad.addColorStop(1, 'transparent');
   ctx.fillStyle = rad; ctx.fillRect(0, 0, W, H);
   const cx0 = 54, cx1 = W - 54, cw = cx1 - cx0;
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -560,7 +560,7 @@ function drawPlayer(ctx, show, { flags, photoImgs, qrImg, handle }) {
   ctx.fillStyle = 'rgba(255,255,255,0.62)'; ctx.font = `500 28px ${DM}`;
   ctx.fillText([flags.venue && show.venue ? show.venue + (show.city ? ` · ${show.city}` : '') : '', flags.date && show.date ? fmtDate(show.date) : ''].filter(Boolean).join('  ·  '), cx0, y); y += 46;
   ctx.fillStyle = 'rgba(255,255,255,0.18)'; rrPath(ctx, cx0, y, cw, 6, 3); ctx.fill();
-  const pg = ctx.createLinearGradient(cx0, 0, cx0 + cw * 0.84, 0); pg.addColorStop(0, '#F4A261'); pg.addColorStop(1, '#E8573A');
+  const pg = ctx.createLinearGradient(cx0, 0, cx0 + cw * 0.84, 0); pg.addColorStop(0, '#F4A261'); pg.addColorStop(1, '#F93827');
   ctx.fillStyle = pg; rrPath(ctx, cx0, y, cw * 0.84, 6, 3); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx0 + cw * 0.84, y + 3, 8, 0, 7); ctx.fill(); y += 30;
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = `400 19px ${DM}`; ctx.fillText('main set', cx0, y); ctx.textAlign = 'right'; ctx.fillText('encore', cx1, y); ctx.textAlign = 'left'; y += 44;
@@ -568,7 +568,7 @@ function drawPlayer(ctx, show, { flags, photoImgs, qrImg, handle }) {
   const tri = (x, back) => { ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); if (back) { ctx.moveTo(x + 14, y - 16); ctx.lineTo(x + 14, y + 16); ctx.lineTo(x - 8, y); } else { ctx.moveTo(x - 14, y - 16); ctx.lineTo(x - 14, y + 16); ctx.lineTo(x + 8, y); } ctx.closePath(); ctx.fill(); ctx.fillRect(back ? x + 14 : x - 16, y - 16, 2, 32); };
   y += pbR;
   tri(cxc - pbR - 56, true); tri(cxc + pbR + 56, false);
-  const pgr = ctx.createLinearGradient(cxc - pbR, y - pbR, cxc + pbR, y + pbR); pgr.addColorStop(0, '#F4A261'); pgr.addColorStop(1, '#E8573A');
+  const pgr = ctx.createLinearGradient(cxc - pbR, y - pbR, cxc + pbR, y + pbR); pgr.addColorStop(0, '#F4A261'); pgr.addColorStop(1, '#F93827');
   ctx.fillStyle = pgr; ctx.beginPath(); ctx.arc(cxc, y, pbR, 0, 7); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(cxc - 13, y - 19); ctx.lineTo(cxc - 13, y + 19); ctx.lineTo(cxc + 21, y); ctx.closePath(); ctx.fill();
   y += pbR + 44;

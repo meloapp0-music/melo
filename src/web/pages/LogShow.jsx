@@ -1303,7 +1303,7 @@ export default function LogShow({ onClose, editingShow = null, prefill = null })
               ...buddies,
               ...selBuddies
                 .filter((n) => !buddies.some((b) => b.name === n))
-                .map((n) => ({ id: `new:${n}`, name: n, color: '#E8573A' })),
+                .map((n) => ({ id: `new:${n}`, name: n, color: '#F93827' })),
             ];
             return (
               <div className="log-section">

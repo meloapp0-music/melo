@@ -34,10 +34,10 @@ import { uploadAvatar } from '../lib/storage';
 // docs/initiatives/2026-07-28-ia-simplification.md
 
 const WRAPPED_CARD_GRADIENTS = [
-  'linear-gradient(150deg, #E8573A, #F4A261)',
+  'linear-gradient(150deg, #F93827, #F4A261)',
   'linear-gradient(150deg, #845EC2, #D65DB1)',
   'linear-gradient(150deg, #2563EB, #00C9A7)',
-  'linear-gradient(150deg, #1A1A2E, #E8573A)',
+  'linear-gradient(150deg, #1A1A2E, #F93827)',
   'linear-gradient(150deg, #0D8A56, #C4E538)',
 ];
 

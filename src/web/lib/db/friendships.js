@@ -122,7 +122,7 @@ async function hydrate(rows, me) {
       userId: oid,
       username: p.username || '',
       displayName: p.display_name || '',
-      avatarColor: p.avatar_color || '#E8573A',
+      avatarColor: p.avatar_color || '#F93827',
       avatarUrl: p.avatar_url || '',
       bio: p.bio || '',
       status: r.status,

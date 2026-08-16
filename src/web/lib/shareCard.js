@@ -20,7 +20,7 @@ const H = 1920;
 // system "close the share-footer install loop" move.
 const INSTALL_URL = 'https://apps.apple.com/us/app/melo-concert-tracker/id6763952800';
 
-const ORANGE = '#E8573A';
+const ORANGE = '#F93827';
 const AMBER = '#F4A261';
 const DARK = '#1A0E07';
 const CREAM = '#FBEEE7';

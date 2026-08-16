@@ -357,7 +357,7 @@ export default function ShowDetail({ show, onClose }) {
                     aria-label={`View ${f.name}`}
                     style={f.avatarUrl
                       ? { backgroundImage: `url(${f.avatarUrl})` }
-                      : { background: f.avatarColor || '#E8573A' }}
+                      : { background: f.avatarColor || '#F93827' }}
                   >
                     {!f.avatarUrl && f.name[0].toUpperCase()}
                   </button>

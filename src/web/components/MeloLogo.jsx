@@ -9,11 +9,11 @@ export function MeloIcon({ size = 40, rounded = true, className = '' }) {
     <svg width={size} height={size} viewBox="0 0 120 120" className={className} style={{ display: 'block' }}>
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#ef4136" />
+          <stop offset="0%" stopColor="#F93827" />
           <stop offset="100%" stopColor="#fbb040" />
         </linearGradient>
       </defs>
-      <rect width="120" height="120" rx={r} fill="#f8f7f3" />
+      <rect width="120" height="120" rx={r} fill="#FDFCF6" />
       <g transform="translate(26 33) scale(1.043)" fill={`url(#${gid})`}>
         <rect x="0"     y="0"     width="5.27" height="54.195" rx="2.635" />
         <rect x="10"    y="11.63" width="5.27" height="42.565" rx="2.635" />

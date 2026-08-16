@@ -50,7 +50,7 @@ export default function ShareCardPlayer({ show, theme = 'artist', format = '9x16
         <div style={{ marginTop: tall ? 26 : 16 }}>
           <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.18)', position: 'relative' }}>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '84%', borderRadius: 999,
-              background: 'linear-gradient(90deg,#F4A261,#E8573A)' }} />
+              background: 'linear-gradient(90deg,#F4A261,#F93827)' }} />
             <div style={{ position: 'absolute', left: '84%', top: '50%', width: 16, height: 16, borderRadius: '50%',
               background: '#fff', transform: 'translate(-50%,-50%)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }} />
           </div>
@@ -64,7 +64,7 @@ export default function ShareCardPlayer({ show, theme = 'artist', format = '9x16
                       marginTop: tall ? 26 : 14 }}>
           <Ico d="M16.88 2.88 7 12l9.88 9.12V2.88zM6 3h2.4v18H6z" s={tall ? 40 : 32} fill="rgba(255,255,255,0.85)" />
           <div style={{ width: tall ? 96 : 74, height: tall ? 96 : 74, borderRadius: '50%',
-            background: 'linear-gradient(135deg,#F4A261,#E8573A)', boxShadow: '0 8px 24px rgba(232,87,58,0.45)',
+            background: 'linear-gradient(135deg,#F4A261,#F93827)', boxShadow: '0 8px 24px rgba(249,56,39,0.45)',
             display: 'grid', placeItems: 'center' }}>
             <Ico d="M8 5v14l11-7z" s={tall ? 44 : 34} />
           </div>
