@@ -294,23 +294,27 @@ export default function Home() {
           <FriendsFeed />
         </section>
 
-        <section className="mt-10 px-8 relative z-10 pb-40">
-          <p className={`${LABEL} mb-4`}>{year.label} so far</p>
-          <div className="flex justify-between items-baseline">
-            {[[year.shows, 'Shows'], [year.cities, 'Cities'], [year.artists, 'Artists']].map(
-              ([n, label]) => (
-                <div key={label} className="flex items-baseline gap-2">
-                  <span className="text-2xl font-sans font-extrabold tabular-nums text-foreground">
-                    {String(n).padStart(2, '0')}
-                  </span>
-                  <span className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground">
-                    {label}
-                  </span>
-                </div>
-              ),
-            )}
-          </div>
-        </section>
+        {/* Hidden at zero — see the ordinary state's copy. A user whose only
+            show is the one happening tonight has attended none this year. */}
+        {year.shows > 0 && (
+          <section className="mt-10 px-8 relative z-10 pb-40">
+            <p className={`${LABEL} mb-4`}>{year.label} so far</p>
+            <div className="flex justify-between items-baseline">
+              {[[year.shows, 'Shows'], [year.cities, 'Cities'], [year.artists, 'Artists']].map(
+                ([n, label]) => (
+                  <div key={label} className="flex items-baseline gap-2">
+                    <span className="text-2xl font-sans font-extrabold tabular-nums text-foreground">
+                      {String(n).padStart(2, '0')}
+                    </span>
+                    <span className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground">
+                      {label}
+                    </span>
+                  </div>
+                ),
+              )}
+            </div>
+          </section>
+        )}
       </>,
     );
   }
@@ -318,6 +322,7 @@ export default function Home() {
   // ---- ORDINARY --------------------------------------------------------
   const nextDate = splitDate(next?.date);
   const days = next ? daysUntil(next.date) : null;
+  const uImg = unlogged ? ((unlogged.photos || [])[0] || getArtistImage(unlogged.artist)) : null;
   return shell(
     <main className="space-y-16 mt-16 relative z-10">
       {next && (
@@ -356,12 +361,77 @@ export default function Home() {
         </section>
       )}
 
+      {/* UNLOGGED. The capture prompt the whole archive runs on — a show you
+          said you were going to, whose date has passed, that never became a
+          memory. The design puts it here, second, directly under Upcoming; it
+          had only been wired into the `tonight` state, so on an ordinary day —
+          which is almost every day — nothing ever asked you to log anything. */}
+      {unlogged && (
+        <section className="px-8 relative">
+          {/* The design floats a hairline midway between Upcoming and Unlogged
+              at -top-10, against its own mt-20 gap. This main uses space-y-16,
+              so -top-8 keeps the rule centred in the smaller gap. */}
+          <div className="absolute -top-8 left-8 right-8 border-t border-border/60" />
+          <p className={`${LABEL} mb-6`}>Unlogged</p>
+          <div className="flex items-center gap-6">
+            {uImg && (
+              <div className="shrink-0">
+                <div className={`${PRINT} -rotate-2`}>
+                  <img src={uImg} alt="" className="size-16 object-cover" />
+                </div>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] leading-tight text-foreground mb-1">
+                You were at <span className="font-serif italic font-semibold">{unlogged.artist}</span>
+                {weekday(unlogged.date) ? ` on ${weekday(unlogged.date)}.` : '.'}
+              </p>
+              <p className={`${META} truncate`}>
+                {[unlogged.venue, unlogged.city].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openOverlay('log', { editingShow: unlogged })}
+              className={`${PILL} px-5 py-2.5 text-[8px] shrink-0`}
+            >
+              Log show
+            </button>
+          </div>
+        </section>
+      )}
+
       <OnThisDay />
 
       <section className="px-8">
         <p className={`${LABEL} mb-8 italic`}>The Circle</p>
         <FriendsFeed />
       </section>
+
+      {/* YEAR SO FAR. Also design-specified here and also only wired into
+          `tonight` — the state where you're least likely to be browsing.
+          Hidden at zero: "00 SHOWS / 00 CITIES / 00 ARTISTS" reads as broken
+          rather than as a beginning, and a new user who marks one show as
+          going lands here with nothing attended yet. */}
+      {year.shows > 0 && (
+        <section className="px-8">
+          <p className={`${LABEL} mb-6`}>{year.label} so far</p>
+          <div className="flex justify-between items-baseline">
+            {[[year.shows, 'Shows'], [year.cities, 'Cities'], [year.artists, 'Artists']].map(
+              ([n, label]) => (
+                <div key={label} className="flex items-baseline gap-2">
+                  <span className="text-2xl font-sans font-extrabold tabular-nums text-foreground">
+                    {String(n).padStart(2, '0')}
+                  </span>
+                  <span className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground">
+                    {label}
+                  </span>
+                </div>
+              ),
+            )}
+          </div>
+        </section>
+      )}
     </main>,
   );
 }
