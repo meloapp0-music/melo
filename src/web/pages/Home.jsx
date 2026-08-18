@@ -37,9 +37,10 @@
 
 import { useMemo } from 'react';
 import { useApp } from '../App';
-import { isGoing, isAttended, daysUntil } from '../store';
+import { isGoing, isAttended, daysUntil, getArtistGradient, latestShowPhoto } from '../store';
 import { MeloWordmark } from '../components/MeloLogo';
 import Icon from '../components/Icon';
+import FitText from '../components/FitText';
 import FriendsFeed from '../components/FriendsFeed';
 import GetStarted from '../components/GetStarted';
 import WrappedReady from '../components/WrappedReady';
@@ -60,11 +61,54 @@ const weekday = (iso) => {
   const [y, m, d] = parts(iso);
   return y && m && d ? DAYS[new Date(y, m - 1, d).getDay()] : '';
 };
+// "You were at Geese on Saturday" only makes sense while the weekday still
+// points at a night you remember. The unlogged show can be any age — the
+// design's example happened to be three days old — and "on Wednesday" for
+// something five months back is nonsense. Inside a week: the weekday. Beyond
+// it: the date.
+const whenPhrase = (iso) => {
+  const [y, m, d] = parts(iso);
+  if (!y || !m || !d) return '';
+  const ago = -daysUntil(iso);
+  return ago >= 0 && ago <= 6 ? weekday(iso) : `${MONTHS[m - 1]} ${d}`;
+};
 
 const LABEL = 'font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground';
 const META = 'font-sans uppercase tracking-[0.3em] text-[9px] font-black text-muted-foreground';
 const PILL = 'bg-accent text-white rounded-full font-sans font-black uppercase tracking-[0.4em] shadow-lg shadow-accent/20 active:scale-95 transition-transform';
 const PRINT = 'bg-white p-1 shadow-sm border border-black/5 transform';
+
+// The ticket stub. An upcoming show is a ticket; a past show is a photograph.
+// One rule, two objects, and a user learns the language in a few seconds.
+// Filled with the artist's own colour — every swatch in ARTIST_PALETTE is
+// pinned to 20-42% lightness precisely so cream/white type on it is safe.
+function Stub({ date, artist }) {
+  const [y, m, d] = parts(date);
+  if (!y || !m || !d) return null;
+  const wd = DAYS[new Date(y, m - 1, d).getDay()].slice(0, 3);
+  return (
+    <div className="shrink-0 rotate-3 bg-white p-1.5 shadow-lg shadow-black/15">
+      <div
+        className="w-[92px] aspect-[3/4] flex flex-col items-center justify-center text-white"
+        style={{ background: getArtistGradient(artist) }}
+      >
+        <span className="font-sans uppercase tracking-[0.3em] text-[9px] font-black">
+          {MONTHS[m - 1].toUpperCase()}
+        </span>
+        <span className="font-sans font-extrabold text-[34px] leading-none tabular-nums mt-0.5">
+          {d}
+        </span>
+        <span className="font-sans uppercase tracking-[0.3em] text-[9px] font-black mt-0.5">
+          {wd.toUpperCase()}
+        </span>
+        <div className="w-8 border-t border-white/30 my-2" />
+        <span className="font-sans uppercase tracking-[0.2em] text-[7px] font-black">
+          Admit One
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const {
@@ -270,7 +314,7 @@ export default function Home() {
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] leading-tight text-foreground mb-1">
                   You were at <span className="font-serif italic font-semibold">{unlogged.artist}</span>
-                  {weekday(unlogged.date) ? ` on ${weekday(unlogged.date)}.` : '.'}
+                  {whenPhrase(unlogged.date) ? ` on ${whenPhrase(unlogged.date)}.` : '.'}
                 </p>
                 <p className={`${META} truncate`}>
                   {[unlogged.venue, unlogged.city].filter(Boolean).join(' · ')}
@@ -320,44 +364,99 @@ export default function Home() {
   }
 
   // ---- ORDINARY --------------------------------------------------------
-  const nextDate = splitDate(next?.date);
   const days = next ? daysUntil(next.date) : null;
   const uImg = unlogged ? ((unlogged.photos || [])[0] || getArtistImage(unlogged.artist)) : null;
+  // The countdown's photograph is the user's OWN shot of THAT ROOM, from the
+  // last night they were in it — not a press photo of the artist. A press
+  // photo is identical for every show by that artist forever and is what
+  // every other concert app shows; a picture of the room you're going back to
+  // is something only an archive can offer. Plain const, not a hook: this
+  // branch sits after two early returns, so a hook here would be conditional.
+  const venuePhoto = (() => {
+    const v = (next?.venue || '').trim().toLowerCase();
+    if (!v) return '';
+    return latestShowPhoto(
+      (shows || []).filter((s) => isAttended(s) && (s.venue || '').trim().toLowerCase() === v),
+    );
+  })();
   return shell(
     <main className="space-y-16 mt-16 relative z-10">
       {next && (
-        <section className="px-8">
-          <div className="flex justify-between items-center mb-6">
-            <p className={`${LABEL} italic`}>Upcoming</p>
-            <div className="flex items-center gap-2">
-              <span className="font-sans font-extrabold text-xs text-foreground tabular-nums">
-                {days}
-              </span>
-              <span className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground">
-                {days === 1 ? 'Day to go' : 'Days to go'}
-              </span>
-            </div>
-          </div>
+        <section className="relative">
+          {/* THE LEAD. This used to open with a 10px grey "UPCOMING" label and
+              a 12px counter, while the other two Home states opened with a
+              statement (`Tonight` at 96px, `Start your archive.` at 36px).
+              That asymmetry is why the most-seen state read as a page in a
+              magazine rather than a home screen. */}
           <button
             type="button"
             onClick={() => setSelectedShow(next)}
-            className="w-full py-8 border-y border-border flex justify-between items-center text-left active:scale-[0.98] transition-transform"
+            className="w-full text-left px-8 flex justify-between items-start gap-5 active:scale-[0.99] transition-transform"
           >
-            <div className="min-w-0">
-              <h2 className="font-serif italic text-3xl tracking-tight text-foreground truncate">
-                {next.artist}
-              </h2>
-              <p className={`${LABEL} mt-1 italic truncate`}>
-                {[next.venue, next.city].filter(Boolean).join(' · ')}
-              </p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-3">
+                <span className="font-serif italic text-[88px] leading-[0.78] tracking-tighter text-foreground tabular-nums">
+                  {days}
+                </span>
+                <span className={LABEL}>{days === 1 ? 'Day until' : 'Days until'}</span>
+              </div>
             </div>
-            <div className="text-right shrink-0 pl-4">
-              <p className="font-serif italic text-xl text-foreground">{nextDate.day}</p>
-              <p className="font-sans uppercase tracking-[0.4em] text-[8px] font-black text-muted-foreground mt-1">
-                {nextDate.year}
-              </p>
-            </div>
+            <Stub date={next.date} artist={next.artist} />
           </button>
+
+          {/* The headline gets the FULL sheet width, not the ~187px left
+              beside the stub. Measured, not guessed: a fixed size fits
+              "Geese" and puts "Godspeed You! Black Emperor" 73px over the
+              edge. The stub aligns to the countdown number above; the name
+              runs the width of the page under both. */}
+          <button
+            type="button"
+            onClick={() => setSelectedShow(next)}
+            className="w-full text-left px-8 mt-6 block active:scale-[0.99] transition-transform"
+          >
+            <FitText
+              as="h2"
+              min={24}
+              max={46}
+              fill={0.99}
+              className="font-serif italic tracking-tighter text-foreground leading-[0.95]"
+            >
+              {next.artist}
+            </FitText>
+          </button>
+
+          {/* The venue line sits BELOW the row, not inside the left column.
+              Beside a 92px stub the column is ~240px, and "The Wiltern · Los
+              Angeles" at 10px/0.4em needs more than that — it truncated to
+              "LOS ANGEL…". Full width, so it can't. */}
+          <p className={`${LABEL} px-8 mt-3 truncate`}>
+            {[next.venue, next.city].filter(Boolean).join(' · ')}
+          </p>
+
+          {/* THE PHOTOGRAPH SITS BELOW THE TYPE, NOT BEHIND IT.
+              Seventeen rounds of trying to float this type over the image
+              failed on exactly the case that matters: a dark venue interior.
+              No cream wash survives every photo, because the photos aren't
+              ours to control — and the house style already said so ("never
+              full-bleed behind text"). It bleeds edge to edge and dissolves
+              into the paper at both ends, so it reads as printed INTO the
+              page rather than as a picture dropped on top of one. */}
+          {venuePhoto && (
+            <div className="relative mt-9 h-56 overflow-hidden">
+              <img
+                src={venuePhoto}
+                alt=""
+                className="w-full h-full object-cover grayscale contrast-[1.15]"
+              />
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background:
+                    'linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 68%, var(--bg) 100%)',
+                }}
+              />
+            </div>
+          )}
         </section>
       )}
 
@@ -384,7 +483,7 @@ export default function Home() {
             <div className="flex-1 min-w-0">
               <p className="text-[13px] leading-tight text-foreground mb-1">
                 You were at <span className="font-serif italic font-semibold">{unlogged.artist}</span>
-                {weekday(unlogged.date) ? ` on ${weekday(unlogged.date)}.` : '.'}
+                {whenPhrase(unlogged.date) ? ` on ${whenPhrase(unlogged.date)}.` : '.'}
               </p>
               <p className={`${META} truncate`}>
                 {[unlogged.venue, unlogged.city].filter(Boolean).join(' · ')}

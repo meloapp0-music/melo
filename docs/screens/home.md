@@ -62,8 +62,14 @@ THE WILTERN · LOS ANGELES│ SAT │
 - **The countdown number** is the largest element on the page — ~90px italic
   serif, tight leading. `DAYS UNTIL` beside it in the label style, baseline
   aligned.
-- **Artist name** scales to length and never reaches a third line:
-  ≤10 chars → 46px · 11–16 → 38px · 17–24 → 30px · >24 → 24px.
+- **Artist name** is MEASURED, not bucketed — `<FitText min={24} max={46}>`
+  renders at a probe size, reads the natural width, and scales by the ratio.
+  It gets the **full sheet width** on its own line beneath the countdown row,
+  not the ~187px left beside the stub. Past the 24px floor it wraps rather
+  than overflowing, per the house rule that "never clip" beats "fill the
+  width". Verified: `Fontaines D.C.` → 46px one line · `Godspeed You! Black
+  Emperor` → 24.5px one line · `…And You Will Know Us by the Trail of Dead` →
+  24px, two lines, no overflow.
 - **Venue · city** in the label style. The date is **not** repeated here — the
   stub carries it.
 - **The stub** sits right, rotated ~3°, white border, soft shadow. Filled with
@@ -78,6 +84,28 @@ becomes unreadable mush and the artist's colour is lost. More importantly the
 duotone is only ever as good as the source photo, and the app doesn't control
 those — the flat colour renders identically well for every artist, instantly,
 with no network.
+
+### The photograph sits BELOW the type, never behind it
+
+Added 2026-08-19. A full-bleed image runs edge to edge beneath the countdown
+block, ~224px tall, greyscale and slightly contrast-boosted, dissolving into
+the paper at **both** ends (`--bg` → transparent at 20%, transparent → `--bg`
+from 68%). It reads as printed *into* the sheet rather than dropped on top of
+one.
+
+**It is the user's own photo of THAT VENUE**, from the last night they were in
+it — `latestShowPhoto()` over their attended shows at the same venue. Not the
+artist. A press photo is identical for every show by that artist forever and
+is exactly what every other concert app shows; a picture of the room you're
+going back to is something only an archive can offer. No photo of that venue →
+no image and **no reserved height**.
+
+Seventeen rounds were spent trying to float the type *over* the image with a
+cream wash. It cannot be made safe: no single wash survives both a blown-out
+festival shot and a near-black venue interior, and the photos aren't ours to
+control. The house style already said `never full-bleed behind text` — that
+rule was right, and this is the shape that honours it while still getting the
+image.
 
 **Day-of:** the number is replaced by the word `Tonight` in the same serif and
 the `DAYS UNTIL` line is dropped. The day-of state is also the **only** place
