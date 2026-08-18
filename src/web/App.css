@@ -1,3 +1,13 @@
+/* ===== dvh needs a vh fallback — 2026-08-18 =====
+   IPHONEOS_DEPLOYMENT_TARGET is 15.0 and dynamic viewport units shipped in
+   Safari 15.4, so on iOS 15.0-15.3 every `dvh` declaration is invalid and
+   dropped. `.app { height: 100dvh }` alone therefore collapsed the whole
+   flex column to content height on those versions — the nav bar would sit
+   wherever the content ended. Each dvh line is now preceded by the same
+   value in vh: old iOS keeps the fallback, new iOS overrides it by source
+   order, and inside a Capacitor WKWebView there is no collapsing browser
+   chrome so the two are the same number. Keep the pair when adding more. */
+
 /* ===== Ink on ember, not white — 2026-08-18 =====
    Every rule below that puts type on the ember/amber ground carries
    `color: var(--brown)`. White on #F93827 is 3.73:1 and white on the amber
@@ -124,11 +134,12 @@ body {
   line-height: 1.5;
 }
 
-#root { min-height: 100dvh; }
+#root { min-height: 100vh; min-height: 100dvh; }
 
 .app {
   max-width: 430px;
   margin: 0 auto;
+  height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -172,6 +183,7 @@ body {
 .page {
   padding: 0 20px;
   padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
+  min-height: 100vh;
   min-height: 100dvh;
 }
 
@@ -1124,6 +1136,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
+  max-height: 92vh;
   max-height: 92dvh;
   background: var(--bg);
   border-radius: 24px 24px 0 0;
@@ -2468,6 +2481,7 @@ body {
   /* Reserve the top chrome (safe-area + back/title ≈ 150px), the travel band +
      city rail (≈ 150px), AND the floating nav bar + home indicator, so the
      map's bottom isn't hidden behind the nav bar. */
+  height: calc(100vh - env(safe-area-inset-top, 0px) - 150px - 150px - var(--nav-height) - var(--safe-bottom));
   height: calc(100dvh - env(safe-area-inset-top, 0px) - 150px - 150px - var(--nav-height) - var(--safe-bottom));
   min-height: 260px;
   border-radius: 20px;
@@ -3507,6 +3521,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
+  max-height: 92vh;
   max-height: 92dvh;
   background: var(--bg);
   border-radius: 24px 24px 0 0;
@@ -5854,6 +5869,7 @@ body {
    ============================================================= */
 
 .auth-page {
+  min-height: 100vh;
   min-height: 100dvh;
   /* Top padding = status bar safe area + breathing room. The cream
      gradient still bleeds under the dynamic island; the MeloIcon and
@@ -9515,6 +9531,7 @@ body {
 
 /* Cold-start connection-error screen */
 .app-error {
+  min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;

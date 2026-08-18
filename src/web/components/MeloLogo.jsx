@@ -2,7 +2,11 @@
 // Equalizer-bar mark from the official Looka brand pack (assets/brand/looka).
 // 7 rounded pill bars in red→orange gradient on a cream tile.
 
-export function MeloIcon({ size = 40, rounded = true, className = '' }) {
+// `tile` draws the cream ground the app-icon version needs. Set it false to
+// print the bars straight onto the page: on a surface that is already paper —
+// or under Home's ember wash — an opaque #FDFCF6 square reads as a pale box
+// floating behind the mark rather than as the mark itself.
+export function MeloIcon({ size = 40, rounded = true, tile = true, className = '' }) {
   const r = rounded ? size * 0.22 : 0;
   const gid = `meloGrad-${size}`;
   return (
@@ -13,7 +17,7 @@ export function MeloIcon({ size = 40, rounded = true, className = '' }) {
           <stop offset="100%" stopColor="#fbb040" />
         </linearGradient>
       </defs>
-      <rect width="120" height="120" rx={r} fill="#FDFCF6" />
+      {tile && <rect width="120" height="120" rx={r} fill="#FDFCF6" />}
       <g transform="translate(26 33) scale(1.043)" fill={`url(#${gid})`}>
         <rect x="0"     y="0"     width="5.27" height="54.195" rx="2.635" />
         <rect x="10"    y="11.63" width="5.27" height="42.565" rx="2.635" />

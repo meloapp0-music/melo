@@ -38,7 +38,7 @@
 import { useMemo } from 'react';
 import { useApp } from '../App';
 import { isGoing, isAttended, daysUntil, getArtistGradient } from '../store';
-import { MeloWordmark } from '../components/MeloLogo';
+import { MeloIcon, MeloWordmark } from '../components/MeloLogo';
 import Icon from '../components/Icon';
 import FitText from '../components/FitText';
 import FriendsFeed from '../components/FriendsFeed';
@@ -161,7 +161,14 @@ export default function Home() {
       <div className="absolute inset-0 h-48 bg-gradient-to-b from-accent/10 via-accent/5 to-transparent pointer-events-none" />
       <header className="px-8 pt-16 flex justify-between items-baseline relative">
         <div>
-          <MeloWordmark size={44} color="var(--foreground)" />
+          {/* The actual brand mark, not just the word. MeloIcon is the
+              equaliser from the Looka pack; MeloLockup isn't used because it
+              hardcodes #1E1E1E and a 3.23:1 tagline as inline styles, which
+              beat every utility and can't be corrected from here. */}
+          <div className="flex items-center gap-2.5">
+            <MeloIcon size={30} tile={false} />
+            <MeloWordmark size={40} color="var(--foreground)" />
+          </div>
           <p className={`${LABEL} mt-2`}>The Archive · Vol. 01</p>
         </div>
         <button
