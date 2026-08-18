@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react';
 import { signUp } from '../../lib/auth';
 import { track } from '../../lib/analytics';
-import { MeloLockup } from '../../components/MeloLogo';
+import { MeloWordmark } from '../../components/MeloLogo';
 import OtpEntry from '../../components/OtpEntry';
+import AuthShell from '../../components/auth/AuthShell';
+import Field from '../../components/auth/Field';
+import PasswordRules, { passwordValid } from '../../components/auth/PasswordRules';
+import { AuthButton, AuthLink, Emphasis } from '../../components/auth/AuthButton';
+
+// Create account — ported to the paper archive. Behaviour unchanged: the same
+// analytics events at the same points, the same OTP branch, the same 8-char
+// minimum. What moved is that the password rules are now shown live as a
+// checklist rather than delivered as an error after the fact.
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignUp({ onToggle }) {
   const [email, setEmail] = useState('');
@@ -11,9 +22,14 @@ export default function SignUp({ onToggle }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [touched, setTouched] = useState({});
 
   // Top of the activation funnel.
   useEffect(() => { track('signup_started'); }, []);
+
+  const emailErr = touched.email && email && !EMAIL.test(email) ? 'Enter a valid email.' : '';
+  const confirmErr = touched.confirm && confirm && confirm !== password ? "Passwords don't match." : '';
+  const valid = EMAIL.test(email) && passwordValid(password) && confirm === password && confirm.length > 0;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -60,70 +76,78 @@ export default function SignUp({ onToggle }) {
   }
 
   return (
-    <div className="page auth-page">
-      <div className="auth-brand"><MeloLockup iconSize={56} wordmarkSize={40} tagline /></div>
+    <AuthShell
+      footer={
+        <>
+          <AuthButton type="submit" form="signup-form" disabled={!valid} busy={busy}>
+            {busy ? 'Creating account…' : 'Create account'}
+          </AuthButton>
+          <AuthLink onClick={onToggle}>
+            Already have an account? <Emphasis>Sign in</Emphasis>
+          </AuthLink>
+        </>
+      }
+    >
+      <MeloWordmark size={34} color="var(--foreground)" />
+      <h1 className="font-serif italic text-[28px] leading-tight tracking-tight text-foreground mt-4 mb-2">
+        Create your account
+      </h1>
+      <p className="font-sans text-sm leading-relaxed text-muted-foreground mb-6">
+        Track every show, every setlist, every memory.
+      </p>
 
-      <form className="auth-form" onSubmit={submit}>
-        <h1 className="auth-title">Create your account</h1>
-        <p className="auth-sub">Track every show, every setlist, every memory.</p>
-
-        <label className="auth-label">Email</label>
-        <input
-          className="log-input"
+      <form id="signup-form" onSubmit={submit}>
+        <Field
+          label="Email"
           type="email"
+          name="email"
           autoComplete="email"
+          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+          placeholder="you@email.com"
+          error={emailErr}
           required
         />
-
-        <label className="auth-label">Password</label>
-        <input
-          className="log-input"
+        <Field
+          label="Password"
           type="password"
+          name="new-password"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
+          placeholder="••••••••"
           required
           minLength={8}
         />
-
-        <label className="auth-label">Confirm password</label>
-        <input
-          className="log-input"
+        <PasswordRules value={password} />
+        <Field
+          label="Confirm password"
           type="password"
+          name="confirm-password"
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, confirm: true }))}
           placeholder="••••••••"
+          error={confirmErr}
           required
         />
 
-        {error && <div className="auth-error">{error}</div>}
-
-        <button
-          className="settings-save-btn"
-          type="submit"
-          disabled={busy || !email.trim() || !password || !confirm}
-        >
-          {busy ? 'Creating account…' : 'Create Account'}
-        </button>
-
-        <p className="auth-agree">
-          By creating an account you agree to our{' '}
-          <a href="https://melo.show/terms" target="_blank" rel="noopener noreferrer">Terms</a>
+        <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+          By continuing you agree to Melo&rsquo;s{' '}
+          <a href="https://melo.show/terms" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-2">Terms</a>
           {' '}and{' '}
-          <a href="https://melo.show/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+          <a href="https://melo.show/privacy" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-2">Privacy Policy</a>.
         </p>
 
-        <div className="auth-footer">
-          <button type="button" className="auth-link" onClick={onToggle}>
-            Already have an account? <b>Sign in</b>
-          </button>
-        </div>
+        {error && (
+          <p className="mt-3 font-sans text-[12px] leading-snug" style={{ color: 'var(--ember-text)' }}>
+            {error}
+          </p>
+        )}
       </form>
-    </div>
+    </AuthShell>
   );
 }

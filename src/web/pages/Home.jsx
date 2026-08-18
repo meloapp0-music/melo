@@ -75,7 +75,12 @@ const whenPhrase = (iso) => {
 
 const LABEL = 'font-sans uppercase tracking-[0.4em] text-[10px] font-black text-muted-foreground';
 const META = 'font-sans uppercase tracking-[0.3em] text-[9px] font-black text-muted-foreground';
-const PILL = 'bg-accent text-white rounded-full font-sans font-black uppercase tracking-[0.4em] shadow-lg shadow-accent/20 active:scale-95 transition-transform';
+// Black on ember, not white. Measured: white on #F93827 is 3.73:1 and this
+// label is 8-10px, where AA wants 4.5:1 — the Sleek specimen specifies
+// `text-white` and it fails. Black #1A1918 on the same ground is 4.70:1 and
+// passes. It is also the truer letterpress reading: black ink on a red
+// ground, not white knocked out of it.
+const PILL = 'bg-accent text-foreground rounded-full font-sans font-black uppercase tracking-[0.4em] shadow-lg shadow-accent/20 active:scale-95 transition-transform';
 const PRINT = 'bg-white p-1 shadow-sm border border-black/5 transform';
 
 // The ticket stub. An upcoming show is a ticket; a past show is a photograph.
@@ -433,9 +438,16 @@ export default function Home() {
       >
         {next?.artist}
       </FitText>
-      <p className={`${LABEL} mt-1.5`}>
-        {[next?.venue, next?.city].filter(Boolean).join(' · ')}
-      </p>
+      {/* Venue and city on their OWN lines, not middot-joined. In the ~200px
+          left column a joined string wraps wherever it lands — real data gave
+          "BOARDWALK / HALL · ATLANTIC / CITY", three lines with the venue name
+          split in half. Two deliberate lines can't break a name. */}
+      {/* META, not LABEL: 9px/0.3em rather than 10px/0.4em. The wide tracking
+          is for short words like UNLOGGED — on a 14-character venue name it
+          costs 27px and pushes "BOARDWALK HALL" onto two lines inside a 150px
+          column. The tighter pair fits real venue names on one line each. */}
+      <p className={`${META} mt-2`}>{next?.venue}</p>
+      {next?.city && <p className={`${META} mt-0.5`}>{next.city}</p>}
     </>
   );
 

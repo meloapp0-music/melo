@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { signIn, sendPasswordReset, resendSignupOtp } from '../../lib/auth';
-import { MeloLockup } from '../../components/MeloLogo';
+import { MeloWordmark } from '../../components/MeloLogo';
 import OtpEntry from '../../components/OtpEntry';
+import AuthShell from '../../components/auth/AuthShell';
+import Field from '../../components/auth/Field';
+import { AuthButton, AuthLink, Emphasis } from '../../components/auth/AuthButton';
+
+// Sign in — ported to the paper archive. The BEHAVIOUR below is unchanged from
+// the peach-gradient version; only the frame around it moved. In particular
+// the `email_not_confirmed` branch still auto-resends and routes into OtpEntry,
+// which is the path a user hits when they bailed halfway through signup, and
+// it is invisible until it fires.
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignIn({ onToggle }) {
   const [email, setEmail] = useState('');
@@ -10,6 +21,14 @@ export default function SignIn({ onToggle }) {
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [touched, setTouched] = useState({});
+
+  // Validation is shown per field and only after the user has left it — an
+  // error that appears while you're still typing your own address reads as
+  // the app arguing with you.
+  const emailErr = touched.email && email && !EMAIL.test(email) ? 'Enter a valid email.' : '';
+  const passErr = touched.password && password.length === 0 ? 'Enter your password.' : '';
+  const valid = EMAIL.test(email) && password.length > 0;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -59,52 +78,72 @@ export default function SignIn({ onToggle }) {
   }
 
   return (
-    <div className="page auth-page">
-      <div className="auth-brand"><MeloLockup iconSize={56} wordmarkSize={40} tagline /></div>
+    <AuthShell
+      footer={
+        <>
+          <AuthButton type="submit" form="signin-form" disabled={!valid} busy={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </AuthButton>
+          <AuthLink onClick={onToggle}>
+            New to Melo? <Emphasis>Create an account</Emphasis>
+          </AuthLink>
+        </>
+      }
+    >
+      <MeloWordmark size={34} color="var(--foreground)" />
+      <h1 className="font-serif italic text-[30px] leading-tight tracking-tight text-foreground mt-5 mb-7">
+        Welcome back
+      </h1>
 
-      <form className="auth-form" onSubmit={submit}>
-        <h1 className="auth-title">Welcome back</h1>
-        <p className="auth-sub">Sign in to your Melo account</p>
-
-        <label className="auth-label">Email</label>
-        <input
-          className="log-input"
+      <form id="signin-form" onSubmit={submit}>
+        <Field
+          label="Email"
           type="email"
+          name="email"
           autoComplete="email"
+          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+          placeholder="you@email.com"
+          error={emailErr}
           required
         />
-
-        <label className="auth-label">Password</label>
-        <input
-          className="log-input"
+        <Field
+          label="Password"
           type="password"
+          name="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, password: true }))}
           placeholder="••••••••"
+          error={passErr}
           required
           minLength={6}
         />
 
-        {error && <div className="auth-error">{error}</div>}
-        {resetSent && <div className="auth-ok">Check your inbox for a password reset link.</div>}
-
-        <button className="settings-save-btn" type="submit" disabled={busy || !email.trim() || !password}>
-          {busy ? 'Signing in…' : 'Sign In'}
-        </button>
-
-        <div className="auth-footer">
-          <button type="button" className="auth-link" onClick={reset}>
+        <div className="flex justify-end -mt-2">
+          <button
+            type="button"
+            onClick={reset}
+            className="py-2 font-sans text-[12px] text-muted-foreground active:scale-95 transition-transform"
+          >
             Forgot password?
           </button>
-          <button type="button" className="auth-link" onClick={onToggle}>
-            Don't have an account? <b>Sign up</b>
-          </button>
         </div>
+
+        {error && (
+          <p className="mt-3 font-sans text-[12px] leading-snug" style={{ color: 'var(--ember-text)' }}>
+            {error}
+          </p>
+        )}
+        {resetSent && (
+          <p className="mt-3 font-sans text-[12px] leading-snug text-foreground">
+            Check your inbox for a password reset link.
+          </p>
+        )}
       </form>
-    </div>
+    </AuthShell>
   );
 }
