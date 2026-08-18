@@ -47,6 +47,7 @@ import WrappedReady from '../components/WrappedReady';
 import OnThisDay from '../components/OnThisDay';
 import TasteNudge from '../components/TasteNudge';
 import WhatsOn from '../components/WhatsOn';
+import UpcomingSection from '../components/home/UpcomingSection';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -116,6 +117,12 @@ function Stub({ date, artist }) {
   );
 }
 
+// base44's HomeFeed puts an explicit hairline between sections rather than a
+// large whitespace gap. Ported with its exact colour and margins.
+function Divider() {
+  return <div style={{ height: 1, background: 'rgba(229,227,223,0.6)', margin: '14px 16px' }} />;
+}
+
 export default function Home() {
   const {
     shows, dayStamp, setSelectedShow, navigate, openOverlay, getArtistImage,
@@ -157,9 +164,14 @@ export default function Home() {
   }, [shows, dayStamp]);
 
   const Header = (
-    <div className="relative z-10 pb-12">
-      <div className="absolute inset-0 h-48 bg-gradient-to-b from-accent/10 via-accent/5 to-transparent pointer-events-none" />
-      <header className="px-8 pt-16 flex justify-between items-baseline relative">
+    <div className="relative z-10">
+      {/* base44's wash is a warm brown rgba(196,120,70,…), not the ember
+          accent — the accent version reads pink on paper. */}
+      <div
+        className="absolute inset-x-0 top-0 pointer-events-none"
+        style={{ height: 190, background: 'linear-gradient(to bottom, rgba(196,120,70,0.12), rgba(196,120,70,0.04) 45%, transparent)' }}
+      />
+      <header className="px-4 pt-5 pb-3.5 flex justify-between items-start relative">
         <div>
           {/* The actual brand mark, not just the word. MeloIcon is the
               equaliser from the Looka pack; MeloLockup isn't used because it
@@ -188,7 +200,7 @@ export default function Home() {
       {Header}
       {/* Conditional surfaces the design never drew a state for. They render
           nothing on an ordinary day, so they can't disturb it. */}
-      <div className="px-8 relative z-10"><WrappedReady /><GetStarted /><TasteNudge /></div>
+      <div className="px-4 relative z-10"><WrappedReady /><GetStarted /><TasteNudge /></div>
       {children}
     </div>
   );
@@ -418,118 +430,18 @@ export default function Home() {
       }${y || ''}`.trim(),
     };
   })();
-  // Shared by both branches of the UPCOMING block below. Two groups, not four
-  // evenly spaced lines — the gap BETWEEN them is an order of magnitude wider
-  // than the gaps inside them, which is what makes a column read as designed
-  // rather than as a list.
-  const Countdown = (
-    <>
-      {/* leading-[0.8] cropped the line box 24px above the glyph's actual ink
-          — Playfair's italic digits carry a deep swash descender — and the
-          label underneath landed ON the numeral's tail. Measured, not eyed. */}
-      <span className="block font-serif italic text-[92px] leading-none tracking-tighter text-foreground tabular-nums">
-        {days}
-      </span>
-      <span className={`${LABEL} block mt-5`}>
-        {days === 1 ? 'Day until' : 'Days until'}
-      </span>
-    </>
-  );
-  const ShowLine = (
-    <>
-      <FitText
-        as="h2"
-        min={22}
-        max={40}
-        fill={0.99}
-        className="font-serif italic tracking-tighter text-foreground leading-[0.95] mt-14"
-      >
-        {next?.artist}
-      </FitText>
-      {/* Venue and city on their OWN lines, not middot-joined. In the ~200px
-          left column a joined string wraps wherever it lands — real data gave
-          "BOARDWALK / HALL · ATLANTIC / CITY", three lines with the venue name
-          split in half. Two deliberate lines can't break a name. */}
-      {/* META, not LABEL: 9px/0.3em rather than 10px/0.4em. The wide tracking
-          is for short words like UNLOGGED — on a 14-character venue name it
-          costs 27px and pushes "BOARDWALK HALL" onto two lines inside a 150px
-          column. The tighter pair fits real venue names on one line each. */}
-      <p className={`${META} mt-2`}>{next?.venue}</p>
-      {next?.city && <p className={`${META} mt-0.5`}>{next.city}</p>}
-    </>
-  );
-
   return shell(
-    <main className="space-y-16 mt-16 relative z-10">
-      {next && (
-        <section className="relative">
-          {/* THE SPREAD. Type on paper at the left, a photograph bleeding off
-              the right edge, and the ticket stub stitching the two together
-              at one corner.
-
-              The type NEVER crosses onto the photograph. Measured 2026-08-19:
-              black ink over an uncontrolled photo tops out at 2.54:1 against
-              the worst composited pixel even under a 92%-opaque paper wash,
-              where AA needs 4.5:1. The mean was 12.67:1 — which is exactly
-              the trap, because type is killed by its worst patch, not its
-              average one. Only the stub crosses, and it brings its own
-              opaque ground.
-
-              Clearance between the name and the stub is exactly
-              (column pr) - (stub overhang): pr-5 against -left-2 leaves 12px,
-              so the name can never touch the ticket however long it runs. */}
-          <button
-            type="button"
-            onClick={() => setSelectedShow(next)}
-            className="w-full text-left block active:scale-[0.99] transition-transform"
-          >
-            {shot ? (
-              <div className="flex items-stretch">
-                <div className="flex-1 min-w-0 pl-8 pr-5 relative z-20">
-                  {Countdown}
-                  {ShowLine}
-                </div>
-                <div className="relative w-[46%] shrink-0 self-stretch min-h-[300px]">
-                  <img
-                    src={shot.src}
-                    alt=""
-                    className="absolute inset-0 w-full h-full object-cover grayscale contrast-[1.15]"
-                  />
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background:
-                        'linear-gradient(to bottom, var(--bg) 0%, transparent 18%, transparent 74%, var(--bg) 100%)',
-                    }}
-                  />
-                  <div className="absolute bottom-6 -left-2 z-30">
-                    <Stub date={next.date} artist={next.artist} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* NO PHOTOGRAPH. Not the spread with a hole in it — the type
-                 takes the whole sheet and the stub moves up beside the
-                 countdown. The stub must render in BOTH branches: nested
-                 inside the image column it vanished with the photo, and with
-                 it went the only statement of the date on the screen. */
-              <div className="px-8">
-                <div className="flex justify-between items-start gap-5">
-                  <div className="min-w-0 flex-1">{Countdown}</div>
-                  <Stub date={next.date} artist={next.artist} />
-                </div>
-                <div className="mt-12">{ShowLine}</div>
-              </div>
-            )}
-          </button>
-        </section>
-      )}
+    <main className="relative z-10">
+      {/* Ported verbatim from base44 rather than re-interpreted — see the
+          header of UpcomingSection.jsx for what the translation had lost. */}
+      <UpcomingSection show={next} shows={shows} onOpen={() => setSelectedShow(next)} />
 
       {/* WHAT'S ON — discovery, permanent, second. The top of the page is
           then one idea: the future you own, then the future you could.
           Renders nothing at all when there's no city, no network or nothing
           on, so Home still works offline. */}
       <WhatsOn />
+      <Divider />
 
       {/* UNLOGGED. The capture prompt the whole archive runs on — a show you
           said you were going to, whose date has passed, that never became a
@@ -537,7 +449,7 @@ export default function Home() {
           had only been wired into the `tonight` state, so on an ordinary day —
           which is almost every day — nothing ever asked you to log anything. */}
       {unlogged && (
-        <section className="px-8 relative">
+        <section className="px-4 relative">
           {/* The design floats a hairline midway between Upcoming and Unlogged
               at -top-10, against its own mt-20 gap. This main uses space-y-16,
               so -top-8 keeps the rule centred in the smaller gap. */}
@@ -571,12 +483,18 @@ export default function Home() {
         </section>
       )}
 
+      <Divider />
+
       <OnThisDay />
 
-      <section className="px-8">
-        <p className={`${LABEL} mb-8 italic`}>The Circle</p>
+      <Divider />
+
+      <section className="px-4">
+        <p className={`${LABEL} mb-6`}>The Circle</p>
         <FriendsFeed />
       </section>
+
+      <Divider />
 
       {/* YEAR SO FAR. Also design-specified here and also only wired into
           `tonight` — the state where you're least likely to be browsing.
@@ -584,7 +502,7 @@ export default function Home() {
           rather than as a beginning, and a new user who marks one show as
           going lands here with nothing attended yet. */}
       {year.shows > 0 && (
-        <section className="px-8">
+        <section className="px-4 pb-4">
           <p className={`${LABEL} mb-6`}>{year.label} so far</p>
           <div className="flex justify-between items-baseline">
             {[[year.shows, 'Shows'], [year.cities, 'Cities'], [year.artists, 'Artists']].map(
