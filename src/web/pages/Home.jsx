@@ -405,90 +405,103 @@ export default function Home() {
       }${y || ''}`.trim(),
     };
   })();
+  // Shared by both branches of the UPCOMING block below. Two groups, not four
+  // evenly spaced lines — the gap BETWEEN them is an order of magnitude wider
+  // than the gaps inside them, which is what makes a column read as designed
+  // rather than as a list.
+  const Countdown = (
+    <>
+      {/* leading-[0.8] cropped the line box 24px above the glyph's actual ink
+          — Playfair's italic digits carry a deep swash descender — and the
+          label underneath landed ON the numeral's tail. Measured, not eyed. */}
+      <span className="block font-serif italic text-[92px] leading-none tracking-tighter text-foreground tabular-nums">
+        {days}
+      </span>
+      <span className={`${LABEL} block mt-5`}>
+        {days === 1 ? 'Day until' : 'Days until'}
+      </span>
+    </>
+  );
+  const ShowLine = (
+    <>
+      <FitText
+        as="h2"
+        min={22}
+        max={40}
+        fill={0.99}
+        className="font-serif italic tracking-tighter text-foreground leading-[0.95] mt-14"
+      >
+        {next?.artist}
+      </FitText>
+      <p className={`${LABEL} mt-1.5`}>
+        {[next?.venue, next?.city].filter(Boolean).join(' · ')}
+      </p>
+    </>
+  );
+
   return shell(
     <main className="space-y-16 mt-16 relative z-10">
       {next && (
         <section className="relative">
-          {/* THE LEAD. This used to open with a 10px grey "UPCOMING" label and
-              a 12px counter, while the other two Home states opened with a
-              statement (`Tonight` at 96px, `Start your archive.` at 36px).
-              That asymmetry is why the most-seen state read as a page in a
-              magazine rather than a home screen. */}
+          {/* THE SPREAD. Type on paper at the left, a photograph bleeding off
+              the right edge, and the ticket stub stitching the two together
+              at one corner.
+
+              The type NEVER crosses onto the photograph. Measured 2026-08-19:
+              black ink over an uncontrolled photo tops out at 2.54:1 against
+              the worst composited pixel even under a 92%-opaque paper wash,
+              where AA needs 4.5:1. The mean was 12.67:1 — which is exactly
+              the trap, because type is killed by its worst patch, not its
+              average one. Only the stub crosses, and it brings its own
+              opaque ground.
+
+              Clearance between the name and the stub is exactly
+              (column pr) - (stub overhang): pr-5 against -left-2 leaves 12px,
+              so the name can never touch the ticket however long it runs. */}
           <button
             type="button"
             onClick={() => setSelectedShow(next)}
-            className="w-full text-left px-8 flex justify-between items-start gap-5 active:scale-[0.99] transition-transform"
+            className="w-full text-left block active:scale-[0.99] transition-transform"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-3">
-                <span className="font-serif italic text-[88px] leading-[0.78] tracking-tighter text-foreground tabular-nums">
-                  {days}
-                </span>
-                <span className={LABEL}>{days === 1 ? 'Day until' : 'Days until'}</span>
+            {shot ? (
+              <div className="flex items-stretch">
+                <div className="flex-1 min-w-0 pl-8 pr-5 relative z-20">
+                  {Countdown}
+                  {ShowLine}
+                </div>
+                <div className="relative w-[46%] shrink-0 self-stretch min-h-[300px]">
+                  <img
+                    src={shot.src}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover grayscale contrast-[1.15]"
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(to bottom, var(--bg) 0%, transparent 18%, transparent 74%, var(--bg) 100%)',
+                    }}
+                  />
+                  <div className="absolute bottom-6 -left-2 z-30">
+                    <Stub date={next.date} artist={next.artist} />
+                  </div>
+                </div>
               </div>
-            </div>
-            <Stub date={next.date} artist={next.artist} />
-          </button>
-
-          {/* The headline gets the FULL sheet width, not the ~187px left
-              beside the stub. Measured, not guessed: a fixed size fits
-              "Geese" and puts "Godspeed You! Black Emperor" 73px over the
-              edge. The stub aligns to the countdown number above; the name
-              runs the width of the page under both. */}
-          <button
-            type="button"
-            onClick={() => setSelectedShow(next)}
-            className="w-full text-left px-8 mt-6 block active:scale-[0.99] transition-transform"
-          >
-            <FitText
-              as="h2"
-              min={24}
-              max={46}
-              fill={0.99}
-              className="font-serif italic tracking-tighter text-foreground leading-[0.95]"
-            >
-              {next.artist}
-            </FitText>
-          </button>
-
-          {/* The venue line sits BELOW the row, not inside the left column.
-              Beside a 92px stub the column is ~240px, and "The Wiltern · Los
-              Angeles" at 10px/0.4em needs more than that — it truncated to
-              "LOS ANGEL…". Full width, so it can't. */}
-          <p className={`${LABEL} px-8 mt-3 truncate`}>
-            {[next.venue, next.city].filter(Boolean).join(' · ')}
-          </p>
-
-          {/* THE PHOTOGRAPH SITS BELOW THE TYPE, NOT BEHIND IT.
-              Seventeen rounds of trying to float this type over the image
-              failed on exactly the case that matters: a dark venue interior.
-              No cream wash survives every photo, because the photos aren't
-              ours to control — and the house style already said so ("never
-              full-bleed behind text"). It bleeds edge to edge and dissolves
-              into the paper at both ends, so it reads as printed INTO the
-              page rather than as a picture dropped on top of one. */}
-          {shot && (
-            <>
-              <div className="relative mt-9 h-56 overflow-hidden">
-                <img
-                  src={shot.src}
-                  alt=""
-                  className="w-full h-full object-cover grayscale contrast-[1.15]"
-                />
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      'linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 68%, var(--bg) 100%)',
-                  }}
-                />
+            ) : (
+              /* NO PHOTOGRAPH. Not the spread with a hole in it — the type
+                 takes the whole sheet and the stub moves up beside the
+                 countdown. The stub must render in BOTH branches: nested
+                 inside the image column it vanished with the photo, and with
+                 it went the only statement of the date on the screen. */
+              <div className="px-8">
+                <div className="flex justify-between items-start gap-5">
+                  <div className="min-w-0 flex-1">{Countdown}</div>
+                  <Stub date={next.date} artist={next.artist} />
+                </div>
+                <div className="mt-12">{ShowLine}</div>
               </div>
-              {/* Captioned, because an uncaptioned photo here is decoration —
-                  the reader has no way to know it's their own, or why it's
-                  this one. Two words turn it into a memory. */}
-              <p className={`${META} px-8 mt-3 text-right`}>{shot.caption}</p>
-            </>
-          )}
+            )}
+          </button>
         </section>
       )}
 

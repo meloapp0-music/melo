@@ -85,13 +85,33 @@ duotone is only ever as good as the source photo, and the app doesn't control
 those — the flat colour renders identically well for every artist, instantly,
 with no network.
 
-### The photograph sits BELOW the type, never behind it
+### The spread — type left, photograph right
 
-Added 2026-08-19. A full-bleed image runs edge to edge beneath the countdown
-block, ~224px tall, greyscale and slightly contrast-boosted, dissolving into
-the paper at **both** ends (`--bg` → transparent at 20%, transparent → `--bg`
-from 68%). It reads as printed *into* the sheet rather than dropped on top of
-one.
+Settled 2026-08-19 after nineteen design rounds. The block is **two columns**:
+type on plain paper at the left, a photograph occupying the right **46%** and
+bleeding off the right edge, greyscale and contrast-boosted, dissolving into
+the paper at top and bottom so it reads as printed *into* the sheet.
+
+An earlier version stacked them — type, then a full-bleed band beneath. It was
+rejected because the type floated above a tall strip with a hole under it.
+
+**The type never crosses onto the photograph.** Measured: black ink over an
+uncontrolled photo tops out at **2.54:1** against the worst composited pixel,
+even under a 92%-opaque paper wash, where AA needs 4.5:1. The *mean* was
+12.67:1 — which is precisely the trap, because type is killed by its worst
+patch, not its average one. This is why nineteen rounds of "wash it more"
+never converged, and why the rule is structural rather than a tuning value.
+
+**Only the ticket stub crosses the seam**, pinned over the photograph's
+bottom-left corner — it carries its own opaque ground. Clearance between the
+artist name and the stub is exactly `(column padding-right) − (stub overhang)`:
+`pr-5` against `-left-2` leaves 12px, so the name can never touch the ticket
+however long it runs.
+
+**With no photograph the layout changes, it does not just lose a column.** The
+type takes the full sheet and the stub moves up beside the countdown. The stub
+must render in both branches — nested inside the image column it vanished with
+the photo, and with it went the only statement of the date on the screen.
 
 **It is always one of the user's OWN photos**, never a press shot. A press
 photo is identical for every show by that artist forever and is exactly what
