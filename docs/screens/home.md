@@ -93,12 +93,28 @@ the paper at **both** ends (`--bg` → transparent at 20%, transparent → `--bg
 from 68%). It reads as printed *into* the sheet rather than dropped on top of
 one.
 
-**It is the user's own photo of THAT VENUE**, from the last night they were in
-it — `latestShowPhoto()` over their attended shows at the same venue. Not the
-artist. A press photo is identical for every show by that artist forever and
-is exactly what every other concert app shows; a picture of the room you're
-going back to is something only an archive can offer. No photo of that venue →
-no image and **no reserved height**.
+**It is always one of the user's OWN photos**, never a press shot. A press
+photo is identical for every show by that artist forever and is exactly what
+every other concert app puts here.
+
+Two chances at it, tried in order, each captioned so the photo reads as a
+memory rather than as decoration:
+
+| Source | Caption |
+|---|---|
+| Your last night in **that room** | `You were here · Aug 2025` |
+| Your last night with **that artist** | `You saw them · Mar 2024` |
+| Neither | no image, **no reserved height** |
+
+The venue match alone is far too narrow to ship — it needs a prior attended
+show at the same room that you also photographed, which for most people is
+never. Going back to see an artist you've already seen is the far more common
+pattern in a concert log, so it's the second pass. Both are personal; neither
+is stock.
+
+Verified 2026-08-19 across all three cases: the block measures 515px with a
+photo and 229px without — a 286px difference, exactly the image, caption and
+margins, with zero images inside the section in the empty case.
 
 Seventeen rounds were spent trying to float the type *over* the image with a
 cream wash. It cannot be made safe: no single wash survives both a blown-out

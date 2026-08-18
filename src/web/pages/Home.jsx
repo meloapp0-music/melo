@@ -37,7 +37,7 @@
 
 import { useMemo } from 'react';
 import { useApp } from '../App';
-import { isGoing, isAttended, daysUntil, getArtistGradient, latestShowPhoto } from '../store';
+import { isGoing, isAttended, daysUntil, getArtistGradient } from '../store';
 import { MeloWordmark } from '../components/MeloLogo';
 import Icon from '../components/Icon';
 import FitText from '../components/FitText';
@@ -366,18 +366,44 @@ export default function Home() {
   // ---- ORDINARY --------------------------------------------------------
   const days = next ? daysUntil(next.date) : null;
   const uImg = unlogged ? ((unlogged.photos || [])[0] || getArtistImage(unlogged.artist)) : null;
-  // The countdown's photograph is the user's OWN shot of THAT ROOM, from the
-  // last night they were in it — not a press photo of the artist. A press
-  // photo is identical for every show by that artist forever and is what
-  // every other concert app shows; a picture of the room you're going back to
-  // is something only an archive can offer. Plain const, not a hook: this
-  // branch sits after two early returns, so a hook here would be conditional.
-  const venuePhoto = (() => {
-    const v = (next?.venue || '').trim().toLowerCase();
-    if (!v) return '';
-    return latestShowPhoto(
-      (shows || []).filter((s) => isAttended(s) && (s.venue || '').trim().toLowerCase() === v),
+  // The countdown's photograph is always one of the user's OWN, never a press
+  // shot of the artist: a press photo is identical for every show by that
+  // artist forever and is exactly what every other concert app puts here.
+  //
+  // Two chances at it, because "your photo of this venue" alone is far too
+  // narrow — it needs a prior attended show AT THE SAME ROOM that you also
+  // photographed, which for most people is never. Going back to see an artist
+  // you've already seen is the far more common pattern in a concert log, so
+  // that's the second pass. Both are personal; neither is stock.
+  //
+  //   1. your last night in THAT ROOM     -> "You were here"
+  //   2. your last night with THAT ARTIST -> "You saw them"
+  //   3. nothing at all, and no reserved height
+  //
+  // Plain const, not a hook: this branch sits after two early returns, so a
+  // hook here would be conditional.
+  const shot = (() => {
+    const withPhotos = (shows || []).filter(
+      (s) => isAttended(s) && Array.isArray(s.photos) && s.photos.length,
     );
+    const newest = (list) =>
+      [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] || null;
+    const key = (v) => (v || '').trim().toLowerCase();
+    const here = key(next?.venue)
+      ? newest(withPhotos.filter((s) => key(s.venue) === key(next.venue)))
+      : null;
+    const them = key(next?.artist)
+      ? newest(withPhotos.filter((s) => key(s.artist) === key(next.artist)))
+      : null;
+    const hit = here || them;
+    if (!hit) return null;
+    const [y, m] = parts(hit.date);
+    return {
+      src: hit.photos[0],
+      caption: `${here ? 'You were here' : 'You saw them'} · ${
+        m ? `${MONTHS[m - 1]} ` : ''
+      }${y || ''}`.trim(),
+    };
   })();
   return shell(
     <main className="space-y-16 mt-16 relative z-10">
@@ -441,21 +467,27 @@ export default function Home() {
               full-bleed behind text"). It bleeds edge to edge and dissolves
               into the paper at both ends, so it reads as printed INTO the
               page rather than as a picture dropped on top of one. */}
-          {venuePhoto && (
-            <div className="relative mt-9 h-56 overflow-hidden">
-              <img
-                src={venuePhoto}
-                alt=""
-                className="w-full h-full object-cover grayscale contrast-[1.15]"
-              />
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background:
-                    'linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 68%, var(--bg) 100%)',
-                }}
-              />
-            </div>
+          {shot && (
+            <>
+              <div className="relative mt-9 h-56 overflow-hidden">
+                <img
+                  src={shot.src}
+                  alt=""
+                  className="w-full h-full object-cover grayscale contrast-[1.15]"
+                />
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 68%, var(--bg) 100%)',
+                  }}
+                />
+              </div>
+              {/* Captioned, because an uncaptioned photo here is decoration —
+                  the reader has no way to know it's their own, or why it's
+                  this one. Two words turn it into a memory. */}
+              <p className={`${META} px-8 mt-3 text-right`}>{shot.caption}</p>
+            </>
           )}
         </section>
       )}
