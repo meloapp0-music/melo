@@ -46,6 +46,7 @@ import GetStarted from '../components/GetStarted';
 import WrappedReady from '../components/WrappedReady';
 import OnThisDay from '../components/OnThisDay';
 import TasteNudge from '../components/TasteNudge';
+import WhatsOn from '../components/WhatsOn';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -516,6 +517,12 @@ export default function Home() {
           </button>
         </section>
       )}
+
+      {/* WHAT'S ON — discovery, permanent, second. The top of the page is
+          then one idea: the future you own, then the future you could.
+          Renders nothing at all when there's no city, no network or nothing
+          on, so Home still works offline. */}
+      <WhatsOn />
 
       {/* UNLOGGED. The capture prompt the whole archive runs on — a show you
           said you were going to, whose date has passed, that never became a
