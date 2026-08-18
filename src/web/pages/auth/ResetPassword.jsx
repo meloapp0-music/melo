@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { updatePassword, signOut } from '../../lib/auth';
-import { MeloIcon } from '../../components/MeloLogo';
+import AuthShell from '../../components/auth/AuthShell';
+import Field from '../../components/auth/Field';
+import PasswordRules, { passwordValid } from '../../components/auth/PasswordRules';
+import { AuthButton } from '../../components/auth/AuthButton';
+import Icon from '../../components/Icon';
 
 // Rendered when Supabase redirects back with a recovery token. The SDK
 // auto-processes the URL on load and lands us here in a signed-in-but-
@@ -12,6 +16,10 @@ export default function ResetPassword({ onDone }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [touched, setTouched] = useState({});
+
+  const confirmErr = touched.confirm && confirm && confirm !== password ? "Passwords don't match." : '';
+  const valid = passwordValid(password) && confirm === password && confirm.length > 0;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -32,42 +40,66 @@ export default function ResetPassword({ onDone }) {
   };
 
   return (
-    <div className="page auth-page">
-      <div className="auth-brand" style={{ justifyContent: 'center' }}>
-        <MeloIcon size={64} />
-      </div>
-      <form className="auth-form" onSubmit={submit}>
-        <h1 className="auth-title">Set a new password</h1>
-        {done ? (
-          <p className="auth-ok">Password updated. Redirecting…</p>
-        ) : (
-          <>
-            <label className="auth-label">New password</label>
-            <input
-              className="log-input"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              required
-            />
-            <label className="auth-label">Confirm</label>
-            <input
-              className="log-input"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-            />
-            {error && <div className="auth-error">{error}</div>}
-            <button className="settings-save-btn" type="submit" disabled={busy}>
-              {busy ? 'Saving…' : 'Update Password'}
-            </button>
-          </>
-        )}
-      </form>
-    </div>
+    <AuthShell
+      footer={
+        !done && (
+          <AuthButton type="submit" form="reset-form" disabled={!valid} busy={busy}>
+            {busy ? 'Saving…' : 'Save new password'}
+          </AuthButton>
+        )
+      }
+    >
+      <h1 className="font-serif italic text-[28px] leading-tight tracking-tight text-foreground mb-2">
+        Set a new password
+      </h1>
+      <p className="font-sans text-sm leading-relaxed text-muted-foreground mb-6">
+        Pick something you&rsquo;ll remember this time.
+      </p>
+
+      {done ? (
+        // Held for 1.5s while the sign-out completes, then App.jsx swaps this
+        // screen for SignIn. A confirmation card rather than a toast, because
+        // the screen is about to change underneath it either way.
+        <div className="border border-border bg-secondary p-5 flex items-center gap-3">
+          <Icon name="ph:check-bold" size={20} className="text-foreground shrink-0" />
+          <div>
+            <p className="font-serif italic text-lg text-foreground">Password saved.</p>
+            <p className="font-mono text-[10px] text-muted-foreground mt-1">Signing you back in…</p>
+          </div>
+        </div>
+      ) : (
+        <form id="reset-form" onSubmit={submit}>
+          <Field
+            label="New password"
+            type="password"
+            name="new-password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            minLength={8}
+          />
+          <PasswordRules value={password} />
+          <Field
+            label="Confirm password"
+            type="password"
+            name="confirm-password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, confirm: true }))}
+            placeholder="••••••••"
+            error={confirmErr}
+            required
+          />
+          {error && (
+            <p className="mt-1 font-sans text-[12px] leading-snug" style={{ color: 'var(--ember-text)' }}>
+              {error}
+            </p>
+          )}
+        </form>
+      )}
+    </AuthShell>
   );
 }

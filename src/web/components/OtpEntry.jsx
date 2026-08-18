@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { verifyEmailOtp, resendSignupOtp } from '../lib/auth';
 import { track } from '../lib/analytics';
-import { MeloLockup } from './MeloLogo';
+import AuthShell from './auth/AuthShell';
+import { AuthButton, AuthLink } from './auth/AuthButton';
+import Icon from './Icon';
 
 // Single-digit input boxes for an email OTP code.
 // - Auto-advances on type, jumps back on Backspace
@@ -134,67 +136,71 @@ export default function OtpEntry({ email, length = 8, onVerified, onChangeEmail 
   };
 
   return (
-    <div className="page auth-page">
-      <div className="auth-brand">
-        <MeloLockup iconSize={56} wordmarkSize={40} tagline />
-      </div>
-
-      <div className="auth-form">
-        <h1 className="auth-title">Check your email</h1>
-        <p className="auth-sub">
-          We sent a {length}-digit code to <b>{email}</b>. Enter it below to
-          finish signing up.
-        </p>
-
-        <div className="otp-row">
-          {digits.map((d, i) => (
-            <input
-              key={i}
-              ref={(el) => (inputRefs.current[i] = el)}
-              className="otp-box"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={1}
-              value={d}
-              onChange={(e) => handleChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              disabled={busy}
-            />
-          ))}
-        </div>
-
-        {error && <div className="auth-error">{error}</div>}
-        {resendOk && <div className="auth-ok">Sent — check your inbox.</div>}
-
-        <button
-          className="settings-save-btn"
-          onClick={() => submit()}
-          disabled={busy || digits.some((d) => d === '')}
-        >
-          {busy ? 'Verifying…' : 'Verify'}
-        </button>
-
-        <div className="auth-footer">
-          <button
-            type="button"
-            className="auth-link"
-            onClick={resend}
-            disabled={resendBusy || resendCooldown > 0}
-          >
+    <AuthShell
+      footer={
+        <>
+          <AuthButton onClick={() => submit()} disabled={digits.some((d) => d === '')} busy={busy}>
+            {busy ? 'Verifying\u2026' : 'Verify'}
+          </AuthButton>
+          <AuthLink onClick={resend} disabled={resendBusy || resendCooldown > 0}>
             {resendCooldown > 0
               ? `Resend code in ${resendCooldown}s`
               : resendBusy
-                ? 'Sending…'
+                ? 'Sending\u2026'
                 : 'Resend code'}
-          </button>
+          </AuthLink>
           {onChangeEmail && (
-            <button type="button" className="auth-link" onClick={onChangeEmail}>
-              Use a different email
-            </button>
+            <AuthLink onClick={onChangeEmail}>Use a different email</AuthLink>
           )}
-        </div>
+        </>
+      }
+    >
+      <div className="size-14 border border-border bg-card flex items-center justify-center mb-6">
+        <Icon name="ph:check-circle-fill" size={24} className="text-foreground" />
       </div>
-    </div>
+      <h1 className="font-serif italic text-[28px] leading-tight tracking-tight text-foreground mb-2">
+        Check your email
+      </h1>
+      {/* break-all, because an address long enough to overflow is exactly the
+          kind a user mistypes and needs to be able to read back. */}
+      <p className="font-sans text-sm leading-relaxed text-muted-foreground mb-7">
+        We sent a {length}-digit code to{' '}
+        <span className="text-foreground break-all">{email}</span>. Enter it below
+        to finish signing up.
+      </p>
+
+      {/* One row of `length` boxes across the sheet. Sized by fraction rather
+          than a fixed width so eight of them still fit at 375px, and h-14 so
+          the touch target stays over 44px however narrow they get. */}
+      <div className="flex gap-1.5">
+        {digits.map((d, i) => (
+          <input
+            key={i}
+            ref={(el) => (inputRefs.current[i] = el)}
+            className="flex-1 min-w-0 h-14 bg-card border border-border text-center font-mono text-lg text-foreground outline-none focus:border-accent focus:bg-background disabled:opacity-50 transition-colors"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={1}
+            value={d}
+            onChange={(e) => handleChange(i, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            disabled={busy}
+            aria-label={`Digit ${i + 1} of ${length}`}
+          />
+        ))}
+      </div>
+
+      {error && (
+        <p className="mt-4 font-sans text-[12px] leading-snug" style={{ color: 'var(--ember-text)' }}>
+          {error}
+        </p>
+      )}
+      {resendOk && (
+        <p className="mt-4 font-sans text-[12px] leading-snug text-foreground">
+          Sent \u2014 check your inbox.
+        </p>
+      )}
+    </AuthShell>
   );
 }
