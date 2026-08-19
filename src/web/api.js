@@ -1579,6 +1579,22 @@ function pickOfficialLink(links, venueName) {
 // a Google search for "{venue} {city} official site" — top result is
 // almost always the official venue page. One extra click, but never a
 // dead pill.
+// Ticketmaster for a show. Uses the event's own URL when we have one (every
+// Discovery result carries `ticketUrl`), and otherwise builds a Ticketmaster
+// search for the artist in that city.
+//
+// The fallback is the point. A "Get tickets" action gated on a stored URL
+// renders for almost nobody — a show the user logged by hand, or added from
+// Setlist.fm, has no ticketUrl and never will. A search always resolves, so
+// the affordance is real on every upcoming show rather than on the few that
+// happen to have come from Ticketmaster.
+export function ticketSearchUrl(artist, city = '', ticketUrl = '') {
+  if (ticketUrl) return ticketUrl;
+  const q = [artist, city].filter(Boolean).join(' ').trim();
+  if (!q) return '';
+  return `https://www.ticketmaster.com/search?q=${encodeURIComponent(q)}`;
+}
+
 export function venueSearchUrl(venueName, city = '') {
   const q = encodeURIComponent(
     `${venueName} ${city ? city + ' ' : ''}official site`

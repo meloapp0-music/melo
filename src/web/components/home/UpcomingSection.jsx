@@ -3,6 +3,7 @@ import SectionLabel from '../melo/SectionLabel';
 import StubVintage from '../melo/StubVintage';
 import FitText from '../FitText';
 import { getArtistGradient, isAttended, daysUntil } from '../../store';
+import { ticketSearchUrl } from '../../api';
 
 // UPCOMING — ported VERBATIM from the base44 prototype (Stubs,
 // src/components/home/UpcomingSection.jsx). Every number below — 290, 112,
@@ -29,6 +30,44 @@ const BLOCK_H = 290;
 // Parsed by parts — `new Date('2026-10-22')` is UTC midnight, which renders
 // as the 21st for anyone west of Greenwich.
 const parts = (iso) => String(iso || '').split('-').map(Number);
+
+// GET TICKETS — a deliberate addition to the base44 section, at Aidan's
+// request. There was no route to tickets for a show you'd already saved:
+// the app's only ticket links live inside Discover and are gated on a stored
+// `ticketUrl`, which a hand-logged show never has. ticketSearchUrl falls back
+// to a Ticketmaster search so the action resolves on every upcoming show.
+function Tickets({ show }) {
+  const href = ticketSearchUrl(show.artist, show.city, show.ticketUrl);
+  if (!href) return null;
+  return (
+    <div style={{ padding: '14px 16px 0' }}>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="active:scale-95"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        minHeight: 44,
+        padding: '0 16px',
+        border: '1px solid #1A1918',
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.3em',
+        textTransform: 'uppercase',
+        color: '#1A1918',
+        textDecoration: 'none',
+        transition: 'transform 0.15s ease',
+      }}
+    >
+      Get tickets
+    </a>
+    </div>
+  );
+}
 
 export default function UpcomingSection({ show, shows = [], onOpen }) {
   if (!show) return null;
@@ -88,6 +127,11 @@ export default function UpcomingSection({ show, shows = [], onOpen }) {
 
   if (photo) {
     return (
+      <>
+      {/* base44's block is a fixed 290px with everything absolutely placed, so
+          the tickets action goes BELOW it in normal flow rather than inside —
+          added within, it landed flush on the 290px boundary with nowhere to
+          breathe. */}
       <section
         onClick={onOpen}
         style={{ position: 'relative', width: '100%', height: BLOCK_H, background: '#FDFCF6', overflow: 'visible' }}
@@ -153,6 +197,8 @@ export default function UpcomingSection({ show, shows = [], onOpen }) {
           </div>
         </div>
       </section>
+      <Tickets show={show} />
+      </>
     );
   }
 
@@ -188,6 +234,7 @@ export default function UpcomingSection({ show, shows = [], onOpen }) {
             </SectionLabel>
           </div>
         )}
+        <Tickets show={show} />
       </div>
     </section>
   );
